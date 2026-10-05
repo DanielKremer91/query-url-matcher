@@ -56,7 +56,7 @@ Eine kurze Query gegen einen langen Text zu matchen ist eine asymmetrische Aufga
 
 ## Ergebnis
 
-Eine Excel-Datei mit den Blättern Lesehilfe, Entscheidung, Top-Treffer, Kannibalisierung, Content-Lücken, mit SERPs zusätzlich Lücken je Cluster, optional Paare. Auf Wunsch zusätzlich ein ZIP mit einer CSV je Blatt.
+Eine Excel-Datei mit den Blättern Lesehilfe, Entscheidung, Top-Treffer, Kannibalisierung, Content-Lücken, mit SERPs zusätzlich Lücken je Cluster, optional Paare. Auf Wunsch zusätzlich ein ZIP mit einer CSV je Blatt: mit Semikolon und Dezimalkomma für deutsches Excel oder mit Komma und Dezimalpunkt.
 
 ## Grenzen
 

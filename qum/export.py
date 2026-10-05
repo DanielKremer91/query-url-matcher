@@ -196,6 +196,8 @@ def write_excel(path, sheets: dict) -> None:
 
 
 def write_csv_zip(path, sheets: dict, sep: str = ";") -> None:
+    # Semikolon ist das deutsche Excel-Format: dort gehört das Komma in die Zahl
+    decimal = "," if sep == ";" else "."
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
         for name, df in sheets.items():
-            archive.writestr(_CSV_NAMES[name], df.to_csv(index=False, sep=sep).encode("utf-8-sig"))
+            archive.writestr(_CSV_NAMES[name], df.to_csv(index=False, sep=sep, decimal=decimal).encode("utf-8-sig"))

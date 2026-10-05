@@ -222,3 +222,16 @@ def test_help_texts_describe_the_margin_rule():
 
 def test_advice_column_help_calls_it_a_hint_to_check():
     assert export._COLUMN_HELP[L.C_ADVICE] == "Fester Hinweis, was zu prüfen ist, kein generierter Text. Entscheiden muss ein Mensch."
+
+
+@pytest.mark.parametrize("sep, number", [(";", "0,8123"), (",", "0.8123")])
+def test_write_csv_zip_writes_decimal_comma_only_with_semicolon(tmp_path, sep, number):
+    path = tmp_path / "out.zip"
+    sheets = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS)
+    sheets[export.SHEET_DECISION][L.C_S_CHUNK] = [0.8123, 0.5, 0.25]
+    export.write_csv_zip(path, sheets, sep=sep)
+    with zipfile.ZipFile(path) as archive:
+        raw = archive.read("entscheidung.csv").decode("utf-8-sig")
+    assert raw.splitlines()[1].endswith(f"{sep}{number}")
+    df = pd.read_csv(io.StringIO(raw), sep=sep, decimal="," if sep == ";" else ".")
+    assert df[L.C_S_CHUNK].tolist() == [0.8123, 0.5, 0.25]

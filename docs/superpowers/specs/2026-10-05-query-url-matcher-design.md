@@ -159,7 +159,7 @@ Ohne die Schritte 5 und 6 arbeitet das Notebook wie das alte Skript, nur mit den
 
 ## 12. Export
 
-Standard ist eine Excel-Datei, per Häkchen zusätzlich ein ZIP mit einer CSV je Blatt.
+Standard ist eine Excel-Datei, per Häkchen zusätzlich ein ZIP mit einer CSV je Blatt (UTF-8 mit BOM). Das Trennzeichen ist wählbar: Semikolon (Vorgabe, für deutsches Excel) schreibt Zahlen mit Dezimalkomma, Komma schreibt sie mit Dezimalpunkt.
 
 | Blatt | Inhalt | Vorhanden |
 |---|---|---|
