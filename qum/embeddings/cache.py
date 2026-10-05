@@ -6,24 +6,18 @@ from pathlib import Path
 
 import numpy as np
 
-from .base import Embedder, EmbeddingError
+from .base import CONSOLE, Embedder, EmbeddingError
 
 
 class ProgressLine:
-    """Eine Fortschrittszeile, die an Ort und Stelle überschrieben wird."""
-
-    def __init__(self):
-        self._open = False
+    """Eine Fortschrittszeile, die an Ort und Stelle überschrieben wird; fertig endet sie ohne Auslassungszeichen."""
 
     def __call__(self, done: int, total: int) -> None:
         shown = f"{done:,} von {total:,}".replace(",", ".")
-        print(f"\r⏳ {shown} Texten eingebettet …", end="", flush=True)
-        self._open = True
+        CONSOLE.progress(f"✅ {shown} Texten eingebettet" if done >= total else f"⏳ {shown} Texten eingebettet …")
 
     def close(self) -> None:
-        if self._open:
-            print(flush=True)
-            self._open = False
+        CONSOLE.end_line()
 
 
 class CachedEmbedder(Embedder):

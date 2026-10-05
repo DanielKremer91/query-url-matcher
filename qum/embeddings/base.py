@@ -11,6 +11,29 @@ _MAX_RETRY_AFTER = 60
 _ANNOUNCE_FROM = 5  # ab dieser Pause (Sekunden) steht eine Zeile im Notebook
 
 
+class Console:
+    """Gemeinsame Ausgabe: eine Meldung beginnt auf einer neuen Zeile, auch wenn gerade eine Fortschrittszeile offen ist."""
+
+    def __init__(self):
+        self.line_open = False
+
+    def progress(self, text: str) -> None:
+        print(f"\r{text}", end="", flush=True)
+        self.line_open = True
+
+    def end_line(self) -> None:
+        if self.line_open:
+            print(flush=True)
+            self.line_open = False
+
+    def say(self, message: str) -> None:
+        self.end_line()
+        print(message, flush=True)
+
+
+CONSOLE = Console()
+
+
 class EmbeddingError(RuntimeError):
     """Fehler beim Erzeugen von Embeddings, mit einer Meldung für den Nutzer."""
 
@@ -67,7 +90,7 @@ def post_json(
     payload: dict,
     attempts: int = 6,
     sleep=time.sleep,
-    notify=print,
+    notify=CONSOLE.say,
 ) -> dict:
     """POST mit Wiederholung bei 408, 429, 5xx und Verbindungsfehlern.
 

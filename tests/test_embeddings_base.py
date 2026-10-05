@@ -305,7 +305,7 @@ def test_default_progress_line_is_updated_in_place_and_closed(capsys):
     assert out.split("\r")[1:] == [
         "⏳ 256 von 600 Texten eingebettet …",
         "⏳ 512 von 600 Texten eingebettet …",
-        "⏳ 600 von 600 Texten eingebettet …\n",
+        "✅ 600 von 600 Texten eingebettet\n",
     ]
     cached.embed(_texts(20), "passage")  # alles im Cache: keine neue Zeile
     assert capsys.readouterr().out == ""
@@ -390,3 +390,46 @@ def test_cache_does_not_rewrite_the_file_when_nothing_was_missing(tmp_path):
     saves = _count_saves(cached)
     cached.embed(_texts(10), "passage")
     assert saves == []
+
+
+class NoticeOnSecondCall(FakeEmbedder):
+    def embed(self, texts, role):
+        from qum.embeddings.base import CONSOLE
+
+        if len(self.calls) == 1:
+            CONSOLE.say("⏳ Anbieter antwortet mit HTTP 429, Versuch 1 von 6, nächster in 30 s.")
+        return super().embed(texts, role)
+
+
+def test_retry_notice_starts_on_its_own_line_while_progress_is_shown(capsys):
+    CachedEmbedder(NoticeOnSecondCall()).embed(_texts(600), "passage")
+    out = capsys.readouterr().out
+    assert out == (
+        "\r⏳ 256 von 600 Texten eingebettet …\n"
+        "⏳ Anbieter antwortet mit HTTP 429, Versuch 1 von 6, nächster in 30 s.\n"
+        "\r⏳ 512 von 600 Texten eingebettet …"
+        "\r✅ 600 von 600 Texten eingebettet\n"
+    )
+
+
+def test_post_json_notice_breaks_an_open_progress_line_by_default(capsys):
+    from qum.embeddings.cache import ProgressLine
+
+    line = ProgressLine()
+    line(1000, 2000)
+    client = _client([(500, {})] * 3 + [(200, {"ok": True})])
+    assert post_json(client, "https://x.test", {}, {}, sleep=lambda s: None) == {"ok": True}
+    line(2000, 2000)
+    line.close()
+    assert capsys.readouterr().out == (
+        "\r⏳ 1.000 von 2.000 Texten eingebettet …\n"
+        "⏳ Anbieter antwortet mit HTTP 500, Versuch 3 von 6, nächster in 8 s.\n"
+        "\r✅ 2.000 von 2.000 Texten eingebettet\n"
+    )
+
+
+def test_notice_without_open_progress_line_adds_no_blank_line(capsys):
+    from qum.embeddings.base import CONSOLE
+
+    CONSOLE.say("Hinweis")
+    assert capsys.readouterr().out == "Hinweis\n"
