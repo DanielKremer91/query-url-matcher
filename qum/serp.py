@@ -66,26 +66,27 @@ def cluster_keywords(kw_urls: dict, min_overlap: float = 0.5, min_density: float
     neighbours = _neighbours(kw_urls, overlap_edges(kw_urls, min_overlap))
     assignments = {k: 0 for k in kw_urls}
     next_id = 1
-    todo = deque(_components(set(kw_urls), neighbours))
+    todo = deque([set(kw_urls)])
     while todo:
-        component = todo.popleft()
-        nodes = set(component)
-        # Dichte: wer mit zu wenigen Mitgliedern verbunden ist, fliegt raus (gegen den Ketteneffekt)
-        while len(nodes) >= 2:
-            needed = math.ceil(min_density * (len(nodes) - 1))
-            weak = {n for n in nodes if len(neighbours[n] & nodes) < needed}
+        for component in _components(todo.popleft(), neighbours):
+            if len(component) < 2:
+                continue
+            needed = math.ceil(round(min_density * (len(component) - 1), 9))
+            degree = {n: len(neighbours[n] & component) for n in component}
+            weak = {n for n in component if degree[n] < needed}
             if not weak:
-                break
-            nodes -= weak
-        for sub in _components(nodes, neighbours):
-            if len(sub) >= 2:
-                for keyword in sub:
+                for keyword in component:
                     assignments[keyword] = next_id
                 next_id += 1
-        # Rausgeflogene bekommen unter sich eine zweite Chance (nur wenn die Menge schrumpft, sonst Endlosschleife)
-        dropped = component - nodes
-        if dropped and nodes:
-            todo.extend(_components(dropped, neighbours))
+                continue
+            # Dichte: nur die schwächsten Mitglieder fliegen raus (gegen den Ketteneffekt),
+            # die übrigen und die Rausgeflogenen werden getrennt neu geprüft
+            lowest = min(degree[n] for n in weak)
+            removed = {n for n in weak if degree[n] == lowest}
+            if removed == component:
+                continue  # alle gleich schwach: kein Cluster, sonst Endlosschleife
+            todo.append(component - removed)
+            todo.append(removed)
     return assignments
 
 

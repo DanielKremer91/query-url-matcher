@@ -82,6 +82,28 @@ def test_bridge_between_dense_groups_keeps_both_groups():
     assert clusters["a1"] not in {clusters["a2"], clusters["b2"]}
 
 
+def test_path_between_two_cliques_keeps_both_cliques():
+    kw = {f"a{i}": _urls(1, 2, 3, 4) for i in (2, 3, 4)}
+    kw.update({f"b{i}": _urls(11, 12, 13, 14) for i in (2, 3, 4)})
+    kw["a1"] = _urls(1, 2, 21, 22, 23, 24, 25, 26)  # 2 von 4 mit Gruppe a, 2 von 8 mit m
+    kw["b1"] = _urls(11, 12, 31, 32, 33, 34, 35, 36)
+    kw["m"] = _urls(21, 22, 31, 32)  # 2 von 4 mit a1 und mit b1, sonst nichts
+    edges = overlap_edges(kw, 0.5)
+    assert ("a1", "m") in edges and ("b1", "m") in edges
+    assert {pair for pair in edges if "m" in pair} == {("a1", "m"), ("b1", "m")}
+    clusters = cluster_keywords(kw, 0.5, 0.5)
+    assert len({clusters[k] for k in ["a1", "a2", "a3", "a4"]}) == 1 and clusters["a1"] != 0
+    assert len({clusters[k] for k in ["b1", "b2", "b3", "b4"]}) == 1 and clusters["b1"] != 0
+    assert clusters["a1"] != clusters["b1"]
+    assert clusters["m"] == 0
+
+
+def test_all_equally_weak_component_terminates_without_cluster():
+    cycle = {"a": _urls(1, 2), "b": _urls(2, 3), "c": _urls(3, 4), "d": _urls(4, 1)}
+    assert len(overlap_edges(cycle, 0.5)) == 4
+    assert cluster_keywords(cycle, 0.5, 1.0) == {"a": 0, "b": 0, "c": 0, "d": 0}
+
+
 def test_density_threshold_is_adjustable():
     kw = {"a": _urls(1, 2, 3, 4), "b": _urls(3, 4, 5, 6), "c": _urls(5, 6, 7, 8), "d": _urls(7, 8, 9, 10)}
     strict = cluster_keywords(kw, 0.5, 0.5)
