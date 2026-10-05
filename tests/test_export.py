@@ -82,7 +82,7 @@ def test_every_label_column_has_a_help_text():
         assert column in export._COLUMN_HELP, column
 
 
-def test_readme_explains_candidate_columns_and_stages_only_when_present():
+def test_readme_explains_candidate_columns_only_when_present():
     decisions = _decisions(with_cluster=True)
     decisions[L.C_CAND] = ["", "", "u1"]
     readme = export.build_sheets(decisions, TOP, CANNIBAL, SETTINGS)[export.SHEET_README]
@@ -131,3 +131,9 @@ def test_write_excel_strips_control_characters_without_mutating_input(tmp_path):
     values = [sheet.cell(row=r, column=4).value for r in (2, 3, 4)]
     assert values == ["ok", "tab vertical", "unit sep"]
     assert decisions[L.C_CHUNK].tolist() == ["ok", "tab\x0bvertical", "unit\x1fsep"]
+
+
+def test_candidate_position_help_refers_to_the_gap_query():
+    text = export._COLUMN_HELP[L.C_CAND_POS]
+    assert "Lücken-Query" in text
+    assert "Nachbar-Keyword" not in text

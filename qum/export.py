@@ -59,7 +59,7 @@ _COLUMN_HELP = {
     L.C_CAND_OVERLAP: "Anteil gemeinsamer URLs in den Google-Ergebnissen von Query und Nachbar-Keyword.",
     L.C_CAND_SCORE: "Score der Lücken-Query selbst gegen die Kandidaten-Seite.",
     L.C_CAND_CHUNK: "Der Textblock der Kandidaten-Seite, der zur Lücken-Query am besten passt.",
-    L.C_CAND_POS: "Position der Kandidaten-Seite für das Nachbar-Keyword im Ranking-Export.",
+    L.C_CAND_POS: "Position der Kandidaten-Seite für diese Lücken-Query im Ranking-Export. Leer, wenn sie dafür nicht rankt.",
     L.C_CAND_MORE: "Weitere Kandidaten-Seiten von anderen Nachbar-Keywords.",
     L.C_STAGE: "Stufe der Kannibalisierung, siehe die Stufen weiter unten in dieser Lesehilfe.",
     L.C_REASON: "Warum die Query als Kannibalisierung aufgeführt wird.",
