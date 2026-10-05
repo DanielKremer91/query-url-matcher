@@ -527,13 +527,13 @@ def test_smoke_step_7_margin_reaches_the_verdicts(nb):
     from qum import labels as L
 
     _load(nb)
-    # die Ratgeber-Seite rankt für "hundeleine", passt aber deutlich schlechter als die beste Seite
-    weak = "Keyword;URL;Position\nhundeleine;https://www.tierbedarf.example/ratgeber/hundefutter-arten;3\n"
+    # die Kratzbaum-Seite rankt, erreicht die Schwelle, liegt aber 0,04 hinter der besten Seite
+    weak = "Keyword;URL;Position\ngetreidefreies trockenfutter hund;https://www.tierbedarf.example/katzenzubehoer/kratzbaum;3\n"
     nb.uploads.append(("rankings.csv", weak.encode()))
     nb.run(5)
-    nb.run(7, schwelle_bestimmen=OWN, eigene_schwelle=0.3)
+    nb.run(7, schwelle_bestimmen=OWN, eigene_schwelle=0.2)
     assert nb.ns["decisions"][L.C_VERDICT].tolist().count(L.V_RISK) == 1
-    nb.run(7, schwelle_bestimmen=OWN, eigene_schwelle=0.3, abstand_fast_gleich=1.0)
+    nb.run(7, schwelle_bestimmen=OWN, eigene_schwelle=0.2, abstand_fast_gleich=0.05)
     assert L.V_RISK not in nb.ns["decisions"][L.C_VERDICT].tolist()
 
 

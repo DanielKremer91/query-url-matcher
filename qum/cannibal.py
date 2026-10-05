@@ -3,7 +3,7 @@ import pandas as pd
 
 from . import labels as L
 from .normalize import normalize_query, normalize_url
-from .verdict import format_position, within_margin
+from .verdict import check_margin, close_to_ranking, format_position, within_margin
 
 def _describe(url, score=None, position="") -> str:
     parts = []
@@ -25,6 +25,7 @@ def _rankings_by_query(rankings) -> dict:
 def find_cannibalization(
     result, lead, threshold, decisions, rankings=None, margin=0.01, visible_position=20
 ) -> pd.DataFrame:
+    check_margin(margin)
     u_index = {normalize_url(u): j for j, u in enumerate(result.urls)}
     by_query = _rankings_by_query(rankings)
 
@@ -47,6 +48,17 @@ def find_cannibalization(
                 _describe(result.urls[best], lead[i, best], format_position(best_position)),
             ]
             rows.append((query, L.STAGE_RISK, L.REASON_BETTER, " | ".join(competing)))
+        elif decision[L.C_VERDICT] == L.V_OK:
+            # dieselbe Regel wie der Hinweis in der Empfehlung: weitere passende Seiten nah an der rankenden
+            ranking_j = u_index[normalize_url(decision[L.C_RANK_URL])]
+            others = close_to_ranking(lead[i], ranking_j, threshold, margin)
+            if others:
+                position_of = {r.url_norm: format_position(r.position) for r in own}
+                competing = [_describe(result.urls[ranking_j], lead[i, ranking_j], decision[L.C_POSITION])] + [
+                    _describe(result.urls[k], lead[i, k], position_of.get(normalize_url(result.urls[k]), ""))
+                    for k in others
+                ]
+                rows.append((query, L.STAGE_RISK, L.REASON_OK_CLOSE, " | ".join(competing)))
         elif len(close) >= 2:
             competing = [_describe(result.urls[j], lead[i, j]) for j in close]
             rows.append((query, L.STAGE_RISK, L.REASON_CLOSE, " | ".join(competing)))

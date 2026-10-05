@@ -61,7 +61,8 @@ V_CHECK = "Vor Neuerstellung prüfen"
 STAGE_RISK = "Risiko"
 STAGE_VISIBLE = "Bereits sichtbar"
 
-REASON_BETTER = "Eine andere Seite passt besser als die rankende"
+REASON_BETTER = "Eine andere Seite passt deutlich besser als die rankende"
+REASON_OK_CLOSE = "Rankende Seite passt, eine weitere passt fast gleich gut"
 REASON_CLOSE = "Mehrere Seiten passen fast gleich gut"
 REASON_RANKING = "Mehrere eigene Seiten ranken für die Query"
 

@@ -1,10 +1,12 @@
 import pandas as pd
 
 from qum import labels as L
-from qum.verdict import ADVICE, ADVICE_NOT_IN_EXPORT, build_decisions
+import pytest
+
+from qum.verdict import ADVICE, ADVICE_NOT_IN_EXPORT, ADVICE_OK_CLOSE, ADVICE_RISK_PLAIN, build_decisions
 from tests.conftest import make_result
 
-U1, U2 = "https://a.de/1", "https://a.de/2"
+U1, U2, U3 = "https://a.de/1", "https://a.de/2", "https://a.de/3"
 
 
 def _rankings(rows):
@@ -176,3 +178,54 @@ def test_advice_reads_as_a_hint_to_check():
         ),
     }
     assert ADVICE_NOT_IN_EXPORT.endswith("Prüfen, ob die rankende Seite im Export fehlt, bevor daraus Schlüsse gezogen werden.")
+
+
+
+def _ok_row(scores, threshold=0.8, margin=0.01):
+    rankings = _rankings([("q", U1, U1, 3.0)])
+    result = make_result(["q"], [U1, U2, U3], [scores])
+    return build_decisions(result, result.lead("chunk"), threshold, rankings, margin=margin).iloc[0]
+
+
+def test_ok_names_another_fitting_url_that_is_almost_as_good():
+    row = _ok_row([0.842, 0.848, 0.1])
+    assert row[L.C_VERDICT] == L.V_OK
+    assert row[L.C_ADVICE] == ADVICE_OK_CLOSE.format(other=U2)
+    assert ADVICE_OK_CLOSE == (
+        "Die rankende Seite gehört semantisch zu den besten Treffern. {other} passt fast gleich gut, siehe Blatt Kannibalisierung."
+    )
+
+
+def test_ok_close_looks_on_both_sides_and_names_the_best_other_url():
+    assert _ok_row([0.85, 0.845, 0.1])[L.C_ADVICE] == ADVICE_OK_CLOSE.format(other=U2)
+    assert _ok_row([0.85, 0.845, 0.848])[L.C_ADVICE] == ADVICE_OK_CLOSE.format(other=U3)
+
+
+def test_ok_keeps_the_plain_advice_when_no_other_url_is_close_and_fitting():
+    assert _ok_row([0.85, 0.83, 0.1])[L.C_ADVICE] == ADVICE[L.V_OK]
+    # nah dran, aber unter der Schwelle
+    assert _ok_row([0.842, 0.835, 0.1], threshold=0.84)[L.C_ADVICE] == ADVICE[L.V_OK]
+
+
+def test_ranking_url_within_margin_but_below_threshold_is_risk():
+    row = _ok_row([0.795, 0.803, 0.1], threshold=0.80)
+    assert row[L.C_VERDICT] == L.V_RISK
+    assert row[L.C_BEST_URL] == U2
+    assert row[L.C_ADVICE] == ADVICE_RISK_PLAIN.format(rank_url=U1, position="3", best=U2)
+
+
+def test_risk_advice_says_clearly_better_only_beyond_a_positive_margin():
+    assert "deutlich besser" in _ranking_u1([0.790, 0.860])[L.C_ADVICE]
+    plain = _ranking_u1([0.842, 0.843], margin=0)
+    assert plain[L.C_VERDICT] == L.V_RISK
+    assert plain[L.C_ADVICE] == ADVICE_RISK_PLAIN.format(rank_url=U1, position="3", best=U2)
+    assert ADVICE_RISK_PLAIN == (
+        "{rank_url} rankt auf Position {position}, semantisch passt {best} besser. "
+        "Prüfen, welche Seite die Query bedienen soll."
+    )
+
+
+def test_negative_margin_is_rejected():
+    result = make_result(["q"], [U1], [[0.9]])
+    with pytest.raises(ValueError):
+        build_decisions(result, result.lead("chunk"), 0.6, margin=-0.01)

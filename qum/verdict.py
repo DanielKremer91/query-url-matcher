@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 from . import labels as L
@@ -28,6 +29,15 @@ ADVICE = {
         "Lässt sich die Seite erweitern?"
     ),
 }
+# "In Ordnung", aber eine weitere passende Seite liegt fast gleich auf: gleiche Aussage wie im Blatt Kannibalisierung
+ADVICE_OK_CLOSE = (
+    "Die rankende Seite gehört semantisch zu den besten Treffern. {other} passt fast gleich gut, siehe Blatt Kannibalisierung."
+)
+# Risiko ohne deutlichen Abstand (Abstand 0 oder die rankende Seite erreicht die Schwelle nicht)
+ADVICE_RISK_PLAIN = (
+    "{rank_url} rankt auf Position {position}, semantisch passt {best} besser. "
+    "Prüfen, welche Seite die Query bedienen soll."
+)
 # Rankende URL fehlt im Frog-Export: verglichen wurde nichts, das Urteil bleibt
 ADVICE_NOT_IN_EXPORT = (
     "{rank_url} rankt auf Position {position}, steht aber nicht im Frog-Export und wurde nicht verglichen. "
@@ -47,7 +57,26 @@ def within_margin(top, score, margin) -> bool:
     return round(float(top), 4) - round(float(score), 4) <= margin + 1e-9
 
 
+def check_margin(margin) -> None:
+    if margin < 0:
+        raise ValueError(f"Der Abstand 'fast gleich' darf nicht negativ sein ({margin}).")
+
+
+def close_to_ranking(scores, ranking_j, threshold, margin) -> list:
+    """Weitere passende URLs, deren Score höchstens um margin von dem der rankenden URL abweicht, beste zuerst."""
+    order = np.argsort(-scores, kind="stable")
+    return [
+        int(k)
+        for k in order
+        if k != ranking_j
+        and scores[k] >= threshold
+        and within_margin(scores[k], scores[ranking_j], margin)
+        and within_margin(scores[ranking_j], scores[k], margin)
+    ]
+
+
 def build_decisions(result, lead, threshold, rankings=None, good_position=10, weight=0.7, margin=0.01) -> pd.DataFrame:
+    check_margin(margin)
     u_index = {normalize_url(u): j for j, u in enumerate(result.urls)}
     best_ranking = {}
     if rankings is not None:
@@ -64,6 +93,7 @@ def build_decisions(result, lead, threshold, rankings=None, good_position=10, we
         rank_url = hit.url if hit is not None else ""
         position = format_position(hit.position) if hit is not None else ""
         note = ""
+        advice = None
         if rankings is None:
             verdict = L.V_MATCH if fits else L.V_GAP
         elif hit is not None and hit.position <= good_position:
@@ -72,12 +102,22 @@ def build_decisions(result, lead, threshold, rankings=None, good_position=10, we
                 note = L.NOTE_NOT_IN_EXPORT
             if not fits:
                 verdict = L.V_WATCH
-            elif ranking_j is not None and within_margin(lead[i, j], lead[i, ranking_j], margin):
+            elif (
+                ranking_j is not None
+                and lead[i, ranking_j] >= threshold
+                and within_margin(lead[i, j], lead[i, ranking_j], margin)
+            ):
                 # die rankende Seite gehört zu den besten Treffern: die Zeile beschreibt sie
                 verdict = L.V_OK
                 j = ranking_j
+                others = close_to_ranking(lead[i], j, threshold, margin)
+                if others:
+                    advice = ADVICE_OK_CLOSE.format(other=result.urls[others[0]])
             else:
                 verdict = L.V_RISK
+                clearly = ranking_j is not None and margin > 0 and not within_margin(lead[i, j], lead[i, ranking_j], margin)
+                if ranking_j is not None and not clearly:
+                    advice = ADVICE_RISK_PLAIN.format(best=result.urls[j], rank_url=rank_url, position=position)
         else:
             verdict = L.V_USE if fits else L.V_GAP
         rows.append(
@@ -92,7 +132,8 @@ def build_decisions(result, lead, threshold, rankings=None, good_position=10, we
                 L.C_RANK_URL: rank_url,
                 L.C_POSITION: position,
                 L.C_NOTE: note,
-                L.C_ADVICE: (ADVICE_NOT_IN_EXPORT if note else ADVICE[verdict]).format(
+                L.C_ADVICE: advice
+                or (ADVICE_NOT_IN_EXPORT if note else ADVICE[verdict]).format(
                     best=result.urls[j], rank_url=rank_url, position=position
                 ),
             }

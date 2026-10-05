@@ -235,3 +235,8 @@ def test_write_csv_zip_writes_decimal_comma_only_with_semicolon(tmp_path, sep, n
     assert raw.splitlines()[1].endswith(f"{sep}{number}")
     df = pd.read_csv(io.StringIO(raw), sep=sep, decimal="," if sep == ";" else ".")
     assert df[L.C_S_CHUNK].tolist() == [0.8123, 0.5, 0.25]
+
+
+
+def test_risk_help_covers_ranking_url_outside_the_export():
+    assert "oder die rankende URL steht nicht im Frog-Export" in export._VERDICT_HELP[L.V_RISK]

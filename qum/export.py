@@ -81,8 +81,15 @@ _STAGE_HELP = {
 _VERDICT_HELP = {
     L.V_MATCH: "Mindestens eine Seite erreicht die Schwelle.",
     L.V_GAP: "Keine Seite erreicht die Schwelle.",
-    L.V_OK: "Die rankende Seite passt semantisch am besten oder fast gleich gut wie die beste (Abstand 'fast gleich').",
-    L.V_RISK: "Eine Seite rankt gut, eine andere eigene Seite passt semantisch deutlich besser (mehr als der Abstand 'fast gleich').",
+    L.V_OK: (
+        "Die rankende Seite erreicht die Schwelle und passt semantisch am besten oder fast gleich gut wie die beste "
+        "(Abstand 'fast gleich')."
+    ),
+    L.V_RISK: (
+        "Eine Seite rankt gut, eine andere eigene Seite erreicht die Schwelle und passt semantisch deutlich besser "
+        "(mehr als der Abstand 'fast gleich'), die rankende erreicht die Schwelle nicht, "
+        "oder die rankende URL steht nicht im Frog-Export."
+    ),
     L.V_WATCH: "Die Query rankt gut, obwohl keine Seite die Schwelle erreicht.",
     L.V_USE: "Kein gutes Ranking, aber eine passende Seite existiert.",
     L.V_CHECK: "Lücke, aber ein Keyword mit stark überlappender SERP hat bereits eine passende Seite.",

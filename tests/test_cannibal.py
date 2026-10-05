@@ -1,8 +1,9 @@
 import pandas as pd
+import pytest
 
 from qum import labels as L
 from qum.cannibal import find_cannibalization
-from qum.verdict import build_decisions
+from qum.verdict import ADVICE, ADVICE_OK_CLOSE, build_decisions
 from tests.conftest import make_result
 
 U1, U2, U3 = "https://a.de/1", "https://a.de/2", "https://a.de/3"
@@ -105,3 +106,51 @@ def test_reasons_come_from_labels():
     rankings = _rankings([("q", U1, U1, 3.0), ("q", U2, U2, 12.0)])
     assert _run(["q"], [[0.65, 0.9, 0.1]], rankings)[L.C_REASON].tolist() == [L.REASON_BETTER, L.REASON_RANKING]
     assert _run(["q"], [[0.80, 0.79, 0.3]])[L.C_REASON].tolist() == [L.REASON_CLOSE]
+
+
+
+def test_ok_row_with_an_almost_as_good_url_lists_the_ranking_url_first():
+    rankings = _rankings([("q", U1, U1, 3.0), ("q", U2, U2, 31.0)])
+    df = _run(["q"], [[0.842, 0.848, 0.1]], rankings)
+    assert df[L.C_REASON].tolist() == [L.REASON_OK_CLOSE]
+    assert L.REASON_OK_CLOSE == "Rankende Seite passt, eine weitere passt fast gleich gut"
+    assert df.iloc[0][L.C_STAGE] == L.STAGE_RISK
+    assert df.iloc[0][L.C_COMPETING] == f"{U1} (Position 3, Score 0.842) | {U2} (Position 31, Score 0.848)"
+
+
+def test_ok_row_without_a_close_url_has_no_cannibalisation_entry():
+    rankings = _rankings([("q", U1, U1, 3.0)])
+    assert _run(["q"], [[0.85, 0.80, 0.1]], rankings, margin=0.01).empty
+
+
+def test_reason_better_says_clearly():
+    assert L.REASON_BETTER == "Eine andere Seite passt deutlich besser als die rankende"
+
+
+def test_negative_margin_is_rejected():
+    result = make_result(["q"], [U1, U2, U3], [[0.9, 0.1, 0.1]])
+    lead = result.lead("chunk")
+    with pytest.raises(ValueError):
+        find_cannibalization(result, lead, 0.6, build_decisions(result, lead, 0.6), margin=-0.01)
+
+
+def test_decision_and_cannibalisation_sheet_agree():
+    queries = ["ok-nah", "ok-allein", "risiko", "nah-ohne-ranking"]
+    scores = [[0.842, 0.848, 0.1], [0.9, 0.7, 0.1], [0.7, 0.9, 0.1], [0.81, 0.805, 0.1]]
+    rankings = _rankings([("ok-nah", U1, U1, 3.0), ("ok-allein", U1, U1, 2.0), ("risiko", U1, U1, 4.0)])
+    result = make_result(queries, [U1, U2, U3], scores)
+    lead = result.lead("chunk")
+    decisions = build_decisions(result, lead, 0.8, rankings, margin=0.01)
+    cannibal = find_cannibalization(result, lead, 0.8, decisions, rankings, margin=0.01)
+    by_query = {q: group for q, group in cannibal.groupby(L.C_QUERY)}
+    for _, row in decisions.iterrows():
+        entry = by_query.get(row[L.C_QUERY])
+        if row[L.C_VERDICT] == L.V_OK and row[L.C_ADVICE] == ADVICE[L.V_OK]:
+            assert entry is None, row[L.C_QUERY]  # "kein Hinweis" heißt: auch kein Eintrag im Blatt
+        if row[L.C_VERDICT] == L.V_OK and row[L.C_ADVICE] != ADVICE[L.V_OK]:
+            assert entry[L.C_REASON].tolist() == [L.REASON_OK_CLOSE]
+            other = entry.iloc[0][L.C_COMPETING].split(" | ")[1].split(" (")[0]
+            assert row[L.C_ADVICE] == ADVICE_OK_CLOSE.format(other=other)
+        if row[L.C_VERDICT] == L.V_RISK:
+            assert entry[L.C_REASON].tolist() == [L.REASON_BETTER]
+    assert decisions[L.C_VERDICT].tolist() == [L.V_OK, L.V_OK, L.V_RISK, L.V_USE]
