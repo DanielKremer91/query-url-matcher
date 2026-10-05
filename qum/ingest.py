@@ -56,6 +56,12 @@ CONTENT_ALIASES = [
 ]
 POSITION_ALIASES = ["position", "current position", "avg. position", "average position", "pos"]
 TYPE_ALIASES = ["type"]
+# bekannte Spaltennamen: nur wenn einer davon in der Kopfzelle steckt, wird eine Einspaltendatei zerlegt
+_KNOWN_COLUMNS = {
+    alias
+    for aliases in (QUERY_ALIASES, KEYWORD_ALIASES, URL_ALIASES, CONTENT_ALIASES, POSITION_ALIASES, TYPE_ALIASES)
+    for alias in aliases
+}
 
 
 class IngestError(ValueError):
@@ -92,8 +98,9 @@ def _fields(line: str, sep: str) -> list:
 def _split_single_column(df: pd.DataFrame) -> pd.DataFrame:
     """Zerlegt eine Tabelle, die jede Zeile in einer einzigen Spalte trägt (Trennzeichen nicht getrennt eingelesen).
 
-    Nur wenn die Kopfzelle ein Trennzeichen enthält und mindestens 80 % der übrigen Zellen gleich viele Felder haben.
-    Bevorzugt ; vor Tab vor Komma. Eine echte Einspaltendatei (Kopfzeile ohne Trennzeichen) bleibt unverändert.
+    Nur wenn die Kopfzelle ein Trennzeichen enthält, mindestens ein Teil davon ein bekannter Spaltenname ist und
+    mindestens 80 % der übrigen Zellen gleich viele Felder haben. Bevorzugt ; vor Tab vor Komma. Eine echte
+    Einspaltendatei (Kopfzeile ohne Trennzeichen, oder eine Liste von Prompts mit Kommas ohne Kopfzeile) bleibt unverändert.
     """
     if df.shape[1] != 1:
         return df
@@ -101,7 +108,7 @@ def _split_single_column(df: pd.DataFrame) -> pd.DataFrame:
     cells = [str(value) for value in df.iloc[:, 0] if not _blank(value)]
     for sep in (";", "\t", ","):
         names = _fields(header, sep)
-        if len(names) < 2:
+        if len(names) < 2 or not any(name.strip().lower() in _KNOWN_COLUMNS for name in names):
             continue
         if sum(len(_fields(cell, sep)) == len(names) for cell in cells) < 0.8 * len(cells):
             continue

@@ -283,11 +283,12 @@ def test_read_table_splits_csv_with_quoted_comma_lines_and_inner_quotes():
 
 
 def test_read_table_prefers_semicolon_over_tab_and_comma():
-    df = ingest.read_table(_xlsx(["a,b;c\td"], "H1,x;H2\ty"), "x.xlsx")
-    assert list(df.columns) == ["H1,x", "H2\ty"]
-    assert df.iloc[0].tolist() == ["a,b", "c\td"]
-    df = ingest.read_table(_xlsx(["a,b\tc"], "H1,x\tH2"), "x.xlsx")  # Tab vor Komma
-    assert list(df.columns) == ["H1,x", "H2"]
+    # jede Zerlegung trifft einen bekannten Spaltennamen (Keyword bzw. Type/Position), also entscheidet die Reihenfolge
+    df = ingest.read_table(_xlsx(["a;b,c\td"], "Keyword;URL,Position\tType"), "x.xlsx")
+    assert list(df.columns) == ["Keyword", "URL,Position\tType"]
+    assert df.iloc[0].tolist() == ["a", "b,c\td"]
+    df = ingest.read_table(_xlsx(["a\tb,c"], "Keyword\tURL,Position"), "x.xlsx")  # Tab vor Komma
+    assert list(df.columns) == ["Keyword", "URL,Position"]
 
 
 def test_read_table_leaves_real_single_column_query_files_alone():
@@ -348,3 +349,30 @@ def test_csv_input_with_any_separator_works_for_all_four_loaders(sep):
         )
     )
     assert serps["keyword"].tolist() == ["futter"] and serps["position"].tolist() == [3.0]
+
+
+PROMPTS = [
+    "Welches Futter ist gut, wenn mein Hund Allergien hat?",
+    "Was kostet Nassfutter, wenn ich viel kaufe?",
+    "Wie groß muss ein Kratzbaum sein, damit er stabil steht?",
+]
+
+
+def test_read_table_keeps_headerless_xlsx_prompts_with_a_comma_in_one_column():
+    df = ingest.read_table(_xlsx(PROMPTS[1:], PROMPTS[0]), "prompts.xlsx")
+    assert df.shape == (2, 1)
+    assert ingest.load_queries(df) == PROMPTS
+
+
+def test_read_table_keeps_headerless_csv_prompts_with_a_comma_in_one_column():
+    raw = "".join(f'"{prompt}"\n' for prompt in PROMPTS).encode("utf-8")  # so speichert Excel solche Zellen
+    df = ingest.read_table(raw, "prompts.csv")
+    assert df.shape == (2, 1)
+    assert ingest.load_queries(df) == PROMPTS
+
+
+def test_read_table_splits_only_when_a_split_name_is_a_known_column():
+    df = ingest.read_table(_xlsx(["a;b", "c;d"], "Spalte eins;Spalte zwei"), "x.xlsx")
+    assert df.shape == (2, 1)
+    df = ingest.read_table(_xlsx(["a;b", "c;d"], "Spalte eins; KEYWORD "), "x.xlsx")
+    assert list(df.columns) == ["Spalte eins", "KEYWORD"]
