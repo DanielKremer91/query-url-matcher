@@ -1,3 +1,4 @@
+import csv
 import io
 from dataclasses import dataclass
 
@@ -82,10 +83,43 @@ def _decode(data: bytes) -> str:
 _NA = {"keep_default_na": False, "na_values": [""]}
 
 
+def _fields(line: str, sep: str) -> list:
+    """Eine Zeile mit dem csv-Modul zerlegen, damit Trennzeichen in Anführungszeichen erhalten bleiben."""
+    rows = list(csv.reader([line], delimiter=sep))
+    return rows[0] if rows else []
+
+
+def _split_single_column(df: pd.DataFrame) -> pd.DataFrame:
+    """Zerlegt eine Tabelle, die jede Zeile in einer einzigen Spalte trägt (Trennzeichen nicht getrennt eingelesen).
+
+    Nur wenn die Kopfzelle ein Trennzeichen enthält und mindestens 80 % der übrigen Zellen gleich viele Felder haben.
+    Bevorzugt ; vor Tab vor Komma. Eine echte Einspaltendatei (Kopfzeile ohne Trennzeichen) bleibt unverändert.
+    """
+    if df.shape[1] != 1:
+        return df
+    header = str(df.columns[0])
+    cells = [str(value) for value in df.iloc[:, 0] if not _blank(value)]
+    for sep in (";", "\t", ","):
+        names = _fields(header, sep)
+        if len(names) < 2:
+            continue
+        if sum(len(_fields(cell, sep)) == len(names) for cell in cells) < 0.8 * len(cells):
+            continue
+        rows = []
+        for cell in cells:
+            fields = _fields(cell, sep)
+            if len(fields) > len(names):  # überzählige Felder bleiben im letzten Feld erhalten
+                fields = fields[: len(names) - 1] + [sep.join(fields[len(names) - 1 :])]
+            rows.append(fields + [""] * (len(names) - len(fields)))
+        out = pd.DataFrame(rows, columns=[name.strip() for name in names], dtype=object)
+        return out.mask(out.eq(""))
+    return df
+
+
 def read_table(data: bytes, filename: str) -> pd.DataFrame:
     name = filename.lower()
     if name.endswith(".xlsx"):
-        return pd.read_excel(io.BytesIO(data), **_NA)
+        return _split_single_column(pd.read_excel(io.BytesIO(data), **_NA))
     if not name.endswith((".csv", ".tsv", ".txt")):
         raise IngestError(f"Format von '{filename}' wird nicht unterstützt. Erlaubt sind CSV, TSV und XLSX.")
     text = _decode(data)
@@ -96,7 +130,7 @@ def read_table(data: bytes, filename: str) -> pd.DataFrame:
     if first.count(sep) == 0:
         clean = [line.strip().strip('"') for line in text.splitlines() if line.strip()]
         return pd.DataFrame({clean[0]: clean[1:]})
-    return pd.read_csv(io.StringIO(text), sep=sep, **_NA)
+    return _split_single_column(pd.read_csv(io.StringIO(text), sep=sep, **_NA))
 
 
 def find_column(df: pd.DataFrame, aliases: list) -> str | None:

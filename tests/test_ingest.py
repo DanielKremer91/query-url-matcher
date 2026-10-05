@@ -234,3 +234,117 @@ def test_load_queries_multi_column_without_alias_asks_for_column():
     df = pd.DataFrame({"Begriff": ["futter"], "Klicks": [3]})
     with pytest.raises(ingest.IngestError, match=r"Gefundene Spalten: \['Begriff', 'Klicks'\].*Spaltennamen"):
         ingest.load_queries(df)
+
+
+def _xlsx(rows, header):
+    buf = io.BytesIO()
+    pd.DataFrame({header: rows}).to_excel(buf, index=False)
+    return buf.getvalue()
+
+
+def test_read_table_splits_xlsx_with_semicolon_lines_in_one_column():
+    data = _xlsx(["futter;https://a.example/1;3", "katze;https://a.example/2;7.5"], "Keyword;URL;Position")
+    df = ingest.read_table(data, "x.xlsx")
+    assert list(df.columns) == ["Keyword", "URL", "Position"]
+    assert df["Keyword"].tolist() == ["futter", "katze"]
+    assert df["URL"].tolist() == ["https://a.example/1", "https://a.example/2"]
+    assert ingest.load_rankings(df)["position"].tolist() == [3.0, 7.5]
+
+
+def test_read_table_splits_xlsx_with_comma_lines_and_keeps_quoted_commas():
+    data = _xlsx(
+        ["futter,https://a.example/1,3", '"was kostet futter, nass",https://a.example/2,2', "katze,https://a.example/3,4"],
+        "Keyword,URL,Position",
+    )
+    df = ingest.read_table(data, "x.xlsx")
+    assert list(df.columns) == ["Keyword", "URL", "Position"]
+    assert df["Keyword"].tolist() == ["futter", "was kostet futter, nass", "katze"]
+    assert df["Position"].tolist() == ["3", "2", "4"]
+
+
+def test_read_table_splits_xlsx_with_tab_lines_in_one_column():
+    df = ingest.read_table(_xlsx(["futter\thttps://a.example/1"], "Keyword\tURL"), "x.xlsx")
+    assert list(df.columns) == ["Keyword", "URL"]
+    assert df.iloc[0].tolist() == ["futter", "https://a.example/1"]
+
+
+def test_read_table_splits_csv_whose_lines_are_wrapped_in_quotes():
+    raw = '"Keyword;URL;Position"\n"futter;https://a.example/1;3"\n"katze;https://a.example/2;4"\n'.encode("utf-8")
+    df = ingest.read_table(raw, "excel.csv")
+    assert list(df.columns) == ["Keyword", "URL", "Position"]
+    assert df["URL"].tolist() == ["https://a.example/1", "https://a.example/2"]
+
+
+def test_read_table_splits_csv_with_quoted_comma_lines_and_inner_quotes():
+    raw = '"Keyword,URL"\n"futter,https://a.example/1"\n"""was, nass"",https://a.example/2"\n"katze,https://a.example/3"\n'
+    df = ingest.read_table(raw.encode("utf-8"), "excel.csv")
+    assert list(df.columns) == ["Keyword", "URL"]
+    assert df["Keyword"].tolist() == ["futter", "was, nass", "katze"]
+
+
+def test_read_table_prefers_semicolon_over_tab_and_comma():
+    df = ingest.read_table(_xlsx(["a,b;c\td"], "H1,x;H2\ty"), "x.xlsx")
+    assert list(df.columns) == ["H1,x", "H2\ty"]
+    assert df.iloc[0].tolist() == ["a,b", "c\td"]
+    df = ingest.read_table(_xlsx(["a,b\tc"], "H1,x\tH2"), "x.xlsx")  # Tab vor Komma
+    assert list(df.columns) == ["H1,x", "H2"]
+
+
+def test_read_table_leaves_real_single_column_query_files_alone():
+    xlsx = _xlsx(["was kostet futter, nass", "katze, jung, futter"], "Query")
+    df = ingest.read_table(xlsx, "q.xlsx")
+    assert df.shape == (2, 1) and df.iloc[0, 0] == "was kostet futter, nass"
+    csv = ingest.read_table("Query\nwas kostet futter, nass\nkatze, jung\n".encode("utf-8"), "q.csv")
+    assert csv.shape == (2, 1) and csv.iloc[1, 0] == "katze, jung"
+
+
+def test_read_table_does_not_split_when_most_cells_lack_the_header_delimiter():
+    # Kopfzeile mit Komma, aber nur 1 von 5 Zeilen passt: das ist eine Queryliste, keine zusammengeklebte Tabelle
+    rows = ["futter", "katze", "hund", "was, nass", "maus"]
+    df = ingest.read_table(_xlsx(rows, "Query, Suchbegriff"), "q.xlsx")
+    assert df.shape == (5, 1)
+
+
+def test_read_table_splits_when_at_least_80_percent_of_the_cells_match():
+    rows = [f"k{i};https://a.example/{i}" for i in range(4)] + ["lose Zeile"]
+    df = ingest.read_table(_xlsx(rows, "Keyword;URL"), "x.xlsx")
+    assert list(df.columns) == ["Keyword", "URL"]
+    assert len(df) == 5
+    assert df.iloc[4, 0] == "lose Zeile" and pd.isna(df.iloc[4, 1])
+
+
+def test_read_table_splits_header_only_single_cell():
+    df = ingest.read_table(_xlsx([], "Keyword;URL;Position"), "x.xlsx")
+    assert list(df.columns) == ["Keyword", "URL", "Position"]
+    with pytest.raises(ingest.IngestError, match="keine verwertbaren Zeilen"):
+        ingest.load_rankings(df)
+
+
+_SEPARATORS = [(";", "semikolon"), (",", "komma"), ("\t", "tab")]
+
+
+def _csv(sep, header, rows):
+    return "\n".join(sep.join(row) for row in [header] + rows).encode("utf-8")
+
+
+@pytest.mark.parametrize("sep", [s for s, _ in _SEPARATORS], ids=[n for _, n in _SEPARATORS])
+def test_csv_input_with_any_separator_works_for_all_four_loaders(sep):
+    queries = ingest.load_queries(ingest.read_table(_csv(sep, ["Top queries", "Clicks"], [["futter", "3"]]), "q.csv"))
+    assert queries == ["futter"]
+
+    content = ingest.load_content(
+        ingest.read_table(_csv(sep, ["Address", "Extract Main Content 1"], [["https://a.example/1", "Text eins"]]), "f.csv")
+    )
+    assert content.urls == ["https://a.example/1"] and content.contents == ["Text eins"]
+
+    rankings = ingest.load_rankings(
+        ingest.read_table(_csv(sep, ["Keyword", "URL", "Position"], [["futter", "https://a.example/1", "3"]]), "r.csv")
+    )
+    assert rankings["query_norm"].tolist() == ["futter"] and rankings["position"].tolist() == [3.0]
+
+    serps = ingest.load_serps(
+        ingest.read_table(
+            _csv(sep, ["Keyword", "URL", "Position", "Type"], [["futter", "https://a.example/1", "3", "Organic"]]), "s.csv"
+        )
+    )
+    assert serps["keyword"].tolist() == ["futter"] and serps["position"].tolist() == [3.0]
