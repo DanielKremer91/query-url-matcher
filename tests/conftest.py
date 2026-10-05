@@ -28,3 +28,22 @@ class FakeEmbedder(Embedder):
 
     def fits_context(self, text):
         return self.max_words is not None and len(text.split()) <= self.max_words
+
+
+from qum import labels as L
+from qum.match import MatchResult
+
+
+def make_result(queries, urls, chunk_scores, full_scores=None):
+    """MatchResult aus handgebauten Scores. Jede URL hat genau einen Chunk 'Text <url>'."""
+    chunk = np.array(chunk_scores, dtype=np.float32)
+    full = chunk if full_scores is None else np.array(full_scores, dtype=np.float32)
+    return MatchResult(
+        queries=list(queries),
+        urls=list(urls),
+        chunks=[[f"Text {u}"] for u in urls],
+        chunk_scores=chunk,
+        full_scores=full,
+        best_chunk_idx=np.zeros(chunk.shape, dtype=int),
+        full_method=[L.FULLTEXT] * len(urls),
+    )
