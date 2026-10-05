@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 from qum import labels as L
-from qum.threshold import examples_around, propose_threshold
+from qum.threshold import MIN_PAIRS, calibrated_threshold, calibration_scores, examples_around, median_threshold
 from tests.conftest import make_result
 
 
@@ -10,21 +10,37 @@ def _rankings(rows):
     return pd.DataFrame(rows, columns=["query_norm", "url", "url_norm", "position"])
 
 
-def test_median_of_best_scores_without_rankings():
+def test_median_of_best_scores():
     result = make_result(["q1", "q2", "q3"], ["u1", "u2"], [[0.9, 0.1], [0.5, 0.2], [0.3, 0.7]])
-    proposal = propose_threshold(result, result.lead("chunk"))
+    proposal = median_threshold(result, result.lead("chunk"))
     assert proposal.source == "median"
     assert np.isclose(proposal.value, 0.7)
+
+
+def test_no_calibration_without_rankings():
+    result = make_result(["q1"], ["u1"], [[0.9]])
+    assert calibrated_threshold(result, result.lead("chunk"), None) is None
+    assert calibration_scores(result, result.lead("chunk"), None) == []
+    assert MIN_PAIRS == 20
 
 
 def test_rankings_give_25th_percentile_of_top_pairs():
     queries = [f"q{i}" for i in range(4)]
     result = make_result(queries, ["https://a.de/1"], [[0.4], [0.6], [0.8], [1.0]])
     rankings = _rankings([(q, "https://a.de/1", "https://a.de/1", 3.0) for q in queries])
-    proposal = propose_threshold(result, result.lead("chunk"), rankings, max_position=5, min_pairs=4)
+    proposal = calibrated_threshold(result, result.lead("chunk"), rankings, max_position=5, min_pairs=4)
     assert proposal.source == "rankings"
     assert proposal.n_pairs == 4
     assert np.isclose(proposal.value, 0.55)
+
+
+def test_calibration_does_not_depend_on_the_median():
+    queries = [f"q{i}" for i in range(4)]
+    result = make_result(queries, ["https://a.de/1"], [[0.4], [0.6], [0.8], [1.0]])
+    rankings = _rankings([(q, "https://a.de/1", "https://a.de/1", 3.0) for q in queries])
+    lead = result.lead("chunk")
+    assert calibrated_threshold(result, lead, rankings, min_pairs=4).value == 0.55
+    assert median_threshold(result, lead).value == 0.7
 
 
 def test_rankings_ignore_bad_positions_and_unknown_urls():
@@ -35,17 +51,15 @@ def test_rankings_ignore_bad_positions_and_unknown_urls():
             ("q1", "https://a.de/x", "https://a.de/x", 1.0),
         ]
     )
-    proposal = propose_threshold(result, result.lead("chunk"), rankings, min_pairs=1)
-    assert proposal.source == "median"
-    assert proposal.n_pairs == 0
+    assert calibration_scores(result, result.lead("chunk"), rankings) == []
+    assert calibrated_threshold(result, result.lead("chunk"), rankings, min_pairs=1) is None
 
 
-def test_too_few_pairs_fall_back_to_median():
+def test_too_few_pairs_give_no_calibration_but_keep_the_count():
     result = make_result(["q0"], ["https://a.de/1"], [[0.4]])
     rankings = _rankings([("q0", "https://a.de/1", "https://a.de/1", 1.0)])
-    proposal = propose_threshold(result, result.lead("chunk"), rankings)
-    assert proposal.source == "median"
-    assert proposal.n_pairs == 1
+    assert calibrated_threshold(result, result.lead("chunk"), rankings) is None
+    assert len(calibration_scores(result, result.lead("chunk"), rankings)) == 1
 
 
 def test_examples_around_threshold():
@@ -59,8 +73,9 @@ def test_examples_around_threshold():
 
 def test_proposal_is_rounded_once_to_four_decimals():
     result = make_result(["q1", "q2", "q3"], ["u1"], [[0.812345], [0.7], [0.9]])
-    proposal = propose_threshold(result, result.lead("chunk"))
-    assert proposal.value == 0.8123
+    assert median_threshold(result, result.lead("chunk")).value == 0.8123
+    rankings = _rankings([(q, "u1", "u1", 1.0) for q in ["q1", "q2", "q3"]])
+    assert calibrated_threshold(result, result.lead("chunk"), rankings, min_pairs=3).value == 0.7562
 
 
 def test_examples_split_on_unrounded_score():
@@ -85,7 +100,8 @@ def test_duplicate_ranking_rows_count_once_with_best_position():
     rankings = _rankings(
         [("q0", u, u, 3.0), ("q0", u, u, 4.0), ("q1", u, u, 9.0), ("q1", u, u, 2.0), ("q2", u, u, 1.0)]
     )
-    proposal = propose_threshold(result, result.lead("chunk"), rankings, max_position=5, min_pairs=3)
+    assert len(calibration_scores(result, result.lead("chunk"), rankings, max_position=5)) == 3
+    proposal = calibrated_threshold(result, result.lead("chunk"), rankings, max_position=5, min_pairs=3)
     assert proposal.n_pairs == 3
     assert proposal.source == "rankings"
     assert proposal.value == 0.5

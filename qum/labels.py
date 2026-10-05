@@ -71,3 +71,10 @@ NO_CLUSTER = "ohne Cluster"
 
 # Auswahl im Formular -> interner Schlüssel
 BASIS = {"Chunk": "chunk", "Gesamt-URL": "full", "Kombi": "combined"}
+# Wahl der Schwelle in Schritt 7 -> Herkunft der Schwelle (None: nur die Vorschläge zeigen, keine Urteile)
+THRESHOLD_CHOICE = {
+    "Erst Vorschläge ansehen": None,
+    "Aus Rankings kalibriert": "rankings",
+    "Mittlerer bester Score (nicht kalibriert)": "median",
+    "Eigener Wert": "manuell",
+}

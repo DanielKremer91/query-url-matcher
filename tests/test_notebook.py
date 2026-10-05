@@ -147,6 +147,8 @@ def test_read_table_passes_ingest_errors_through():
 # --- Rauchtest: die Zellen der Schritte 3 bis 9 laufen in einem gemeinsamen Namensraum ---
 
 EXAMPLES = ROOT / "examples"
+CHOICES = ["Erst Vorschläge ansehen", "Aus Rankings kalibriert", "Mittlerer bester Score (nicht kalibriert)", "Eigener Wert"]
+SHOW, CALIBRATED, MEDIAN, OWN = CHOICES
 
 
 def _cell_code(step: int) -> str:
@@ -189,7 +191,7 @@ def test_smoke_full_flow(nb, tmp_path, capsys):
     _load(nb)
     nb.run(5, "rankings.csv")
     nb.run(6, "serps.csv")
-    nb.run(7)
+    nb.run(7, schwelle_bestimmen=MEDIAN)
     nb.run(8)
     nb.run(9, "rankings.csv")
     out = capsys.readouterr().out
@@ -205,9 +207,11 @@ def test_smoke_full_flow(nb, tmp_path, capsys):
 def test_smoke_minimal_flow_without_rankings_and_serps(nb, capsys):
     _load(nb)
     nb.run(7)
+    assert "Aus Rankings kalibriert: nicht verfügbar. Es sind keine Rankings geladen (Schritt 5 oder 6)." in capsys.readouterr().out
+    nb.run(7, schwelle_bestimmen=MEDIAN)
     nb.run(8)
     out = capsys.readouterr().out
-    assert "Ohne Rankings gibt es keinen Maßstab" in out
+    assert "per Konstruktion darunter" in out
     assert nb.downloads == ["query_url_matcher.xlsx"]
     assert nb.ns["settings"]["Eigene Rankings"] == "nein"
 
@@ -260,7 +264,7 @@ def test_smoke_step_before_model_or_files_points_back(nb, capsys):
 
 def test_smoke_rerunning_step_4_invalidates_verdicts(nb, capsys):
     _load(nb)
-    nb.run(7)
+    nb.run(7, schwelle_bestimmen=MEDIAN)
     assert nb.ns["decisions"] is not None
     nb.run(4, top_n=3)
     assert nb.ns["decisions"] is None and nb.ns["settings"] is None
@@ -273,7 +277,7 @@ def test_smoke_new_files_reset_rankings_and_serps_with_note(nb, capsys):
     _load(nb)
     nb.run(5, "rankings.csv")
     nb.run(6, "serps.csv")
-    nb.run(7)
+    nb.run(7, schwelle_bestimmen=MEDIAN)
     capsys.readouterr()
     nb.run(3, "queries.csv", "frog_export.csv")
     out = capsys.readouterr().out
@@ -291,7 +295,7 @@ def test_smoke_ranking_file_of_another_project_keeps_plain_matching(nb, capsys):
     out = capsys.readouterr().out
     assert "⚠️ Keine der Ranking-Zeilen passt zu deinen Queries. Prüfe, ob die Datei zu diesem Projekt gehört." in out
     assert nb.ns["rankings"] is None
-    nb.run(7)
+    nb.run(7, schwelle_bestimmen=MEDIAN)
     assert nb.ns["settings"]["Eigene Rankings"] == "nein"
 
 
@@ -323,19 +327,18 @@ def test_smoke_numeric_inputs_are_validated(nb, capsys):
             nb.run(4, **form)
         assert hint in capsys.readouterr().out
     nb.run(4, chunk_groesse=0, chunk_overlap=0, top_n=5)
-    for form, hint in (({"schwelle": 1.5}, "zwischen 0 und 1"), ({"schwelle": 0, "rankt_gut_bis_position": 0}, "mindestens 1")):
-        with pytest.raises(colab.NotebookStop):
-            nb.run(7, **form)
-        assert hint in capsys.readouterr().out
+    with pytest.raises(colab.NotebookStop):
+        nb.run(7, rankt_gut_bis_position=0)
+    assert "mindestens 1" in capsys.readouterr().out
 
 
-def test_smoke_median_proposal_warning_with_too_few_pairs(nb, capsys):
+def test_smoke_proposals_explain_why_calibration_is_missing(nb, capsys):
     _load(nb)
     nb.run(5, "rankings.csv")
     nb.run(7)
     out = capsys.readouterr().out
-    assert "Ranking-Paare bis Position 5, für eine Kalibrierung sind 20 nötig." in out
-    assert "Ohne Rankings gibt es keinen Maßstab" in out
+    assert "Aus Rankings kalibriert: nicht verfügbar. Nur 4 Ranking-Paare bis Position 5, für eine Kalibrierung sind 20 nötig." in out
+    assert "per Konstruktion darunter" in out
 
 
 def test_smoke_header_only_ranking_file_stops_with_hint(nb, capsys):
@@ -360,7 +363,7 @@ def test_smoke_uncalibrated_threshold_is_flagged_in_counts_and_export(nb, tmp_pa
     from qum import export
 
     _load(nb)
-    nb.run(7)
+    nb.run(7, schwelle_bestimmen=MEDIAN)
     assert "neue Seiten aus den Content-Lücken (Schwelle nicht kalibriert)" in capsys.readouterr().out
     nb.run(8)
     assert export.CAVEAT_THRESHOLD["median"] in _readme_notes(tmp_path / "query_url_matcher.xlsx")
@@ -375,7 +378,7 @@ def _zip_header(path):
 
 def test_smoke_step_8_csv_zip_uses_semicolon_by_default_and_comma_on_request(nb, tmp_path):
     _load(nb)
-    nb.run(7)
+    nb.run(7, schwelle_bestimmen=MEDIAN)
     nb.run(8, zusaetzlich_csv_zip=True)
     assert ";" in _zip_header(tmp_path / "query_url_matcher_csv.zip")
     nb.run(8, zusaetzlich_csv_zip=True, csv_trennzeichen="Komma")
@@ -394,7 +397,7 @@ def test_smoke_threshold_typed_by_hand_is_named_in_export(nb, tmp_path, capsys):
     from qum import export
 
     _load(nb)
-    nb.run(7, schwelle=0.5)
+    nb.run(7, schwelle_bestimmen=OWN, eigene_schwelle=0.5)
     out = capsys.readouterr().out
     assert "neue Seiten aus den Content-Lücken" in out and "(Schwelle nicht kalibriert)" not in out
     nb.run(8)
@@ -504,7 +507,7 @@ def test_smoke_serps_with_few_urls_per_keyword_warn(nb, capsys):
 
 def test_smoke_step_9_accepts_an_earlier_pairs_export(nb, capsys):
     _load(nb)
-    nb.run(7)
+    nb.run(7, schwelle_bestimmen=MEDIAN)
     lines = (EXAMPLES / "rankings.csv").read_text(encoding="utf-8").splitlines()
     earlier = "\n".join([lines[0] + ";Hinweis;Score Chunk"] + [line + ";alt;0.1" for line in lines[1:]]) + "\n"
     nb.uploads.append(("paare.csv", earlier.encode()))
@@ -528,7 +531,105 @@ def test_smoke_step_7_margin_reaches_the_verdicts(nb):
     weak = "Keyword;URL;Position\nhundeleine;https://www.tierbedarf.example/ratgeber/hundefutter-arten;3\n"
     nb.uploads.append(("rankings.csv", weak.encode()))
     nb.run(5)
-    nb.run(7, schwelle=0.3)
+    nb.run(7, schwelle_bestimmen=OWN, eigene_schwelle=0.3)
     assert nb.ns["decisions"][L.C_VERDICT].tolist().count(L.V_RISK) == 1
-    nb.run(7, schwelle=0.3, abstand_fast_gleich=1.0)
+    nb.run(7, schwelle_bestimmen=OWN, eigene_schwelle=0.3, abstand_fast_gleich=1.0)
     assert L.V_RISK not in nb.ns["decisions"][L.C_VERDICT].tolist()
+
+
+def test_step_7_threshold_dropdown_offers_the_four_choices():
+    from qum import labels as L
+
+    source = next(s for s in _code_cells() if s.startswith("#@title Schritt 7"))
+    match = re.search(r'^schwelle_bestimmen = (".*?") #@param (\[.*\])$', source, flags=re.M)
+    assert json.loads(match.group(1)) == SHOW
+    assert json.loads(match.group(2)) == CHOICES == list(L.THRESHOLD_CHOICE)
+    assert [L.THRESHOLD_CHOICE[c] for c in CHOICES] == [None, "rankings", "median", "manuell"]
+
+
+def _many_rankings():
+    """24 Paare bis Position 2: genug für die Kalibrierung."""
+    queries = (EXAMPLES / "queries.csv").read_text(encoding="utf-8").splitlines()[1:]
+    urls = [line.split(";")[0] for line in (EXAMPLES / "frog_export.csv").read_text(encoding="utf-8").splitlines()[1:3]]
+    lines = ["Keyword;URL;Position"] + [f"{q};{u};{n}" for q in queries for n, u in enumerate(urls, start=1)]
+    return ("rankings.csv", ("\n".join(lines) + "\n").encode())
+
+
+def test_smoke_step_7_default_shows_proposals_and_builds_no_verdicts(nb, capsys):
+    shown = []
+    nb.ns["display"] = shown.append
+    _load(nb)
+    nb.uploads.append(_many_rankings())
+    nb.run(5)
+    nb.run(7, schwelle_bestimmen=MEDIAN)
+    shown.clear()
+    capsys.readouterr()
+    nb.run(7)
+    out = capsys.readouterr().out
+    assert "Die Schwelle ist die Cosinus-Ähnlichkeit zwischen Query und Seite, ab der eine Seite als passend gilt." in out
+    assert re.search(r"Aus Rankings kalibriert: 0\.\d{4}\. Diesen Score erreichen 75 % der 24 Paare", out)
+    assert re.search(r"Mittlerer bester Score \(nicht kalibriert\): 0\.\d{4}\.", out)
+    assert "per Konstruktion darunter" in out
+    assert "führe die Zelle erneut aus" in out
+    assert "✅ Schritt 7 fertig" not in out
+    assert len(shown) == 2  # Beispielpaare um beide Vorschläge
+    for name in ("decisions", "cannibal", "settings", "threshold_source"):
+        assert nb.ns[name] is None, name
+    with pytest.raises(colab.NotebookStop):
+        nb.run(8)
+    assert "❌ Bitte zuerst Schritt 7 (Schwelle und Urteile) ausführen." in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "choice, source, form",
+    [(CALIBRATED, "rankings", {}), (MEDIAN, "median", {}), (OWN, "manuell", {"eigene_schwelle": 0.42})],
+)
+def test_smoke_step_7_each_choice_builds_verdicts(nb, capsys, choice, source, form):
+    from qum.threshold import calibrated_threshold, median_threshold
+
+    _load(nb)
+    nb.uploads.append(_many_rankings())
+    nb.run(5)
+    nb.run(7, schwelle_bestimmen=choice, **form)
+    out = capsys.readouterr().out
+    expected = {
+        "rankings": lambda: calibrated_threshold(nb.ns["result"], nb.ns["lead"], nb.ns["rankings"]).value,
+        "median": lambda: median_threshold(nb.ns["result"], nb.ns["lead"]).value,
+        "manuell": lambda: 0.42,
+    }[source]()
+    assert nb.ns["decisions"] is not None and nb.ns["cannibal"] is not None
+    assert nb.ns["threshold_source"] == source
+    assert nb.ns["settings"]["Schwelle aus"] == choice
+    assert nb.ns["settings"]["Schwelle"] == expected
+    assert f"Verwendete Schwelle {expected:.4f}" in out
+    assert "✅ Schritt 7 fertig" in out
+
+
+def test_smoke_calibration_with_too_few_pairs_stops(nb, capsys):
+    _load(nb)
+    with pytest.raises(colab.NotebookStop):
+        nb.run(7, schwelle_bestimmen=CALIBRATED)
+    assert "Es sind keine Rankings geladen (Schritt 5 oder 6)." in capsys.readouterr().out
+    nb.run(5, "rankings.csv")
+    with pytest.raises(colab.NotebookStop):
+        nb.run(7, schwelle_bestimmen=CALIBRATED)
+    out = capsys.readouterr().out
+    assert "❌ Die Kalibrierung aus Rankings ist nicht verfügbar" in out
+    assert "Nur 4 Ranking-Paare bis Position 5, für eine Kalibrierung sind 20 nötig." in out
+    assert "Wähle bei schwelle_bestimmen eine andere Option" in out
+    assert nb.ns["decisions"] is None
+
+
+@pytest.mark.parametrize("value", [0, -0.2, 1.5])
+def test_smoke_invalid_own_threshold_stops(nb, capsys, value):
+    _load(nb)
+    with pytest.raises(colab.NotebookStop):
+        nb.run(7, schwelle_bestimmen=OWN, eigene_schwelle=value)
+    assert "❌ Die eigene Schwelle muss größer als 0 und höchstens 1 sein." in capsys.readouterr().out
+    assert nb.ns.get("decisions") is None
+
+
+def test_smoke_own_threshold_of_one_is_accepted(nb):
+    _load(nb)
+    nb.run(7, schwelle_bestimmen=OWN, eigene_schwelle=1.0)
+    assert nb.ns["settings"]["Schwelle"] == 1.0

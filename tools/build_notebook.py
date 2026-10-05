@@ -272,10 +272,12 @@ else:
 '''
 
 STEP7 = '''#@title Schritt 7: Schwelle prüfen und Urteile bilden { display-mode: "form" }
-#@markdown **Ab welchem Score gilt eine Seite als "passend"?** Lass 0 stehen, um den Vorschlag zu übernehmen.
-#@markdown Schau dir die Beispiele unter der Zelle an, trage bei Bedarf einen eigenen Wert ein und führe die Zelle erneut aus.
-schwelle = 0 #@param {type:"number"}
-#@markdown Kalibrierung: Paare bis zu dieser Position gelten als "rankt heute gut" und liefern den Vorschlag.
+#@markdown **Ab welchem Score gilt eine Seite als "passend"?** Beim ersten Lauf zeigt die Zelle nur die Vorschläge mit Beispielen.
+#@markdown Wähle danach, wie die Schwelle bestimmt wird, und führe die Zelle erneut aus. Erst dann entstehen die Urteile.
+schwelle_bestimmen = "Erst Vorschläge ansehen" #@param ["Erst Vorschläge ansehen", "Aus Rankings kalibriert", "Mittlerer bester Score (nicht kalibriert)", "Eigener Wert"]
+#@markdown Nur für "Eigener Wert": die Schwelle, größer als 0 und höchstens 1 (zum Beispiel 0.82).
+eigene_schwelle = 0.0 #@param {type:"number"}
+#@markdown Kalibrierung: Paare bis zu dieser Position gelten als "rankt heute gut" und liefern den Vorschlag aus Rankings.
 kalibrierung_bis_position = 5 #@param {type:"integer"}
 #@markdown Ab welcher Position gilt eine Query als gut rankend?
 rankt_gut_bis_position = 10 #@param {type:"integer"}
@@ -293,67 +295,103 @@ from qum import colab
 from qum import labels as L
 from qum.cannibal import find_cannibalization
 from qum.serp import apply_serp, count_new_pages
-from qum.threshold import examples_around, propose_threshold
+from qum.threshold import MIN_PAIRS, calibrated_threshold, calibration_scores, examples_around, median_threshold
 from qum.verdict import build_decisions
 
 colab.require(globals(), 4, "result", "lead", "top", "size", "overlap", "weight", "basis_label", "n_top")
-if not 0 <= schwelle <= 1:
-    colab.stop("Die Schwelle muss zwischen 0 und 1 liegen (0 = Vorschlag übernehmen).")
+choice = L.THRESHOLD_CHOICE[schwelle_bestimmen]
 if min(kalibrierung_bis_position, rankt_gut_bis_position, sichtbar_bis_position) < 1:
     colab.stop("Alle Positionen (Kalibrierung, rankt gut, sichtbar) müssen mindestens 1 sein.")
+if choice == "manuell" and not 0 < eigene_schwelle <= 1:
+    colab.stop("Die eigene Schwelle muss größer als 0 und höchstens 1 sein. Trage sie bei eigene_schwelle ein, zum Beispiel 0.82.")
+calibrated = calibrated_threshold(result, lead, rankings, max_position=kalibrierung_bis_position)
+median = median_threshold(result, lead)
+if rankings is None:
+    no_calibration = "Es sind keine Rankings geladen (Schritt 5 oder 6)."
+else:
+    n_pairs = len(calibration_scores(result, lead, rankings, max_position=kalibrierung_bis_position))
+    no_calibration = f"Nur {n_pairs} Ranking-Paare bis Position {kalibrierung_bis_position}, für eine Kalibrierung sind {MIN_PAIRS} nötig."
+if choice == "rankings" and calibrated is None:
+    colab.stop(
+        f"Die Kalibrierung aus Rankings ist nicht verfügbar. {no_calibration} "
+        "Wähle bei schwelle_bestimmen eine andere Option und führe die Zelle erneut aus."
+    )
 colab.invalidate(globals(), *colab.VERDICT_STATE)
 
-proposal = propose_threshold(result, lead, rankings, max_position=kalibrierung_bis_position)
-no_benchmark = (
-    'Ohne Rankings gibt es keinen Maßstab für "passend". Der Vorschlag ist nur der mittlere beste Score: '
-    "Etwa die Hälfte deiner Queries liegt darunter. Prüfe die Beispiele und trage eine eigene Schwelle ein."
+calibrated_meaning = (
+    f"Diesen Score erreichen 75 % der {calibrated.n_pairs} Paare aus Query und eigener Seite, "
+    f"die heute bis Position {kalibrierung_bis_position} ranken."
+    if calibrated is not None
+    else ""
 )
-if proposal.source == "rankings":
-    print(f"Vorschlag {proposal.value:.4f}: Diesen Score erreichen 75 % der {proposal.n_pairs} Paare, die heute gut ranken.")
-else:
-    print(f"Vorschlag {proposal.value:.4f}: mittlerer Score der besten Treffer.")
-    if rankings is None:
-        print(f"⚠️ {no_benchmark}")
+median_meaning = "Das ist der mittlere Score der besten Treffer je Query."
+median_warning = 'Dieser Wert ist kein Maßstab für "passend": Etwa die Hälfte deiner Queries liegt per Konstruktion darunter.'
+if choice is None:
+    print("Die Schwelle ist die Cosinus-Ähnlichkeit zwischen Query und Seite, ab der eine Seite als passend gilt.")
+    print()
+    if calibrated is None:
+        print(f"Aus Rankings kalibriert: nicht verfügbar. {no_calibration}")
     else:
-        print(f"⚠️ Nur {proposal.n_pairs} Ranking-Paare bis Position {kalibrierung_bis_position}, für eine Kalibrierung sind 20 nötig. {no_benchmark}")
-threshold = schwelle or proposal.value
-print(f"Verwendete Schwelle: {threshold:.4f}")
-print("Diese Paare liegen knapp über und knapp unter der Schwelle. Passt die Grenze?")
-display(examples_around(result, lead, threshold))
+        print(f"Aus Rankings kalibriert: {calibrated.value:.4f}. {calibrated_meaning}")
+        print("Paare knapp über und knapp unter diesem Wert:")
+        display(examples_around(result, lead, calibrated.value))
+    print()
+    print(f"Mittlerer bester Score (nicht kalibriert): {median.value:.4f}. {median_meaning}")
+    print(f"⚠️ {median_warning}")
+    print("Paare knapp über und knapp unter diesem Wert:")
+    display(examples_around(result, lead, median.value))
+    print()
+    print(
+        'ℹ️ Noch keine Urteile. Wähle oben bei schwelle_bestimmen einen Vorschlag oder "Eigener Wert" '
+        "(mit eigene_schwelle) und führe die Zelle erneut aus."
+    )
+else:
+    if choice == "rankings":
+        threshold = calibrated.value
+        print(f"Verwendete Schwelle {threshold:.4f}, aus Rankings kalibriert. {calibrated_meaning}")
+    elif choice == "median":
+        threshold = median.value
+        print(f"Verwendete Schwelle {threshold:.4f}, mittlerer bester Score (nicht kalibriert). {median_meaning}")
+        print(f"⚠️ {median_warning}")
+    else:
+        threshold = float(eigene_schwelle)
+        print(f"Verwendete Schwelle {threshold:.4f}, eigener Wert.")
+    print("Diese Paare liegen knapp über und knapp unter der Schwelle. Passt die Grenze?")
+    display(examples_around(result, lead, threshold))
 
-new_decisions = build_decisions(result, lead, threshold, rankings, rankt_gut_bis_position, weight, abstand_fast_gleich)
-new_cannibal = find_cannibalization(result, lead, threshold, new_decisions, rankings, abstand_fast_gleich, sichtbar_bis_position)
-if serps is not None:
-    new_decisions = apply_serp(new_decisions, result, lead, serps, rankings, serp_ueberschneidung / 100, cluster_dichte / 100)
-settings = {
-    "Datum": date.today().isoformat(),
-    "Modell": spec.model_id,
-    "Nur zum Vergleich (symmetrisches Modell)": "ja" if spec.comparison_only else "nein",
-    "Chunk-Größe (Wörter)": size,
-    "Overlap (Wörter)": overlap,
-    "Bewertungsgrundlage": basis_label,
-    "Kombi-Gewicht Chunk": weight,
-    "Treffer je Query (Top-N)": n_top,
-    "Schwelle": round(threshold, 4),
-    "Schwelle aus": "eigener Wert" if schwelle else ("Rankings" if proposal.source == "rankings" else "Median der besten Scores"),
-    "Kalibrierung bis Position": kalibrierung_bis_position,
-    "Rankt gut bis Position": rankt_gut_bis_position,
-    "Abstand fast gleich": abstand_fast_gleich,
-    "Sichtbar bis Position": sichtbar_bis_position,
-    "SERP-Überschneidung (%)": serp_ueberschneidung,
-    "Cluster-Dichte (%)": cluster_dichte,
-    "Eigene Rankings": {"Datei": "ja, aus Datei", "SERPs": "ja, aus den SERPs abgeleitet"}.get(rankings_source, "nein"),
-    "Top-10-SERPs": "ja" if serps is not None else "nein",
-}
-decisions, cannibal = new_decisions, new_cannibal
-threshold_source = "manuell" if schwelle else proposal.source
-counts = decisions[L.C_VERDICT].value_counts()
-for verdict, count in counts.items():
-    print(f"   {count:>5} × {verdict}")
-print(f"   {cannibal[L.C_QUERY].nunique():>5} Queries mit Kannibalisierungs-Hinweis")
-uncalibrated = " (Schwelle nicht kalibriert)" if threshold_source == "median" else ""
-print(f"   {count_new_pages(decisions):>5} neue Seiten aus den Content-Lücken{uncalibrated}")
-print("✅ Schritt 7 fertig. Weiter mit Schritt 8 (Export).")
+    new_decisions = build_decisions(result, lead, threshold, rankings, rankt_gut_bis_position, weight, abstand_fast_gleich)
+    new_cannibal = find_cannibalization(result, lead, threshold, new_decisions, rankings, abstand_fast_gleich, sichtbar_bis_position)
+    if serps is not None:
+        new_decisions = apply_serp(new_decisions, result, lead, serps, rankings, serp_ueberschneidung / 100, cluster_dichte / 100)
+    settings = {
+        "Datum": date.today().isoformat(),
+        "Modell": spec.model_id,
+        "Nur zum Vergleich (symmetrisches Modell)": "ja" if spec.comparison_only else "nein",
+        "Chunk-Größe (Wörter)": size,
+        "Overlap (Wörter)": overlap,
+        "Bewertungsgrundlage": basis_label,
+        "Kombi-Gewicht Chunk": weight,
+        "Treffer je Query (Top-N)": n_top,
+        "Schwelle": round(threshold, 4),
+        "Schwelle aus": schwelle_bestimmen,
+        "Kalibrierung bis Position": kalibrierung_bis_position,
+        "Rankt gut bis Position": rankt_gut_bis_position,
+        "Abstand fast gleich": abstand_fast_gleich,
+        "Sichtbar bis Position": sichtbar_bis_position,
+        "SERP-Überschneidung (%)": serp_ueberschneidung,
+        "Cluster-Dichte (%)": cluster_dichte,
+        "Eigene Rankings": {"Datei": "ja, aus Datei", "SERPs": "ja, aus den SERPs abgeleitet"}.get(rankings_source, "nein"),
+        "Top-10-SERPs": "ja" if serps is not None else "nein",
+    }
+    decisions, cannibal = new_decisions, new_cannibal
+    threshold_source = choice
+    counts = decisions[L.C_VERDICT].value_counts()
+    for verdict, count in counts.items():
+        print(f"   {count:>5} × {verdict}")
+    print(f"   {cannibal[L.C_QUERY].nunique():>5} Queries mit Kannibalisierungs-Hinweis")
+    uncalibrated = " (Schwelle nicht kalibriert)" if threshold_source == "median" else ""
+    print(f"   {count_new_pages(decisions):>5} neue Seiten aus den Content-Lücken{uncalibrated}")
+    print("✅ Schritt 7 fertig. Weiter mit Schritt 8 (Export).")
 '''
 
 STEP8 = '''#@title Schritt 8: Export { display-mode: "form" }

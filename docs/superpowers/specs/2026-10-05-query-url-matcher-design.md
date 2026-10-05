@@ -78,11 +78,15 @@ Berechnete Vektoren werden in der Sitzung und auf der Colab-Platte zwischengespe
 
 ## 6. Schwelle „passend"
 
-Die Schwelle wird vorgeschlagen und vom Nutzer bestätigt.
+Die Schwelle ist die Cosinus-Ähnlichkeit (Leit-Score) zwischen Query und Seite, ab der eine Seite als passend gilt. Der Nutzer wählt in Schritt 7 ausdrücklich, wie sie bestimmt wird. Nichts wird stillschweigend übernommen, auch nicht eine verfügbare Kalibrierung.
 
-- **Mit eigenen Rankings:** alle Paare aus Query und eigener URL mit Position ≤ 5 (einstellbar), bei denen die Query in der Query-Liste und die URL im Frog-Export steht. Vorschlag ist das 25. Perzentil ihrer Leit-Scores, also der Wert, den 75 % dieser Paare erreichen. Bei weniger als 20 Paaren gilt der Weg ohne Rankings.
-- **Ohne Rankings:** Median der besten Leit-Scores aller Queries.
-- **Prüfschritt:** Das Notebook zeigt fünf Paare knapp über und fünf knapp unter der Schwelle mit Query, URL und Passage. Die Schwelle wird per Schieberegler angepasst.
+- **Erst Vorschläge ansehen** (Vorgabe): Das Notebook erklärt die Schwelle in einem Satz und zeigt die verfügbaren Vorschläge, je mit Wert, Bedeutung und Beispielpaaren, und bittet um eine Wahl. Es bildet keine Urteile; Schritt 8 verweist zurück auf Schritt 7.
+- **Aus Rankings kalibriert:** alle Paare aus Query und eigener URL mit Position ≤ 5 (einstellbar), bei denen die Query in der Query-Liste und die URL im Frog-Export steht, jedes Paar einmal. Wert ist das 25. Perzentil ihrer Leit-Scores, also der Wert, den 75 % dieser Paare erreichen. Angeboten nur ab 20 Paaren. Sonst nennt das Notebook den Grund (keine Rankings geladen oder nur n Paare bis Position k) und stoppt, wenn diese Option gewählt ist.
+- **Mittlerer bester Score (nicht kalibriert):** Median der besten Leit-Scores aller Queries. Etwa die Hälfte der Queries liegt per Konstruktion darunter; das sagt das Notebook, die Zahl der neuen Seiten ist als „Schwelle nicht kalibriert" markiert.
+- **Eigener Wert:** größer als 0 und höchstens 1.
+- **Prüfschritt:** Zu jedem Vorschlag und zur verwendeten Schwelle zeigt das Notebook fünf Paare knapp über und fünf knapp unter dem Wert mit Query, URL und Passage.
+
+Vorschläge werden einmal auf 4 Nachkommastellen gerundet. Die Wahl steht in den Einstellungen der Lesehilfe, dazu ein fester Hinweis je Herkunft (Rankings, Median, von Hand).
 
 ## 7. Urteile je Query
 
@@ -179,7 +183,7 @@ Die Query steht in jedem Blatt in der ersten Spalte. Urteile sind farbig hinterl
 | `qum/models.py` | Modellregister: Ansteuerung, Chunk-Defaults, Kontextgrenzen |
 | `qum/embeddings/` | Basis-Schnittstelle, lokal, OpenAI, Gemini, Cache |
 | `qum/match.py` | drei Scores, Ränge, Top-N |
-| `qum/threshold.py` | Vorschlag der Schwelle, Beispielpaare |
+| `qum/threshold.py` | Vorschläge der Schwelle (kalibriert, Median), Beispielpaare |
 | `qum/verdict.py` | Urteile, Textbausteine |
 | `qum/cannibal.py` | Kannibalisierungs-Stufen |
 | `qum/serp.py` | Clustering, Nachbarn, Lücken-Zusammenfassung |
