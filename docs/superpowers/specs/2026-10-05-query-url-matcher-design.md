@@ -36,7 +36,8 @@ Nicht im Umfang: eigener Crawler, Verarbeitung von Millionen Seiten, Ollama, ein
 
 Regeln:
 
-- CSV (auch UTF-16 und Tab-getrennt) und Excel werden gelesen.
+- CSV (auch UTF-16) und Excel werden gelesen. Das Trennzeichen (`;`, Tab oder `,`) wird an der ersten Zeile erkannt.
+- Steht jede Zeile in einer einzigen Zelle (zum Beispiel eine Excel-Spalte mit „Keyword;URL;Position"), zerlegt das Notebook sie automatisch: nur wenn die Kopfzelle ein Trennzeichen enthält, mindestens ein Teil davon ein bekannter Spaltenname ist (Query, Keyword, URL, Content, Position oder Type, wie bei der Spaltenerkennung) und mindestens 80 % der Zeilen gleich viele Felder haben. Eine Liste von Prompts ohne Kopfzeile, die Kommas enthalten, bleibt so eine Spalte.
 - Spalten werden über Aliaslisten erkannt (GSC, Ahrefs, SISTRIX, Semrush, Screaming Frog) und vor dem Rechnen als Vorschau gezeigt. Wird eine Pflichtspalte nicht erkannt, nennt die Fehlermeldung die gefundenen Spalten, und der Nutzer trägt den Spaltennamen im Formular ein. Fehlt in der SERP-Datei die Spalte Type, gelten alle Zeilen als organisch.
 - URL und Content bleiben zeilenweise zusammen. Zeilen ohne Content und doppelte URLs werden übersprungen und gezählt gemeldet.
 - Eigene Rankings und SERPs sind zwei getrennte Uploads. Fehlt die Ranking-Datei, zieht das Notebook die eigenen Rankings aus der SERP-Datei: Zeilen, deren Host im Frog-Export vorkommt. Liegen beide vor, gilt für Positionen die Ranking-Datei.
@@ -60,7 +61,8 @@ Regeln:
 - Das Gegenbeispiel-Modell ist im Formular als „nur zum Vergleich, nicht für die Auswertung" beschriftet. Seine maximale Sequenzlänge wird auf 512 Tokens gesetzt, damit es dieselben Chunks wie e5 sieht.
 - Lokale Modelle laufen über `sentence-transformers` (Extra `qum[local]`), die API-Modelle über `httpx` ohne SDK. Keys kommen aus den Colab-Secrets `OPENAI_API_KEY` und `GEMINI_API_KEY`.
 - Bei lokalen Modellen prüft das Paket mit dem Tokenizer, wie viele Chunks die Sequenzlänge überschreiten, und meldet den Anteil.
-- API-Aufrufe laufen gebündelt mit Wiederholung bei Fehlern (bis zu sechs Versuche mit Pausen von 2 bis 32 Sekunden, bei 429 und 503 nach dem Header Retry-After, höchstens 60 Sekunden). Fertige Teile landen sofort im Zwischenspeicher.
+- API-Aufrufe laufen gebündelt. Wiederholt wird nur bei 408, 429, 5xx und Verbindungsfehlern (bis zu sechs Versuche mit Pausen von 2 bis 32 Sekunden, bei 429 und 503 nach dem Header Retry-After, höchstens 60 Sekunden); andere Fehler brechen sofort mit Meldung ab. Ab 5 Sekunden Pause erscheint eine deutsche Meldung mit Grund und Versuch, immer auf einer eigenen Zeile.
+- Fehlende Texte gehen in Scheiben von 256 an das Modell. Der Zwischenspeicher auf der Platte wird höchstens alle 60 Sekunden geschrieben, dazu am Ende und bei Fehler oder Abbruch, damit fertige Scheiben erhalten bleiben. Der Fortschritt steht in einer einzigen Zeile für den ganzen Lauf („⏳ 512 von 1.000 Texten eingebettet …", fertig „✅ 1.000 von 1.000 Texten eingebettet").
 
 ## 5. Matching
 
@@ -84,6 +86,8 @@ Die Schwelle ist die Cosinus-Ähnlichkeit (Leit-Score) zwischen Query und Seite,
 - **Aus Rankings kalibriert:** alle Paare aus Query und eigener URL mit Position ≤ 5 (einstellbar), bei denen die Query in der Query-Liste und die URL im Frog-Export steht, jedes Paar einmal. Wert ist das 25. Perzentil ihrer Leit-Scores, also der Wert, den 75 % dieser Paare erreichen. Angeboten nur ab 20 Paaren. Sonst nennt das Notebook den Grund (keine Rankings geladen oder nur n Paare bis Position k) und stoppt, wenn diese Option gewählt ist.
 - **Mittlerer bester Score (nicht kalibriert):** Median der besten Leit-Scores aller Queries. Etwa die Hälfte der Queries liegt per Konstruktion darunter; das sagt das Notebook, die Zahl der neuen Seiten ist als „Schwelle nicht kalibriert" markiert.
 - **Eigener Wert:** größer als 0 und höchstens 1.
+- Der Abstand „fast gleich" (Abschnitt 7 und 8) muss mindestens 0 und kleiner als 0,1 sein; die Meldung sagt, dass er eine Differenz von Cosinus-Scores ist, kein Prozentwert.
+- Nach „Erst Vorschläge ansehen" nennt die Schlusszeile nur die verfügbaren Optionen, und Schritt 8 und 9 sagen ausdrücklich, dass Schritt 7 noch keine Urteile gebildet hat. Bricht Schritt 7 wegen einer ungültigen Eingabe ab, bleiben Urteile aus einem früheren Lauf stehen, und die Meldung sagt das.
 - **Prüfschritt:** Zu jedem Vorschlag und zur verwendeten Schwelle zeigt das Notebook fünf Paare knapp über und fünf knapp unter dem Wert mit Query, URL und Passage.
 
 Vorschläge werden einmal auf 4 Nachkommastellen gerundet. Die Wahl steht in den Einstellungen der Lesehilfe, dazu ein fester Hinweis je Herkunft (Rankings, Median, von Hand).
