@@ -67,7 +67,7 @@ _SPECS = [
         "text-embedding-3-large",
         1500,
         200,
-        fulltext_max_words=4000,
+        fulltext_max_words=3000,
     ),
     ModelSpec(
         "paraphrase-mpnet",

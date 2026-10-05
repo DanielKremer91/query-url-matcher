@@ -3,7 +3,7 @@ import time
 import httpx
 import numpy as np
 
-from .base import Embedder, EmbeddingError, l2_normalize, post_json, prepare
+from .base import Embedder, EmbeddingError, l2_normalize, post_json, prepare, unexpected_response
 
 URL = "https://api.openai.com/v1/embeddings"
 
@@ -26,6 +26,11 @@ class OpenAIEmbedder(Embedder):
             data = post_json(
                 self._client, URL, self._headers, {"model": self.spec.model_id, "input": batch}, sleep=self._sleep
             )
-            rows = sorted(data["data"], key=lambda row: row["index"])
-            vectors.extend(row["embedding"] for row in rows)
+            try:
+                rows = [row["embedding"] for row in sorted(data["data"], key=lambda row: row["index"])]
+            except (KeyError, TypeError):
+                raise unexpected_response("OpenAI", "Feld 'data' fehlt oder ist unvollständig") from None
+            if len(rows) != len(batch):
+                raise unexpected_response("OpenAI", f"{len(rows)} statt {len(batch)} Embeddings")
+            vectors.extend(rows)
         return l2_normalize(np.array(vectors))

@@ -1,3 +1,4 @@
+import math
 import time
 
 import httpx
@@ -6,6 +7,8 @@ import numpy as np
 from ..models import ModelSpec
 
 _NO_RETRY = {400, 401, 403, 404}
+_RETRY_AFTER = {429, 503}
+_MAX_RETRY_AFTER = 60
 
 
 class EmbeddingError(RuntimeError):
@@ -37,18 +40,42 @@ def l2_normalize(m) -> np.ndarray:
     return m / norms
 
 
-def post_json(client: httpx.Client, url: str, headers: dict, payload: dict, attempts: int = 3, sleep=time.sleep) -> dict:
+def unexpected_response(provider: str, detail: str) -> EmbeddingError:
+    return EmbeddingError(f"{provider} hat eine unerwartete Antwort geliefert ({detail}). Führe den Schritt erneut aus.")
+
+
+def _retry_after(response: httpx.Response):
+    """Wartezeit aus dem Header Retry-After in Sekunden (nur bei 429 und 503), höchstens 60."""
+    if response.status_code not in _RETRY_AFTER:
+        return None
+    try:
+        seconds = float(response.headers.get("Retry-After", ""))
+    except ValueError:
+        return None
+    return min(max(seconds, 0.0), _MAX_RETRY_AFTER) if math.isfinite(seconds) else None
+
+
+def post_json(client: httpx.Client, url: str, headers: dict, payload: dict, attempts: int = 6, sleep=time.sleep) -> dict:
+    """POST mit Wiederholung: Retry-After bei 429/503, sonst Pausen von 2, 4, 8, 16, 32 Sekunden."""
     error = None
     for attempt in range(attempts):
+        wait = None
         try:
             response = client.post(url, headers=headers, json=payload, timeout=120)
+        except httpx.HTTPError as exc:
+            error = EmbeddingError(f"Verbindungsfehler: {exc}")
+        else:
             if response.status_code == 200:
-                return response.json()
+                try:
+                    return response.json()
+                except ValueError:
+                    raise EmbeddingError(
+                        f"Die Antwort des Anbieters ist kein gültiges JSON: {response.text[:200]}"
+                    ) from None
             error = EmbeddingError(f"HTTP {response.status_code}: {response.text[:200]}")
             if response.status_code in _NO_RETRY:
                 break
-        except httpx.HTTPError as exc:
-            error = EmbeddingError(f"Verbindungsfehler: {exc}")
+            wait = _retry_after(response)
         if attempt < attempts - 1:
-            sleep(2**attempt)
+            sleep(2 ** (attempt + 1) if wait is None else wait)
     raise error

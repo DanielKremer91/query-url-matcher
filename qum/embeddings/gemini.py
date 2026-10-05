@@ -3,7 +3,7 @@ import time
 import httpx
 import numpy as np
 
-from .base import Embedder, EmbeddingError, l2_normalize, post_json, prepare
+from .base import Embedder, EmbeddingError, l2_normalize, post_json, prepare, unexpected_response
 
 BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
@@ -30,5 +30,11 @@ class GeminiEmbedder(Embedder):
                 for text in prepared[start : start + self._batch_size]
             ]
             data = post_json(self._client, url, self._headers, {"requests": requests}, sleep=self._sleep)
-            vectors.extend(item["values"] for item in data["embeddings"])
+            try:
+                rows = [item["values"] for item in data["embeddings"]]
+            except (KeyError, TypeError):
+                raise unexpected_response("Gemini", "Feld 'embeddings' fehlt oder ist unvollständig") from None
+            if len(rows) != len(requests):
+                raise unexpected_response("Gemini", f"{len(rows)} statt {len(requests)} Embeddings")
+            vectors.extend(rows)
         return l2_normalize(np.array(vectors))

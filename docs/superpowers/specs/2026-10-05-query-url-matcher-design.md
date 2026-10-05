@@ -60,14 +60,14 @@ Regeln:
 - Das Gegenbeispiel-Modell ist im Formular als „nur zum Vergleich, nicht für die Auswertung" beschriftet. Seine maximale Sequenzlänge wird auf 512 Tokens gesetzt, damit es dieselben Chunks wie e5 sieht.
 - Lokale Modelle laufen über `sentence-transformers` (Extra `qum[local]`), die API-Modelle über `httpx` ohne SDK. Keys kommen aus den Colab-Secrets `OPENAI_API_KEY` und `GEMINI_API_KEY`.
 - Bei lokalen Modellen prüft das Paket mit dem Tokenizer, wie viele Chunks die Sequenzlänge überschreiten, und meldet den Anteil.
-- API-Aufrufe laufen gebündelt mit Wiederholung bei Fehlern (drei Versuche, wachsende Pause).
+- API-Aufrufe laufen gebündelt mit Wiederholung bei Fehlern (bis zu sechs Versuche mit Pausen von 2 bis 32 Sekunden, bei 429 und 503 nach dem Header Retry-After, höchstens 60 Sekunden). Fertige Teile landen sofort im Zwischenspeicher.
 
 ## 5. Matching
 
 Je Query und URL entstehen immer drei Scores:
 
 1. **Chunk-Score:** Der Content wird in überlappende Wort-Chunks zerlegt. Der Score ist der höchste Cosinus-Wert eines Chunks. Der beste Chunk steht im Export.
-2. **Gesamt-URL-Score:** Passt der Main Content ins Kontextfenster, wird er als Ganzes eingebettet (Methode „Volltext"). Sonst gilt der normalisierte Mittelwert der Chunk-Vektoren (Methode „Mittelwert der Chunks"). Die Methode steht je URL im Export. Die Passung wird bei lokalen Modellen mit dem Tokenizer geprüft, bei OpenAI gilt die Grenze 4.000 Wörter, bei Gemini 1.000 Wörter.
+2. **Gesamt-URL-Score:** Passt der Main Content ins Kontextfenster, wird er als Ganzes eingebettet (Methode „Volltext"). Sonst gilt der normalisierte Mittelwert der Chunk-Vektoren (Methode „Mittelwert der Chunks"). Die Methode steht je URL im Export. Die Passung wird bei lokalen Modellen mit dem Tokenizer geprüft, bei OpenAI gilt die Grenze 3.000 Wörter, bei Gemini 1.000 Wörter.
 3. **Kombi-Score:** `w × Chunk + (1 − w) × Gesamt-URL`, `w` per Schieberegler, Default 0,7.
 
 Ein Formularfeld „Bewertungsgrundlage" (Chunk als Default, Gesamt-URL, Kombi) legt den **Leit-Score** fest. Er entscheidet über „passend" und die Sortierung. Alle drei Scores und Ränge stehen immer im Export.

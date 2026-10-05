@@ -90,19 +90,70 @@ def test_post_json_retries_then_succeeds():
     sleeps = []
     client = _client([(500, {"e": 1}), (429, {"e": 2}), (200, {"ok": True})])
     assert post_json(client, "https://x.test", {}, {}, sleep=sleeps.append) == {"ok": True}
-    assert sleeps == [1, 2]
+    assert sleeps == [2, 4]
 
 
-def test_post_json_gives_up_after_three_attempts():
-    client = _client([(500, {}), (500, {}), (500, {})])
+def test_post_json_gives_up_after_six_attempts_with_exponential_backoff():
+    sleeps = []
+    client = _client([(500, {})] * 6)
     with pytest.raises(EmbeddingError, match="500"):
+        post_json(client, "https://x.test", {}, {}, sleep=sleeps.append)
+    assert sleeps == [2, 4, 8, 16, 32]
+
+
+def test_post_json_retries_connection_errors():
+    sleeps, calls = [], []
+
+    def handler(request):
+        calls.append(request)
+        if len(calls) < 3:
+            raise httpx.ConnectError("weg")
+        return httpx.Response(200, json={"ok": True})
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    assert post_json(client, "https://x.test", {}, {}, sleep=sleeps.append) == {"ok": True}
+    assert sleeps == [2, 4]
+
+
+def _client_with_headers(responses):
+    calls = iter(responses)
+
+    def handler(request):
+        status, headers = next(calls)
+        return httpx.Response(status, json={}, headers=headers)
+
+    return httpx.Client(transport=httpx.MockTransport(handler))
+
+
+def test_post_json_honours_retry_after_on_429_and_503_capped_at_60():
+    sleeps = []
+    client = _client_with_headers(
+        [
+            (429, {"Retry-After": "7"}),
+            (503, {"Retry-After": "120"}),
+            (500, {"Retry-After": "5"}),  # nur 429 und 503 zählen
+            (429, {"Retry-After": "bald"}),  # unlesbar: normale Pause
+            (200, {}),
+        ]
+    )
+    assert post_json(client, "https://x.test", {}, {}, sleep=sleeps.append) == {}
+    assert sleeps == [7, 60, 8, 16]
+
+
+def test_post_json_non_json_success_raises_embedding_error():
+    def handler(request):
+        return httpx.Response(200, text="<html>Wartung</html>")
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    with pytest.raises(EmbeddingError, match="kein gültiges JSON"):
         post_json(client, "https://x.test", {}, {}, sleep=lambda s: None)
 
 
-def test_post_json_does_not_retry_auth_errors():
+@pytest.mark.parametrize("status", [400, 401, 403, 404])
+def test_post_json_does_not_retry_client_errors(status):
     sleeps = []
-    client = _client([(401, {"error": "bad key"})])
-    with pytest.raises(EmbeddingError, match="401"):
+    client = _client([(status, {"error": "bad key"})])
+    with pytest.raises(EmbeddingError, match=str(status)):
         post_json(client, "https://x.test", {}, {}, sleep=sleeps.append)
     assert sleeps == []
 
@@ -130,3 +181,33 @@ def test_cache_persists_to_disk(tmp_path):
 def test_cache_delegates_fits_context():
     assert CachedEmbedder(FakeEmbedder(max_words=3)).fits_context("a b c") is True
     assert CachedEmbedder(FakeEmbedder(max_words=3)).fits_context("a b c d") is False
+
+
+def test_cache_recovers_from_zero_byte_file(tmp_path, capsys):
+    (tmp_path / "fake.npz").write_bytes(b"")
+    cached = CachedEmbedder(FakeEmbedder(), cache_dir=tmp_path)
+    assert cached.embed(["a b"], "passage").shape == (1, FakeEmbedder.DIMS)
+    assert "unlesbar" in capsys.readouterr().out
+
+
+class FailingOnThirdCall(FakeEmbedder):
+    def embed(self, texts, role):
+        if len(self.calls) == 2:
+            self.calls.append((list(texts), role))
+            raise EmbeddingError("HTTP 500: kaputt")
+        return super().embed(texts, role)
+
+
+def test_cache_embeds_in_slices_and_keeps_finished_slices_on_failure(tmp_path):
+    texts = [f"wort{i} text" for i in range(600)]
+    inner = FailingOnThirdCall()
+    cached = CachedEmbedder(inner, cache_dir=tmp_path)
+    with pytest.raises(EmbeddingError):
+        cached.embed(texts, "passage")
+    assert [len(batch) for batch, _ in inner.calls] == [256, 256, 88]
+
+    fresh_inner = FakeEmbedder()
+    fresh = CachedEmbedder(fresh_inner, cache_dir=tmp_path)
+    out = fresh.embed(texts, "passage")
+    assert fresh_inner.calls == [(texts[512:], "passage")]  # die ersten zwei Scheiben kamen aus dem Cache
+    assert np.allclose(out, FakeEmbedder().embed(texts, "passage"))

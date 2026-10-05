@@ -43,3 +43,9 @@ def test_labels_are_unique_and_resolvable():
     labels = [s.label for s in MODELS.values()]
     assert len(labels) == len(set(labels))
     assert model_by_label(labels[0]).key == "e5-large"
+
+
+def test_api_fulltext_limits_stay_below_the_token_limits():
+    # OpenAI: 8.191 Tokens; 4.000 deutsche Wörter können darüber liegen
+    assert get_model("openai").fulltext_max_words == 3000
+    assert get_model("gemini").fulltext_max_words == 1000

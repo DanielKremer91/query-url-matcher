@@ -11,6 +11,9 @@ from .base import Embedder, EmbeddingError
 class CachedEmbedder(Embedder):
     """Bettet jeden Text je Rolle nur einmal ein. Optional auf Platte gesichert."""
 
+    # fehlende Texte gehen in Scheiben an den Anbieter; jede fertige Scheibe wird sofort gesichert
+    SLICE = 256
+
     def __init__(self, inner: Embedder, cache_dir=None):
         self.inner = inner
         self.spec = inner.spec
@@ -20,7 +23,7 @@ class CachedEmbedder(Embedder):
             try:
                 with np.load(self._path) as data:
                     self._store = dict(zip(data["keys"].tolist(), data["vectors"]))
-            except (OSError, ValueError, KeyError, zipfile.BadZipFile):
+            except (OSError, ValueError, KeyError, EOFError, zipfile.BadZipFile):
                 print(f"⚠️ Zwischenspeicher {self._path} war unlesbar und wird neu aufgebaut.")
 
     def _key(self, text: str, role: str) -> str:
@@ -37,11 +40,13 @@ class CachedEmbedder(Embedder):
         for key, text in zip(keys, texts):
             if key not in self._store and key not in missing:
                 missing[key] = text
-        if missing:
-            vectors = self.inner.embed(list(missing.values()), role)
-            if len(vectors) != len(missing):
-                raise EmbeddingError(f"Der Anbieter hat {len(vectors)} statt {len(missing)} Embeddings geliefert.")
-            self._store.update(zip(missing.keys(), vectors))
+        todo = list(missing)
+        for start in range(0, len(todo), self.SLICE):
+            part = todo[start : start + self.SLICE]
+            vectors = self.inner.embed([missing[key] for key in part], role)
+            if len(vectors) != len(part):
+                raise EmbeddingError(f"Der Anbieter hat {len(vectors)} statt {len(part)} Embeddings geliefert.")
+            self._store.update(zip(part, vectors))
             self._save()
         return np.vstack([self._store[key] for key in keys])
 

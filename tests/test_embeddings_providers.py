@@ -108,3 +108,40 @@ def test_factory_wraps_in_cache_and_requires_key():
     assert isinstance(emb.inner, OpenAIEmbedder)
     with pytest.raises(EmbeddingError):
         make_embedder("gemini", api_key=None)
+
+
+def test_gemini_batches_and_keeps_order():
+    def respond(body):
+        return {"embeddings": [{"values": [float(len(r["content"]["parts"][0]["text"])), 1.0]} for r in body["requests"]]}
+
+    client, requests = _recording_client(respond)
+    emb = GeminiEmbedder(get_model("gemini"), "g-key", client=client, batch_size=2)
+    out = emb.embed(["a", "bbb", "cc"], "passage")
+    texts = [[r["content"]["parts"][0]["text"] for r in json.loads(req.content)["requests"]] for req in requests]
+    assert texts == [["a", "bbb"], ["cc"]]
+    assert out.shape == (3, 2)
+    assert out[0, 0] < out[2, 0] < out[1, 0]  # Längen 1 < 2 < 3: Reihenfolge stimmt
+
+
+@pytest.mark.parametrize(
+    "response",
+    [{"error": "x"}, {"data": [{"index": 0, "embedding": [1.0, 0.0]}]}],
+    ids=["ohne data", "zu wenige Zeilen"],
+)
+def test_openai_malformed_response_raises_german_error(response):
+    client, _ = _recording_client(lambda body: response)
+    emb = OpenAIEmbedder(get_model("openai"), "sk-test", client=client)
+    with pytest.raises(EmbeddingError, match="OpenAI hat eine unerwartete Antwort geliefert"):
+        emb.embed(["a", "b"], "query")
+
+
+@pytest.mark.parametrize(
+    "response",
+    [{"error": "x"}, {"embeddings": [{"values": [1.0, 0.0]}]}],
+    ids=["ohne embeddings", "zu wenige Zeilen"],
+)
+def test_gemini_malformed_response_raises_german_error(response):
+    client, _ = _recording_client(lambda body: response)
+    emb = GeminiEmbedder(get_model("gemini"), "g-key", client=client)
+    with pytest.raises(EmbeddingError, match="Gemini hat eine unerwartete Antwort geliefert"):
+        emb.embed(["a", "b"], "query")
