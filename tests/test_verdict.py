@@ -1,7 +1,7 @@
 import pandas as pd
 
 from qum import labels as L
-from qum.verdict import ADVICE, build_decisions
+from qum.verdict import ADVICE, ADVICE_NOT_IN_EXPORT, build_decisions
 from tests.conftest import make_result
 
 U1, U2 = "https://a.de/1", "https://a.de/2"
@@ -85,3 +85,27 @@ def test_advice_is_template_with_values():
 def test_every_verdict_has_advice():
     for verdict in [L.V_MATCH, L.V_GAP, L.V_OK, L.V_RISK, L.V_WATCH, L.V_USE, L.V_CHECK]:
         assert verdict in ADVICE
+
+
+def test_exact_tie_between_ranking_and_best_url_is_ok():
+    rankings = _rankings([("q", U2, U2, 3.0)])
+    result = make_result(["q"], [U1, U2], [[0.8, 0.8]])
+    row = build_decisions(result, result.lead("chunk"), 0.6, rankings).iloc[0]
+    assert row[L.C_BEST_URL] == U1
+    assert row[L.C_VERDICT] == L.V_OK
+
+
+def test_ranking_url_missing_in_export_gets_its_own_advice():
+    alt = "https://a.de/alt"
+    rankings = _rankings([("q", alt, alt, 2.0)])
+    result = make_result(["q"], [U1], [[0.9]])
+    row = build_decisions(result, result.lead("chunk"), 0.6, rankings).iloc[0]
+    assert row[L.C_VERDICT] == L.V_RISK
+    assert row[L.C_ADVICE] == ADVICE_NOT_IN_EXPORT.format(best=U1, rank_url=alt, position="2")
+    assert "besser" not in row[L.C_ADVICE]
+    assert "nicht verglichen" in row[L.C_ADVICE]
+
+
+def test_advice_texts_do_not_overclaim_serp_similarity():
+    assert all("fast gleicher SERP" not in text for text in ADVICE.values())
+    assert "stark überlappender SERP" in ADVICE[L.V_CHECK]

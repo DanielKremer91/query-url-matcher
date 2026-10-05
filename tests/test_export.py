@@ -137,3 +137,9 @@ def test_candidate_position_help_refers_to_the_gap_query():
     text = export._COLUMN_HELP[L.C_CAND_POS]
     assert "Lücken-Query" in text
     assert "Nachbar-Keyword" not in text
+
+
+def test_help_texts_do_not_overclaim_serp_similarity():
+    texts = list(export._COLUMN_HELP.values()) + list(export._VERDICT_HELP.values())
+    assert all("fast gleicher SERP" not in text for text in texts)
+    assert "stark überlappender SERP" in export._VERDICT_HELP[L.V_CHECK]

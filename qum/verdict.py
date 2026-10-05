@@ -15,10 +15,15 @@ ADVICE = {
     L.V_WATCH: "{rank_url} rankt auf Position {position}, obwohl keine Seite semantisch gut passt. Beobachten.",
     L.V_USE: "Keine neue Seite bauen: {best} passt bereits. Seite ausbauen und intern stärken.",
     L.V_CHECK: (
-        "Vor Neuerstellung prüfen: {best} bedient bereits ein Keyword mit fast gleicher SERP. "
+        "Vor Neuerstellung prüfen: {best} bedient bereits ein Keyword mit stark überlappender SERP. "
         "Seite erweitern statt neu bauen?"
     ),
 }
+# Rankende URL fehlt im Frog-Export: verglichen wurde nichts, das Urteil bleibt
+ADVICE_NOT_IN_EXPORT = (
+    "{rank_url} rankt auf Position {position}, steht aber nicht im Frog-Export und wurde nicht verglichen. "
+    "Semantisch bester Treffer im Export: {best}. Prüfen, ob die rankende Seite im Export fehlt."
+)
 
 
 def format_position(position) -> str:
@@ -52,7 +57,7 @@ def build_decisions(result, lead, threshold, rankings=None, good_position=10, we
                 note = L.NOTE_NOT_IN_EXPORT
             if not fits:
                 verdict = L.V_WATCH
-            elif ranking_j == j:
+            elif ranking_j is not None and lead[i, ranking_j] >= lead[i, j]:
                 verdict = L.V_OK
             else:
                 verdict = L.V_RISK
@@ -70,7 +75,9 @@ def build_decisions(result, lead, threshold, rankings=None, good_position=10, we
                 L.C_RANK_URL: rank_url,
                 L.C_POSITION: position,
                 L.C_NOTE: note,
-                L.C_ADVICE: ADVICE[verdict].format(best=result.urls[j], rank_url=rank_url, position=position),
+                L.C_ADVICE: (ADVICE_NOT_IN_EXPORT if note else ADVICE[verdict]).format(
+                    best=result.urls[j], rank_url=rank_url, position=position
+                ),
             }
         )
     return pd.DataFrame(rows)

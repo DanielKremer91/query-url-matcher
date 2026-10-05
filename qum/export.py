@@ -54,8 +54,8 @@ _COLUMN_HELP = {
     L.C_NOTE: "Ergänzender Hinweis, zum Beispiel wenn eine URL im Frog-Export fehlt.",
     L.C_ADVICE: "Feste Empfehlung zum Urteil, kein generierter Text.",
     L.C_CLUSTER: "Keywords mit gleicher Nummer haben stark überlappende Google-Ergebnisse. 0 = kein Cluster.",
-    L.C_CAND: "Bestehende Seite, die ein Keyword mit fast gleicher SERP bereits bedient.",
-    L.C_CAND_KW: "Das Nachbar-Keyword mit fast gleicher SERP, bei dem die Kandidaten-Seite passt.",
+    L.C_CAND: "Bestehende Seite, die ein Keyword mit stark überlappender SERP bereits bedient.",
+    L.C_CAND_KW: "Das Nachbar-Keyword mit stark überlappender SERP, bei dem die Kandidaten-Seite passt.",
     L.C_CAND_OVERLAP: "Anteil gemeinsamer URLs in den Google-Ergebnissen von Query und Nachbar-Keyword.",
     L.C_CAND_SCORE: "Score der Lücken-Query selbst gegen die Kandidaten-Seite.",
     L.C_CAND_CHUNK: "Der Textblock der Kandidaten-Seite, der zur Lücken-Query am besten passt.",
@@ -82,7 +82,7 @@ _VERDICT_HELP = {
     L.V_RISK: "Eine Seite rankt gut, eine andere eigene Seite passt semantisch besser.",
     L.V_WATCH: "Die Query rankt gut, obwohl keine Seite die Schwelle erreicht.",
     L.V_USE: "Kein gutes Ranking, aber eine passende Seite existiert.",
-    L.V_CHECK: "Lücke, aber ein Keyword mit fast gleicher SERP hat bereits eine passende Seite.",
+    L.V_CHECK: "Lücke, aber ein Keyword mit stark überlappender SERP hat bereits eine passende Seite.",
 }
 
 _FILLS = {
