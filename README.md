@@ -52,6 +52,15 @@ Eine Excel-Datei mit den Blättern Lesehilfe, Entscheidung, Top-Treffer, Kanniba
 - Für einige tausend bis wenige zehntausend URLs gedacht. Schränke große Websites auf ein Verzeichnis ein.
 - Der Content liegt während des Laufs in deiner Colab-Sitzung, bei den API-Modellen zusätzlich beim Anbieter.
 
+## Beispieldaten
+
+Im Ordner `examples/` liegen vier kleine Dateien zu einem erfundenen Tierbedarf-Shop. Alle Inhalte, Domains und Rankings sind erfunden, es sind keine Kundendaten.
+
+- `queries.csv`: 12 Queries, je eine zu acht Themen, zwei Varianten zu getreidefreiem Hundefutter und zwei Queries ohne passende Seite.
+- `frog_export.csv`: Screaming-Frog-Export mit URL und Main Content von 9 Seiten, darunter der Ratgeber „Hundefutter Arten", der sich bewusst mit der Seite zu getreidefreiem Hundefutter überschneidet.
+- `rankings.csv`: eigene Rankings für 9 Keyword-URL-Paare, mit einer Query, für die zwei eigene Seiten ranken, und einer auf Position 35.
+- `serps.csv`: Top-10-Ergebnisse (Organic) mit erfundenen Wettbewerber-URLs, die drei Queries zu getreidefreiem Hundefutter teilen sich 7 von 10 URLs.
+
 ## Entwicklung
 
     python3 -m venv .venv
