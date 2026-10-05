@@ -71,6 +71,13 @@ Im Ordner `examples/` liegen vier kleine Dateien zu einem erfundenen Tierbedarf-
 - `rankings.csv`: eigene Rankings für 9 Keyword-URL-Paare, mit einer Query, für die zwei eigene Seiten ranken, und einer auf Position 35.
 - `serps.csv`: Top-10-Ergebnisse (Organic) mit erfundenen Wettbewerber-URLs, die drei Queries zu getreidefreiem Hundefutter teilen sich 7 von 10 URLs.
 
+Alle Domains enden auf `.example`, eine für Beispiele reservierte Endung (der Shop heißt `www.tierbedarf.example`).
+
+Was du beim Ausprobieren erwarten kannst:
+
+- Das Beispiel ist zu klein, um die Schwelle zu kalibrieren: Es hat weniger als 20 Ranking-Paare. Das Notebook nimmt deshalb den unkalibrierten Vorschlag (den mittleren besten Score), und etwa die Hälfte der Queries liegt per Konstruktion unter der Schwelle und wird als Lücke oder schwacher Match markiert.
+- Kurze Ein-Wort-Queries (zum Beispiel „kratzbaum") können auch gegen die richtige Seite niedrig scoren. Schau dir in Schritt 7 die Beispiele um die Schwelle an und setze bei Bedarf einen eigenen Wert.
+
 ## Entwicklung
 
     python3 -m venv .venv

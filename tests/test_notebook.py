@@ -214,7 +214,7 @@ def test_smoke_minimal_flow_without_rankings_and_serps(nb, capsys):
 
 def test_smoke_serps_alone_derive_own_rankings_and_refresh(nb, capsys):
     _load(nb)
-    own = "getreidefreies hundefutter;https://www.beispiel-tierbedarf.de/hundefutter/getreidefreies-hundefutter;5;Organic\n"
+    own = "getreidefreies hundefutter;https://www.tierbedarf.example/hundefutter/getreidefreies-hundefutter;5;Organic\n"
     serps_with_own = (EXAMPLES / "serps.csv").read_bytes() + own.encode()
     nb.uploads.append(("serps.csv", serps_with_own))
     nb.run(6)
@@ -345,3 +345,53 @@ def test_smoke_header_only_ranking_file_stops_with_hint(nb, capsys):
         nb.run(5)
     assert "❌ Die Datei enthält keine verwertbaren Zeilen" in capsys.readouterr().out
     assert nb.ns.get("rankings") is None
+
+
+def _readme_notes(path):
+    import pandas as pd
+
+    from qum import labels as L
+
+    readme = pd.read_excel(path, sheet_name="Lesehilfe")
+    return readme[readme[L.R_AREA] == "Hinweis"][L.R_TEXT].tolist()
+
+
+def test_smoke_uncalibrated_threshold_is_flagged_in_counts_and_export(nb, tmp_path, capsys):
+    from qum import export
+
+    _load(nb)
+    nb.run(7)
+    assert "neue Seiten aus den Content-Lücken (Schwelle nicht kalibriert)" in capsys.readouterr().out
+    nb.run(8)
+    assert export.CAVEAT_THRESHOLD["median"] in _readme_notes(tmp_path / "query_url_matcher.xlsx")
+
+
+def test_smoke_threshold_typed_by_hand_is_named_in_export(nb, tmp_path, capsys):
+    from qum import export
+
+    _load(nb)
+    nb.run(7, schwelle=0.5)
+    out = capsys.readouterr().out
+    assert "neue Seiten aus den Content-Lücken" in out and "(Schwelle nicht kalibriert)" not in out
+    nb.run(8)
+    notes = _readme_notes(tmp_path / "query_url_matcher.xlsx")
+    assert export.CAVEAT_THRESHOLD["manuell"] in notes and export.CAVEAT_THRESHOLD["median"] not in notes
+
+
+def test_notebook_does_not_claim_rankings_unlock_cannibalisation_or_gaps():
+    text = "\n".join(source for _, source in CELLS)
+    assert "Schaltet die Urteile zu Kannibalisierung und Content-Lücke frei" not in text
+    assert "Mit eigenen Rankings kommen die Urteile zu Kannibalisierung und Content-Lücke dazu" not in text
+    step5 = next(s for s in _code_cells() if s.startswith("#@title Schritt 5"))
+    assert "kalibriert" in step5
+
+
+def test_example_files_use_reserved_example_domains():
+    from urllib.parse import urlsplit
+
+    import pandas as pd
+
+    for name, column in (("frog_export.csv", "Address"), ("rankings.csv", "URL"), ("serps.csv", "URL")):
+        hosts = pd.read_csv(EXAMPLES / name, sep=";")[column].map(lambda u: urlsplit(u).netloc)
+        assert hosts.str.endswith(".example").all(), name
+    assert "www.tierbedarf.example" in (EXAMPLES / "frog_export.csv").read_text(encoding="utf-8")

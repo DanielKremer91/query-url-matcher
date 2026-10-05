@@ -100,13 +100,35 @@ DISCLAIMER = (
     "die Entscheidung trifft ein Mensch nach Prüfung der Seite."
 )
 
+CAVEAT_SCORES = (
+    "Scores eines Modells liegen in einem engen Band (bei e5 etwa 0,7 bis 0,9). "
+    "Sie sind nur innerhalb eines Laufs vergleichbar, nicht zwischen Modellen."
+)
+# Herkunft der Schwelle -> fester Hinweis in der Lesehilfe
+CAVEAT_THRESHOLD = {
+    "median": (
+        "Schwelle nicht kalibriert: Sie ist der mittlere beste Score, etwa die Hälfte der Queries liegt per "
+        "Konstruktion darunter. Urteile und die Zahl neuer Seiten sind nur mit selbst geprüfter Schwelle belastbar."
+    ),
+    "rankings": (
+        "Schwelle aus Rankings kalibriert: Sie ist so gewählt, dass 75 % der gut rankenden Paare sie erreichen. "
+        "Bis zu ein Viertel der gut rankenden Queries erscheint daher als 'Rankt trotz schwachem Match'."
+    ),
+    "manuell": (
+        "Schwelle von Hand gesetzt: Sie wurde im Notebook eingetragen und nicht aus den Daten abgeleitet. "
+        "Urteile und die Zahl neuer Seiten hängen direkt von diesem Wert ab."
+    ),
+}
+
 
 def content_gaps(decisions: pd.DataFrame) -> pd.DataFrame:
     return decisions[decisions[L.C_VERDICT].isin([L.V_GAP, L.V_CHECK])].reset_index(drop=True)
 
 
-def _readme(sheet_names, settings, present_columns) -> pd.DataFrame:
-    rows = [("Hinweis", "Einordnung", DISCLAIMER)]
+def _readme(sheet_names, settings, present_columns, threshold_source=None) -> pd.DataFrame:
+    rows = [("Hinweis", "Einordnung", DISCLAIMER), ("Hinweis", "Scores", CAVEAT_SCORES)]
+    if threshold_source in CAVEAT_THRESHOLD:
+        rows.append(("Hinweis", "Schwelle", CAVEAT_THRESHOLD[threshold_source]))
     rows += [("Blatt", name, _SHEET_HELP[name]) for name in sheet_names]
     rows += [("Urteil", verdict, text) for verdict, text in _VERDICT_HELP.items()]
     rows += [("Stufe", stage, text) for stage, text in _STAGE_HELP.items()]
@@ -115,7 +137,8 @@ def _readme(sheet_names, settings, present_columns) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=[L.R_AREA, L.R_ENTRY, L.R_TEXT])
 
 
-def build_sheets(decisions, top, cannibal, settings, pairs=None) -> dict:
+def build_sheets(decisions, top, cannibal, settings, pairs=None, threshold_source=None) -> dict:
+    """threshold_source: "rankings", "median" oder "manuell" (Herkunft der Schwelle für die Lesehilfe)."""
     sheets = {
         SHEET_DECISION: decisions,
         SHEET_TOP: top,
@@ -130,7 +153,7 @@ def build_sheets(decisions, top, cannibal, settings, pairs=None) -> dict:
             pairs = pairs[[keyword] + [c for c in pairs.columns if c != keyword]]
         sheets[SHEET_PAIRS] = pairs
     present = {column for df in sheets.values() for column in df.columns}
-    return {SHEET_README: _readme(list(sheets), settings, present), **sheets}
+    return {SHEET_README: _readme(list(sheets), settings, present, threshold_source), **sheets}
 
 
 def _clean(df: pd.DataFrame) -> pd.DataFrame:
@@ -142,6 +165,9 @@ def _clean(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+_FORMULA_START = ("=", "+", "-", "@")
+
+
 def write_excel(path, sheets: dict) -> None:
     with pd.ExcelWriter(path, engine="openpyxl") as writer:
         for name, df in sheets.items():
@@ -150,6 +176,11 @@ def write_excel(path, sheets: dict) -> None:
             sheet = writer.sheets[name]
             for cell in sheet[1]:
                 cell.font = Font(bold=True)
+            for row in sheet.iter_rows():
+                for cell in row:
+                    # Text wie "=cmd|x" bleibt Text und wird nicht als Formel ausgeführt
+                    if isinstance(cell.value, str) and cell.value.startswith(_FORMULA_START):
+                        cell.data_type = "s"
             for idx, column in enumerate(df.columns, start=1):
                 longest = max([len(str(column))] + [len(str(v)) for v in df[column].head(200)])
                 sheet.column_dimensions[get_column_letter(idx)].width = min(max(12, longest + 2), 70)

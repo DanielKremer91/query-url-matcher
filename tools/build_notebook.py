@@ -20,7 +20,7 @@ Dieses Notebook vergleicht deine Suchanfragen (oder Prompts) per Embeddings mit 
 | Eigene Rankings | optional | Keyword, URL, Position (GSC, Ahrefs, SISTRIX) |
 | Top-10-SERPs | optional | Ahrefs-Export mit Keyword, URL, Position, Type |
 
-Ohne Ranking-Dateien bekommst du das reine Matching. Mit eigenen Rankings kommen die Urteile zu Kannibalisierung und Content-Lücke dazu, mit Top-10-SERPs zusätzlich die Bündelung der Lücken zu Themen.
+Schon ohne Ranking-Dateien bekommst du das Matching mit Urteilen zu passender Seite und Content-Lücke und den Hinweis, wenn mehrere Seiten fast gleich gut passen (Kannibalisierung). Eigene Rankings ergänzen die Urteile, die sich auf Rankings stützen (zum Beispiel "Kannibalisierungs-Risiko" und "Rankt trotz schwachem Match"), und kalibrieren die Schwelle für "passend". Top-10-SERPs bündeln die Lücken zusätzlich zu Themen.
 
 ## So gehst du vor
 
@@ -164,7 +164,8 @@ print(f"✅ Schritt 4 fertig: {len(top)} Treffer berechnet. Optional weiter mit 
 
 STEP5 = '''#@title Schritt 5 (optional): Eigene Rankings hochladen { display-mode: "form" }
 #@markdown Export mit Keyword, URL und Position, zum Beispiel aus GSC, Ahrefs (Organic Keywords) oder SISTRIX.
-#@markdown Schaltet die Urteile zu Kannibalisierung und Content-Lücke frei.
+#@markdown Ergänzt die Urteile, die sich auf Rankings stützen, und kalibriert die Schwelle für "passend".
+#@markdown Kannibalisierung und Content-Lücken gibt es auch ohne Rankings.
 keyword_spalte = "" #@param {type:"string"}
 url_spalte_ranking = "" #@param {type:"string"}
 position_spalte = "" #@param {type:"string"}
@@ -316,11 +317,13 @@ settings = {
     "Top-10-SERPs": "ja" if serps is not None else "nein",
 }
 decisions, cannibal = new_decisions, new_cannibal
+threshold_source = "manuell" if schwelle else proposal.source
 counts = decisions[L.C_VERDICT].value_counts()
 for verdict, count in counts.items():
     print(f"   {count:>5} × {verdict}")
 print(f"   {cannibal[L.C_QUERY].nunique():>5} Queries mit Kannibalisierungs-Hinweis")
-print(f"   {count_new_pages(decisions):>5} neue Seiten aus den Content-Lücken")
+uncalibrated = " (Schwelle nicht kalibriert)" if threshold_source == "median" else ""
+print(f"   {count_new_pages(decisions):>5} neue Seiten aus den Content-Lücken{uncalibrated}")
 print("✅ Schritt 7 fertig. Weiter mit Schritt 8 (Export).")
 '''
 
@@ -330,8 +333,8 @@ zusaetzlich_csv_zip = False #@param {type:"boolean"}
 
 from qum import colab, export
 
-colab.require(globals(), 7, "decisions", "top", "cannibal", "settings")
-sheets = export.build_sheets(decisions, top, cannibal, settings)
+colab.require(globals(), 7, "decisions", "top", "cannibal", "settings", "threshold_source")
+sheets = export.build_sheets(decisions, top, cannibal, settings, threshold_source=threshold_source)
 export.write_excel("query_url_matcher.xlsx", sheets)
 colab.download("query_url_matcher.xlsx")
 if zusaetzlich_csv_zip:
@@ -354,7 +357,7 @@ from qum.pairs import score_pairs
 colab.require(globals(), 2, "spec", "embedder")
 colab.require(globals(), 3, "content")
 colab.require(globals(), 4, "result", "size", "overlap", "basis", "weight")
-colab.require(globals(), 7, "decisions", "top", "cannibal", "settings")
+colab.require(globals(), 7, "decisions", "top", "cannibal", "settings", "threshold_source")
 with colab.guard():
     name, data = colab.upload("Keyword-URL-Paare (Keyword, URL)")
     pairs = score_pairs(
@@ -373,7 +376,7 @@ missing = (pairs[L.C_NOTE] != "").sum()
 if missing:
     print(f"ℹ️ {missing} Paare haben eine URL, die nicht im Frog-Export steht.")
 display(pairs.head(10))
-sheets = export.build_sheets(decisions, top, cannibal, settings, pairs=pairs)
+sheets = export.build_sheets(decisions, top, cannibal, settings, pairs=pairs, threshold_source=threshold_source)
 export.write_excel("query_url_matcher_mit_paaren.xlsx", sheets)
 colab.download("query_url_matcher_mit_paaren.xlsx")
 print(f"✅ Schritt 9 fertig: {len(pairs)} Paare bewertet, Export mit Blatt 'Paare' als query_url_matcher_mit_paaren.xlsx heruntergeladen.")

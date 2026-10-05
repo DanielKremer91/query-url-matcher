@@ -145,3 +145,46 @@ def test_help_texts_do_not_overclaim_serp_similarity():
     texts = list(export._COLUMN_HELP.values()) + list(export._VERDICT_HELP.values())
     assert all("fast gleicher SERP" not in text for text in texts)
     assert "stark überlappender SERP" in export._VERDICT_HELP[L.V_CHECK]
+
+
+def _notes(readme):
+    return readme[readme[L.R_AREA] == "Hinweis"][L.R_TEXT].tolist()
+
+
+def test_readme_always_explains_the_score_band():
+    readme = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS)[export.SHEET_README]
+    assert _notes(readme)[0].startswith("Das Notebook sortiert vor")
+    assert export.CAVEAT_SCORES in _notes(readme)
+    assert export.CAVEAT_SCORES.startswith("Scores eines Modells liegen in einem engen Band (bei e5 etwa 0,7 bis 0,9).")
+
+
+def test_readme_flags_uncalibrated_median_threshold():
+    readme = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS, threshold_source="median")[export.SHEET_README]
+    notes = _notes(readme)
+    assert notes == [export.DISCLAIMER, export.CAVEAT_SCORES, export.CAVEAT_THRESHOLD["median"]]
+    assert notes[2].startswith("Schwelle nicht kalibriert:")
+
+
+def test_readme_explains_threshold_calibrated_from_rankings():
+    readme = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS, threshold_source="rankings")[export.SHEET_README]
+    notes = _notes(readme)
+    assert notes[-1] == export.CAVEAT_THRESHOLD["rankings"]
+    assert "75 % der gut rankenden Paare" in notes[-1] and "Rankt trotz schwachem Match" in notes[-1]
+
+
+def test_readme_says_when_threshold_was_set_by_hand():
+    readme = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS, threshold_source="manuell")[export.SHEET_README]
+    assert _notes(readme)[-1] == export.CAVEAT_THRESHOLD["manuell"]
+    assert "von Hand" in export.CAVEAT_THRESHOLD["manuell"]
+
+
+def test_write_excel_keeps_formula_like_text_as_text(tmp_path):
+    decisions = _decisions()
+    decisions[L.C_QUERY] = ["=cmd|x", "+49 hotline", "@home"]
+    decisions[L.C_CHUNK] = ["= 5 Euro", "-20 % Rabatt", "normal"]
+    path = tmp_path / "out.xlsx"
+    export.write_excel(path, export.build_sheets(decisions, TOP, CANNIBAL, SETTINGS))
+    sheet = load_workbook(path)[export.SHEET_DECISION]
+    cells = [sheet.cell(row=r, column=c) for c in (1, 4) for r in (2, 3, 4)]
+    assert [cell.value for cell in cells] == ["=cmd|x", "+49 hotline", "@home", "= 5 Euro", "-20 % Rabatt", "normal"]
+    assert all(cell.data_type == "s" for cell in cells)

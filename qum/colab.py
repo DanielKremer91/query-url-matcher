@@ -16,7 +16,7 @@ STEP_NAMES = {
     7: "Schwelle und Urteile",
 }
 # Was ungültig wird, wenn sich der Stand davor ändert
-VERDICT_STATE = ("decisions", "cannibal", "settings", "pairs")
+VERDICT_STATE = ("decisions", "cannibal", "settings", "threshold_source", "pairs")
 MATCH_STATE = ("result", "lead", "top") + VERDICT_STATE
 
 
