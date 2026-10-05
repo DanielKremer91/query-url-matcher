@@ -48,6 +48,20 @@ def test_missing_columns_raise():
         _run(pd.DataFrame({"foo": ["x"], "URL": ["https://a.de/hund"]}))
 
 
+def test_given_column_that_does_not_exist_lists_found_columns():
+    df = pd.DataFrame({"Keyword": ["a"], "URL": ["https://a.de/hund"]})
+    with pytest.raises(IngestError, match=r"Spalte 'Suchbegriff' gibt es nicht.*Keyword.*URL"):
+        _run(df, keyword_col="Suchbegriff")
+    with pytest.raises(IngestError, match=r"Spalte 'Seite' gibt es nicht"):
+        _run(df, url_col="Seite")
+
+
+def test_given_columns_are_used():
+    df = pd.DataFrame({"Begriff": ["hundefutter getreidefrei"], "Ziel": ["https://a.de/hund"]})
+    out = _run(df, keyword_col="Begriff", url_col="Ziel")
+    assert out[L.C_PAIR_RANK].tolist() == [1]
+
+
 def test_each_keyword_is_embedded_once():
     embedder = FakeEmbedder()
     df = pd.DataFrame({"Keyword": ["hundefutter", "hundefutter"], "URL": URLS})

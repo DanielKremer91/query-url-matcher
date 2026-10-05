@@ -1,7 +1,7 @@
 import pandas as pd
 
 from . import labels as L
-from .ingest import KEYWORD_ALIASES, URL_ALIASES, IngestError, find_column
+from .ingest import KEYWORD_ALIASES, URL_ALIASES, _require
 from .match import ranks, run_matching
 from .normalize import normalize_url
 
@@ -11,11 +11,8 @@ _NEW_COLUMNS = [L.C_S_CHUNK, L.C_S_FULL, L.C_S_COMBI, L.C_PAIR_RANK, L.C_BEST_UR
 def score_pairs(
     df, urls, contents, embedder, chunk_size, chunk_overlap, basis="chunk", weight=0.7, keyword_col=None, url_col=None
 ) -> pd.DataFrame:
-    kcol = keyword_col or find_column(df, KEYWORD_ALIASES)
-    ucol = url_col or find_column(df, URL_ALIASES)
-    if kcol is None or ucol is None:
-        missing = "Keyword" if kcol is None else "URL"
-        raise IngestError(f"{missing}-Spalte nicht erkannt. Gefundene Spalten: {list(df.columns)}")
+    kcol = _require(df, keyword_col, KEYWORD_ALIASES, "Keyword")
+    ucol = _require(df, url_col, URL_ALIASES, "URL")
 
     work = df.dropna(subset=[kcol, ucol]).reset_index(drop=True)
     if work.empty:

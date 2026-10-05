@@ -12,6 +12,16 @@
 
 Das Notebook sortiert vor und begründet. Die Entscheidung trifft ein Mensch.
 
+## So startest du
+
+1. Öffne das Notebook mit dem Colab-Button oben.
+2. Für die Modelle mit API-Key (Gemini, OpenAI): Lege im Secrets-Panel (Schlüssel-Symbol links) das Secret `GEMINI_API_KEY` bzw. `OPENAI_API_KEY` an und aktiviere dort den Schalter "Notebook-Zugriff". Ohne diesen Schalter kann das Notebook den Key nicht lesen. Die lokalen Modelle brauchen kein Secret.
+3. Führe die Zellen einzeln von oben nach unten aus, nicht mit "Alle ausführen": Die Zellen fragen nach Datei-Uploads.
+4. Die Schritte 5 (eigene Rankings), 6 (Top-10-SERPs) und 9 (Keyword-URL-Paare) sind optional.
+5. Für einen ersten Versuch liegen kleine Beispieldateien unter `examples/` (Queries, Frog-Export, Rankings, SERPs).
+
+Führst du einen früheren Schritt erneut aus, setzt das Notebook alles zurück, was darauf aufbaut, und sagt dir, welchen Schritt du wiederholen musst.
+
 ## Was du brauchst
 
 | Datei | Pflicht | Inhalt |
