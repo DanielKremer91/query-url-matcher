@@ -1,9 +1,11 @@
 import hashlib
+import os
+import zipfile
 from pathlib import Path
 
 import numpy as np
 
-from .base import Embedder
+from .base import Embedder, EmbeddingError
 
 
 class CachedEmbedder(Embedder):
@@ -15,8 +17,11 @@ class CachedEmbedder(Embedder):
         self._store = {}
         self._path = Path(cache_dir) / f"{self.spec.key}.npz" if cache_dir else None
         if self._path is not None and self._path.exists():
-            data = np.load(self._path)
-            self._store = dict(zip(data["keys"].tolist(), data["vectors"]))
+            try:
+                with np.load(self._path) as data:
+                    self._store = dict(zip(data["keys"].tolist(), data["vectors"]))
+            except (OSError, ValueError, KeyError, zipfile.BadZipFile):
+                print(f"⚠️ Zwischenspeicher {self._path} war unlesbar und wird neu aufgebaut.")
 
     def _key(self, text: str, role: str) -> str:
         spec = self.spec
@@ -24,6 +29,9 @@ class CachedEmbedder(Embedder):
         return hashlib.sha1(raw.encode("utf-8")).hexdigest()
 
     def embed(self, texts, role):
+        if not texts:
+            return self.inner.embed([], role)
+
         keys = [self._key(text, role) for text in texts]
         missing = {}
         for key, text in zip(keys, texts):
@@ -31,6 +39,8 @@ class CachedEmbedder(Embedder):
                 missing[key] = text
         if missing:
             vectors = self.inner.embed(list(missing.values()), role)
+            if len(vectors) != len(missing):
+                raise EmbeddingError(f"Der Anbieter hat {len(vectors)} statt {len(missing)} Embeddings geliefert.")
             self._store.update(zip(missing.keys(), vectors))
             self._save()
         return np.vstack([self._store[key] for key in keys])
@@ -42,4 +52,6 @@ class CachedEmbedder(Embedder):
         if self._path is None:
             return
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        np.savez(self._path, keys=np.array(list(self._store)), vectors=np.vstack(list(self._store.values())))
+        tmp_path = self._path.with_name(self._path.stem + ".tmp.npz")
+        np.savez(tmp_path, keys=np.array(list(self._store)), vectors=np.vstack(list(self._store.values())))
+        os.replace(tmp_path, self._path)
