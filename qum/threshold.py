@@ -19,29 +19,34 @@ def propose_threshold(result, lead, rankings=None, max_position=5, min_pairs=20)
     if rankings is not None:
         q_index = {normalize_query(q): i for i, q in enumerate(result.queries)}
         u_index = {normalize_url(u): j for j, u in enumerate(result.urls)}
-        for row in rankings[rankings["position"] <= max_position].itertuples():
+        # jedes Paar aus Query und URL zählt einmal, mit seiner besten Position
+        pairs = rankings.sort_values("position", kind="stable").drop_duplicates(["query_norm", "url_norm"])
+        for row in pairs[pairs["position"] <= max_position].itertuples():
             i, j = q_index.get(row.query_norm), u_index.get(row.url_norm)
             if i is not None and j is not None:
                 scores.append(float(lead[i, j]))
+    # einmal gerundet: angezeigte und angewandte Schwelle sind dieselbe Zahl
     if len(scores) >= min_pairs:
-        return ThresholdProposal(float(np.percentile(scores, 25)), "rankings", len(scores))
-    return ThresholdProposal(float(np.median(lead.max(axis=1))), "median", len(scores))
+        return ThresholdProposal(round(float(np.percentile(scores, 25)), 4), "rankings", len(scores))
+    return ThresholdProposal(round(float(np.median(lead.max(axis=1))), 4), "median", len(scores))
 
 
 def examples_around(result, lead, threshold, n=5) -> pd.DataFrame:
     best = lead.argmax(axis=1)
+    raw = "_raw"  # ungerundeter Score: entscheidet über Seite und Reihenfolge, gerundet wird nur die Anzeige
     rows = [
         {
             L.C_QUERY: query,
             L.C_URL: result.urls[j],
             L.C_CHUNK: result.best_chunk(i, j),
-            "Score": round(float(lead[i, j]), 4),
+            L.C_SCORE: round(float(lead[i, j]), 4),
+            raw: lead[i, j],  # gleicher Typ wie in build_decisions, damit der Vergleich mit der Schwelle derselbe ist
         }
         for i, (query, j) in enumerate(zip(result.queries, best))
     ]
     df = pd.DataFrame(rows)
-    above = df[df["Score"] >= threshold].sort_values("Score").head(n).copy()
-    below = df[df["Score"] < threshold].sort_values("Score", ascending=False).head(n).copy()
-    above.insert(0, L.C_SIDE, "knapp über der Schwelle")
-    below.insert(0, L.C_SIDE, "knapp unter der Schwelle")
-    return pd.concat([above, below], ignore_index=True)
+    above = df[df[raw] >= threshold].sort_values(raw, kind="stable").head(n).copy()
+    below = df[df[raw] < threshold].sort_values(raw, ascending=False, kind="stable").head(n).copy()
+    above.insert(0, L.C_SIDE, L.SIDE_ABOVE)
+    below.insert(0, L.C_SIDE, L.SIDE_BELOW)
+    return pd.concat([above, below], ignore_index=True).drop(columns=raw)

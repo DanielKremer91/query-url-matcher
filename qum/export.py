@@ -112,7 +112,7 @@ def _readme(sheet_names, settings, present_columns) -> pd.DataFrame:
     rows += [("Stufe", stage, text) for stage, text in _STAGE_HELP.items()]
     rows += [("Spalte", column, text) for column, text in _COLUMN_HELP.items() if column in present_columns]
     rows += [("Einstellung", key, str(value)) for key, value in settings.items()]
-    return pd.DataFrame(rows, columns=["Bereich", "Eintrag", "Erklärung"])
+    return pd.DataFrame(rows, columns=[L.R_AREA, L.R_ENTRY, L.R_TEXT])
 
 
 def build_sheets(decisions, top, cannibal, settings, pairs=None) -> dict:

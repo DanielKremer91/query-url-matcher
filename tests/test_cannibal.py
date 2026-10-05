@@ -94,3 +94,9 @@ def test_both_stages_can_apply_to_one_query():
     rankings = _rankings([("q", U1, U1, 3.0), ("q", U2, U2, 12.0)])
     df = _run(["q"], [[0.65, 0.9, 0.1]], rankings)
     assert df[L.C_STAGE].tolist() == [L.STAGE_RISK, L.STAGE_VISIBLE]
+
+
+def test_reasons_come_from_labels():
+    rankings = _rankings([("q", U1, U1, 3.0), ("q", U2, U2, 12.0)])
+    assert _run(["q"], [[0.65, 0.9, 0.1]], rankings)[L.C_REASON].tolist() == [L.REASON_BETTER, L.REASON_RANKING]
+    assert _run(["q"], [[0.80, 0.79, 0.3]])[L.C_REASON].tolist() == [L.REASON_CLOSE]

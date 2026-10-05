@@ -5,11 +5,6 @@ from . import labels as L
 from .normalize import normalize_query, normalize_url
 from .verdict import format_position
 
-REASON_BETTER = "Eine andere Seite passt besser als die rankende"
-REASON_CLOSE = "Mehrere Seiten passen fast gleich gut"
-REASON_RANKING = "Mehrere eigene Seiten ranken für die Query"
-
-
 def _describe(url, score=None, position="") -> str:
     parts = []
     if position:
@@ -55,12 +50,12 @@ def find_cannibalization(
                 _describe(rank_url, score_of(i, normalize_url(rank_url)), decision[L.C_POSITION]),
                 _describe(result.urls[best], lead[i, best], format_position(best_position)),
             ]
-            rows.append((query, L.STAGE_RISK, REASON_BETTER, " | ".join(competing)))
+            rows.append((query, L.STAGE_RISK, L.REASON_BETTER, " | ".join(competing)))
         elif len(close) >= 2:
             competing = [_describe(result.urls[j], lead[i, j]) for j in close]
-            rows.append((query, L.STAGE_RISK, REASON_CLOSE, " | ".join(competing)))
+            rows.append((query, L.STAGE_RISK, L.REASON_CLOSE, " | ".join(competing)))
         visible = [r for r in own if r.position <= visible_position]
         if len(visible) >= 2:
             competing = [_describe(r.url, score_of(i, r.url_norm), format_position(r.position)) for r in visible]
-            rows.append((query, L.STAGE_VISIBLE, REASON_RANKING, " | ".join(competing)))
+            rows.append((query, L.STAGE_VISIBLE, L.REASON_RANKING, " | ".join(competing)))
     return pd.DataFrame(rows, columns=[L.C_QUERY, L.C_STAGE, L.C_REASON, L.C_COMPETING])

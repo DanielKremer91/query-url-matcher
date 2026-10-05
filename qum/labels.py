@@ -35,7 +35,17 @@ C_REASON = "Grund"
 C_COMPETING = "Konkurrierende URLs"
 
 C_PAIR_RANK = "Rang der URL"
+
+# Prüfbeispiele um die Schwelle (Schritt 7, nicht im Export)
 C_SIDE = "Lage"
+C_SCORE = "Score"
+SIDE_ABOVE = "knapp über der Schwelle"
+SIDE_BELOW = "knapp unter der Schwelle"
+
+# Spalten der Lesehilfe
+R_AREA = "Bereich"
+R_ENTRY = "Eintrag"
+R_TEXT = "Erklärung"
 
 FULLTEXT = "Volltext"
 CHUNK_MEAN = "Mittelwert der Chunks"
@@ -50,6 +60,10 @@ V_CHECK = "Vor Neuerstellung prüfen"
 
 STAGE_RISK = "Risiko"
 STAGE_VISIBLE = "Bereits sichtbar"
+
+REASON_BETTER = "Eine andere Seite passt besser als die rankende"
+REASON_CLOSE = "Mehrere Seiten passen fast gleich gut"
+REASON_RANKING = "Mehrere eigene Seiten ranken für die Query"
 
 NOTE_NOT_IN_EXPORT = "Rankende URL steht nicht im Frog-Export"
 NOTE_URL_MISSING = "URL steht nicht im Frog-Export"

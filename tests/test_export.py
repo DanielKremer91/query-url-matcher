@@ -45,13 +45,14 @@ def test_sheets_with_serps_and_pairs():
 
 def test_readme_lists_present_sheets_settings_and_disclaimer():
     readme = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS)[export.SHEET_README]
-    assert list(readme.columns) == ["Bereich", "Eintrag", "Erklärung"]
-    entries = readme["Eintrag"].tolist()
+    assert list(readme.columns) == [L.R_AREA, L.R_ENTRY, L.R_TEXT]
+    assert [L.R_AREA, L.R_ENTRY, L.R_TEXT] == ["Bereich", "Eintrag", "Erklärung"]
+    entries = readme[L.R_ENTRY].tolist()
     assert export.SHEET_GAPS in entries
     assert export.SHEET_PAIRS not in entries
     assert "Modell" in entries
     assert L.V_RISK in entries
-    assert readme.iloc[0]["Erklärung"].startswith("Das Notebook sortiert vor")
+    assert readme.iloc[0][L.R_TEXT].startswith("Das Notebook sortiert vor")
 
 
 def test_every_sheet_has_query_first_except_readme_and_summary():
@@ -76,7 +77,8 @@ def test_pairs_without_keyword_column_stay_unchanged():
 
 
 def test_every_label_column_has_a_help_text():
-    columns = [v for k, v in vars(L).items() if k.startswith("C_") and k != "C_SIDE"]
+    # C_SIDE und C_SCORE gehören nur zu den Prüfbeispielen in Schritt 7, nicht zum Export
+    columns = [v for k, v in vars(L).items() if k.startswith("C_") and k not in ("C_SIDE", "C_SCORE")]
     assert columns
     for column in columns:
         assert column in export._COLUMN_HELP, column
@@ -86,18 +88,18 @@ def test_readme_explains_candidate_columns_only_when_present():
     decisions = _decisions(with_cluster=True)
     decisions[L.C_CAND] = ["", "", "u1"]
     readme = export.build_sheets(decisions, TOP, CANNIBAL, SETTINGS)[export.SHEET_README]
-    assert L.C_CAND in readme["Eintrag"].tolist()
-    stages = readme[readme["Bereich"] == "Stufe"]["Eintrag"].tolist()
+    assert L.C_CAND in readme[L.R_ENTRY].tolist()
+    stages = readme[readme[L.R_AREA] == "Stufe"][L.R_ENTRY].tolist()
     assert stages == [L.STAGE_RISK, L.STAGE_VISIBLE]
     plain = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS)[export.SHEET_README]
-    assert L.C_CAND not in plain["Eintrag"].tolist()
-    assert L.C_CLUSTER not in plain["Eintrag"].tolist()
+    assert L.C_CAND not in plain[L.R_ENTRY].tolist()
+    assert L.C_CLUSTER not in plain[L.R_ENTRY].tolist()
 
 
 def test_readme_skips_columns_without_explanation():
     pairs = pd.DataFrame({"Keyword": ["a"], "Volume": [10]})
     readme = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS, pairs=pairs)[export.SHEET_README]
-    assert "Volume" not in readme["Eintrag"].tolist()
+    assert "Volume" not in readme[L.R_ENTRY].tolist()
 
 
 def test_write_excel_creates_sheets_and_colours_verdicts(tmp_path):
