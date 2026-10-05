@@ -1,0 +1,71 @@
+# Query-URL Matcher
+
+**Neue Seite bauen oder Bestehendes nutzen?** Ein Colab-Notebook, das Suchanfragen per Embeddings mit dem Inhalt deiner Seiten vergleicht und Hinweise zu Kannibalisierung und Content-Lücken liefert.
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DanielKremer91/query-url-matcher/blob/main/query_url_matcher.ipynb)
+
+## Was es beantwortet
+
+- Gibt es für eine Query schon eine passende Seite oder Textstelle?
+- Passt eine andere Seite besser als die, die gerade rankt (Kannibalisierungs-Risiko)?
+- Für welche Queries fehlt Content, und wie viele neue Seiten sind das wirklich?
+
+Das Notebook sortiert vor und begründet. Die Entscheidung trifft ein Mensch.
+
+## Was du brauchst
+
+| Datei | Pflicht | Inhalt |
+|---|---|---|
+| Queries | ja | CSV oder Excel, eine Query pro Zeile |
+| Screaming-Frog-Export | ja | URL und Main Content |
+| Eigene Rankings | optional | Keyword, URL, Position |
+| Top-10-SERPs | optional | Ahrefs-Export mit Keyword, URL, Position, Type |
+
+## Modelle
+
+| Modell | Einsatz | Kosten |
+|---|---|---|
+| multilingual-e5-large | Empfehlung für Deutsch | kostenlos |
+| multilingual-e5-base | schneller bei vielen URLs | kostenlos |
+| bge-m3 | Deutsch, lange Texte | kostenlos |
+| msmarco-distilbert-base-v4 | nur englische Projekte | kostenlos |
+| Gemini gemini-embedding-001 | API | Secret `GEMINI_API_KEY` |
+| OpenAI text-embedding-3-large | API | Secret `OPENAI_API_KEY` |
+| paraphrase-multilingual-mpnet-base-v2 | symmetrisches Gegenbeispiel, nur zum Vergleich | kostenlos |
+
+Die Modelle werden automatisch so angesteuert, wie sie trainiert wurden: e5 mit den Prefixen `query: ` und `passage: `, Gemini mit `task_type`, alle anderen mit reinem Text.
+
+## Symmetrisch und asymmetrisch
+
+Eine kurze Query gegen einen langen Text zu matchen ist eine asymmetrische Aufgabe. Modelle für Satzähnlichkeit (symmetrisch) bewerten eher, ob ein Text wie die Query klingt, und weniger, ob er sie beantwortet. Drei Regeln:
+
+1. Wähle ein Modell, das für Retrieval trainiert wurde.
+2. Steuere es so an, wie es trainiert wurde. Ein Prefix macht ein Modell nicht asymmetrisch, wenn es ihn nie gelernt hat.
+3. Vergleiche keine absoluten Scores zwischen Modellen. Es zählt, ob die richtige Seite vorn landet.
+
+## Ergebnis
+
+Eine Excel-Datei mit den Blättern Lesehilfe, Entscheidung, Top-Treffer, Kannibalisierung, Content-Lücken, mit SERPs zusätzlich Lücken je Cluster, optional Paare. Auf Wunsch zusätzlich ein ZIP mit einer CSV je Blatt.
+
+## Grenzen
+
+- Für einige tausend bis wenige zehntausend URLs gedacht. Schränke große Websites auf ein Verzeichnis ein.
+- Der Content liegt während des Laufs in deiner Colab-Sitzung, bei den API-Modellen zusätzlich beim Anbieter.
+
+## Entwicklung
+
+    python3 -m venv .venv
+    .venv/bin/pip install -e ".[dev]"
+    .venv/bin/pytest -q
+    .venv/bin/python -m tools.build_notebook   # nach Änderungen an tools/build_notebook.py
+
+## Modellvergleich
+
+    .venv/bin/pip install -e ".[local]"
+    OPENAI_API_KEY=... .venv/bin/python -m qum.compare --truth wahrheit.csv --content frog.csv
+
+`wahrheit.csv` enthält je Zeile eine Query und die erwartete URL. Ausgegeben werden je Konfiguration Treffer auf Rang 1, Treffer in den Top 3 und der mittlere reziproke Rang.
+
+## Lizenz
+
+MIT
