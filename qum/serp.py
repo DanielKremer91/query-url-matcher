@@ -1,4 +1,5 @@
 import math
+from collections import deque
 
 import pandas as pd
 
@@ -65,7 +66,9 @@ def cluster_keywords(kw_urls: dict, min_overlap: float = 0.5, min_density: float
     neighbours = _neighbours(kw_urls, overlap_edges(kw_urls, min_overlap))
     assignments = {k: 0 for k in kw_urls}
     next_id = 1
-    for component in _components(set(kw_urls), neighbours):
+    todo = deque(_components(set(kw_urls), neighbours))
+    while todo:
+        component = todo.popleft()
         nodes = set(component)
         # Dichte: wer mit zu wenigen Mitgliedern verbunden ist, fliegt raus (gegen den Ketteneffekt)
         while len(nodes) >= 2:
@@ -79,6 +82,10 @@ def cluster_keywords(kw_urls: dict, min_overlap: float = 0.5, min_density: float
                 for keyword in sub:
                     assignments[keyword] = next_id
                 next_id += 1
+        # Rausgeflogene bekommen unter sich eine zweite Chance (nur wenn die Menge schrumpft, sonst Endlosschleife)
+        dropped = component - nodes
+        if dropped and nodes:
+            todo.extend(_components(dropped, neighbours))
     return assignments
 
 
@@ -139,15 +146,15 @@ def gap_summary(decisions: pd.DataFrame) -> pd.DataFrame:
     for cluster in sorted(c for c in clusters.unique() if c != 0):
         queries = gaps.loc[clusters == cluster, L.C_QUERY].tolist()
         rows.append(
-            {L.C_CLUSTER: str(cluster), "Lücken-Queries": len(queries), "Neue Seiten": 1, "Queries": " | ".join(queries)}
+            {L.C_CLUSTER: str(cluster), L.C_GAP_COUNT: len(queries), L.C_NEW_PAGES: 1, L.C_GAP_QUERIES: " | ".join(queries)}
         )
     loose = gaps.loc[clusters == 0, L.C_QUERY].tolist()
     if loose:
         rows.append(
-            {L.C_CLUSTER: L.NO_CLUSTER, "Lücken-Queries": len(loose), "Neue Seiten": len(loose), "Queries": " | ".join(loose)}
+            {L.C_CLUSTER: L.NO_CLUSTER, L.C_GAP_COUNT: len(loose), L.C_NEW_PAGES: len(loose), L.C_GAP_QUERIES: " | ".join(loose)}
         )
-    return pd.DataFrame(rows, columns=[L.C_CLUSTER, "Lücken-Queries", "Neue Seiten", "Queries"])
+    return pd.DataFrame(rows, columns=[L.C_CLUSTER, L.C_GAP_COUNT, L.C_NEW_PAGES, L.C_GAP_QUERIES])
 
 
 def count_new_pages(decisions: pd.DataFrame) -> int:
-    return int(gap_summary(decisions)["Neue Seiten"].sum())
+    return int(gap_summary(decisions)[L.C_NEW_PAGES].sum())

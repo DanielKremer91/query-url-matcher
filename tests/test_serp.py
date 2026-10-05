@@ -66,6 +66,30 @@ def test_single_link_into_clique_is_dropped():
     assert clusters["y"] == 0
 
 
+def test_bridge_between_dense_groups_keeps_both_groups():
+    kw = {f"a{i}": _urls(1, 2, 3, 4) for i in (2, 3, 4)}
+    kw.update({f"b{i}": _urls(11, 12, 13, 14) for i in (2, 3, 4)})
+    # Brücke: a1 und b1 teilen 4 von 8 URLs (50 %), a1 mit Gruppe a und b1 mit Gruppe b je 4 von 4
+    kw["a1"] = _urls(1, 2, 3, 4, 21, 22, 23, 24)
+    kw["b1"] = _urls(11, 12, 13, 14, 21, 22, 23, 24)
+    assert ("a1", "b1") in overlap_edges(kw, 0.5)
+    clusters = cluster_keywords(kw, 0.5, 0.5)
+    assert clusters["a2"] == clusters["a3"] == clusters["a4"] != 0
+    assert clusters["b2"] == clusters["b3"] == clusters["b4"] != 0
+    assert clusters["a2"] != clusters["b2"]
+    # die Brücke selbst bleibt ein eigenes Zweier-Cluster
+    assert clusters["a1"] == clusters["b1"] != 0
+    assert clusters["a1"] not in {clusters["a2"], clusters["b2"]}
+
+
+def test_density_threshold_is_adjustable():
+    kw = {"a": _urls(1, 2, 3, 4), "b": _urls(3, 4, 5, 6), "c": _urls(5, 6, 7, 8), "d": _urls(7, 8, 9, 10)}
+    strict = cluster_keywords(kw, 0.5, 0.5)
+    assert strict["a"] == 0 and strict["d"] == 0
+    loose = cluster_keywords(kw, 0.5, 0.3)
+    assert len({loose[k] for k in "abcd"}) == 1 and loose["a"] != 0
+
+
 def test_isolated_keyword_has_no_cluster():
     assert cluster_keywords({"a": _urls(1), "b": _urls(2)}) == {"a": 0, "b": 0}
 
@@ -151,8 +175,8 @@ def test_gap_summary_counts_one_page_per_cluster():
     )
     summary = gap_summary(decisions)
     assert summary.to_dict("records") == [
-        {L.C_CLUSTER: "1", "Lücken-Queries": 2, "Neue Seiten": 1, "Queries": "a | b"},
-        {L.C_CLUSTER: L.NO_CLUSTER, "Lücken-Queries": 2, "Neue Seiten": 2, "Queries": "c | d"},
+        {L.C_CLUSTER: "1", L.C_GAP_COUNT: 2, L.C_NEW_PAGES: 1, L.C_GAP_QUERIES: "a | b"},
+        {L.C_CLUSTER: L.NO_CLUSTER, L.C_GAP_COUNT: 2, L.C_NEW_PAGES: 2, L.C_GAP_QUERIES: "c | d"},
     ]
     assert count_new_pages(decisions) == 3
 
