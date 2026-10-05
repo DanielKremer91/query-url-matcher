@@ -116,3 +116,43 @@ def test_own_rankings_from_serps_filters_by_host():
     assert own.to_dict("records") == [
         {"query_norm": "futter", "url": "https://a.de/1", "url_norm": "https://a.de/1", "position": 4.0}
     ]
+
+
+def test_load_rankings_drops_blank_keywords():
+    df = pd.DataFrame(
+        {
+            "Keyword": [None, "", "  ", "futter"],
+            "URL": ["https://a.de/1", "https://a.de/2", "https://a.de/3", "https://a.de/4"],
+            "Position": [1, 2, 3, 4],
+        }
+    )
+    out = ingest.load_rankings(df)
+    assert out.to_dict("records") == [
+        {"query_norm": "futter", "url": "https://a.de/4", "url_norm": "https://a.de/4", "position": 4.0}
+    ]
+
+
+def test_load_serps_drops_blank_keywords():
+    df = pd.DataFrame(
+        {
+            "Keyword": [None, "", "  ", "futter"],
+            "URL": ["https://a.de/1", "https://a.de/2", "https://a.de/3", "https://a.de/4"],
+            "Position": [1, 2, 3, 4],
+        }
+    )
+    out = ingest.load_serps(df)
+    assert out.to_dict("records") == [
+        {"keyword": "futter", "query_norm": "futter", "url": "https://a.de/4", "url_norm": "https://a.de/4", "position": 4.0}
+    ]
+
+
+def test_load_rankings_accepts_decimal_commas():
+    df = pd.DataFrame(
+        {
+            "Keyword": ["futter", "napf"],
+            "URL": ["https://a.de/1", "https://a.de/2"],
+            "Position": ["3,5", "12"],
+        }
+    )
+    out = ingest.load_rankings(df)
+    assert out["position"].tolist() == [3.5, 12.0]

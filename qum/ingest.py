@@ -126,12 +126,14 @@ def load_content(df: pd.DataFrame, url_col=None, content_col=None) -> ContentTab
 
 
 def _ranking_frame(df, kcol, ucol, pcol, keep_keyword=False):
+    # Drop rows with blank keywords first
+    df = df[~df[kcol].map(_blank)]
     out = pd.DataFrame(
         {
             "keyword": df[kcol].astype(str).str.strip(),
             "query_norm": df[kcol].map(normalize_query),
             "url": df[ucol].map(lambda u: None if _blank(u) else str(u).strip()),
-            "position": pd.to_numeric(df[pcol], errors="coerce"),
+            "position": pd.to_numeric(df[pcol].astype(str).str.replace(",", "."), errors="coerce"),
         }
     )
     out = out.dropna(subset=["url", "position"])
