@@ -5,24 +5,34 @@ from .normalize import normalize_query, normalize_url
 
 # Feste Textbausteine. Platzhalter: {best}, {rank_url}, {position}
 ADVICE = {
-    L.V_MATCH: "Es gibt bereits eine passende Seite: {best}. Vor einer neuen Seite prüfen, ob sie ausgebaut werden kann.",
-    L.V_GAP: "Keine passende Seite gefunden. Kandidat für eine neue Seite.",
-    L.V_OK: "Die rankende Seite ist auch semantisch der beste Treffer. Kein Handlungsbedarf.",
-    L.V_RISK: (
-        "{rank_url} rankt auf Position {position}, semantisch passt {best} besser. "
-        "Prüfen, welche Seite die Query bedienen soll, und die andere abgrenzen."
+    L.V_MATCH: (
+        "Es gibt bereits eine passende Seite: {best}. Prüfen, ob sie die Query abdeckt oder ausgebaut werden kann, "
+        "bevor eine neue Seite entsteht."
     ),
-    L.V_WATCH: "{rank_url} rankt auf Position {position}, obwohl keine Seite semantisch gut passt. Beobachten.",
-    L.V_USE: "Keine neue Seite bauen: {best} passt bereits. Seite ausbauen und intern stärken.",
+    L.V_GAP: "Keine Seite erreicht die Schwelle. Kandidat für eine neue Seite, nach Prüfung der besten Treffer.",
+    L.V_OK: "Die rankende Seite gehört semantisch zu den besten Treffern. Kein Hinweis auf Handlungsbedarf.",
+    L.V_RISK: (
+        "{rank_url} rankt auf Position {position}, semantisch passt {best} deutlich besser. "
+        "Prüfen, welche Seite die Query bedienen soll."
+    ),
+    L.V_WATCH: (
+        "{rank_url} rankt auf Position {position}, obwohl keine Seite die Schwelle erreicht. "
+        "Beobachten und die Schwelle prüfen."
+    ),
+    L.V_USE: (
+        "{best} passt semantisch zur Query, rankt aber nicht gut. Prüfen, ob diese Seite ausgebaut und intern "
+        "gestärkt werden kann, statt eine neue zu bauen."
+    ),
     L.V_CHECK: (
         "Vor Neuerstellung prüfen: {best} bedient bereits ein Keyword mit stark überlappender SERP. "
-        "Seite erweitern statt neu bauen?"
+        "Lässt sich die Seite erweitern?"
     ),
 }
 # Rankende URL fehlt im Frog-Export: verglichen wurde nichts, das Urteil bleibt
 ADVICE_NOT_IN_EXPORT = (
     "{rank_url} rankt auf Position {position}, steht aber nicht im Frog-Export und wurde nicht verglichen. "
-    "Semantisch bester Treffer im Export: {best}. Prüfen, ob die rankende Seite im Export fehlt."
+    "Semantisch bester Treffer im Export: {best}. "
+    "Prüfen, ob die rankende Seite im Export fehlt, bevor daraus Schlüsse gezogen werden."
 )
 
 

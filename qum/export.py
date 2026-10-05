@@ -55,7 +55,7 @@ _COLUMN_HELP = {
     L.C_RANK_URL: "Die URL, die laut Ranking-Export am besten für die Query rankt.",
     L.C_POSITION: "Beste Position der rankenden URL für die Query im Ranking-Export.",
     L.C_NOTE: "Ergänzender Hinweis, zum Beispiel wenn eine URL im Frog-Export fehlt.",
-    L.C_ADVICE: "Feste Empfehlung zum Urteil, kein generierter Text.",
+    L.C_ADVICE: "Fester Hinweis, was zu prüfen ist, kein generierter Text. Entscheiden muss ein Mensch.",
     L.C_CLUSTER: "Keywords mit gleicher Nummer haben stark überlappende Google-Ergebnisse. 0 = kein Cluster.",
     L.C_CAND: "Bestehende Seite, die ein Keyword mit stark überlappender SERP bereits bedient.",
     L.C_CAND_KW: "Das Nachbar-Keyword mit stark überlappender SERP, bei dem die Kandidaten-Seite passt.",

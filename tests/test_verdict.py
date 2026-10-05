@@ -148,3 +148,31 @@ def test_ranking_url_missing_in_export_gets_its_own_advice():
 def test_advice_texts_do_not_overclaim_serp_similarity():
     assert all("fast gleicher SERP" not in text for text in ADVICE.values())
     assert "stark überlappender SERP" in ADVICE[L.V_CHECK]
+
+
+def test_advice_reads_as_a_hint_to_check():
+    assert ADVICE == {
+        L.V_MATCH: (
+            "Es gibt bereits eine passende Seite: {best}. Prüfen, ob sie die Query abdeckt oder ausgebaut werden kann, "
+            "bevor eine neue Seite entsteht."
+        ),
+        L.V_GAP: "Keine Seite erreicht die Schwelle. Kandidat für eine neue Seite, nach Prüfung der besten Treffer.",
+        L.V_OK: "Die rankende Seite gehört semantisch zu den besten Treffern. Kein Hinweis auf Handlungsbedarf.",
+        L.V_RISK: (
+            "{rank_url} rankt auf Position {position}, semantisch passt {best} deutlich besser. "
+            "Prüfen, welche Seite die Query bedienen soll."
+        ),
+        L.V_WATCH: (
+            "{rank_url} rankt auf Position {position}, obwohl keine Seite die Schwelle erreicht. "
+            "Beobachten und die Schwelle prüfen."
+        ),
+        L.V_USE: (
+            "{best} passt semantisch zur Query, rankt aber nicht gut. Prüfen, ob diese Seite ausgebaut und intern "
+            "gestärkt werden kann, statt eine neue zu bauen."
+        ),
+        L.V_CHECK: (
+            "Vor Neuerstellung prüfen: {best} bedient bereits ein Keyword mit stark überlappender SERP. "
+            "Lässt sich die Seite erweitern?"
+        ),
+    }
+    assert ADVICE_NOT_IN_EXPORT.endswith("Prüfen, ob die rankende Seite im Export fehlt, bevor daraus Schlüsse gezogen werden.")

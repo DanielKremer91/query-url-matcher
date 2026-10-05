@@ -218,3 +218,7 @@ def test_help_texts_describe_the_margin_rule():
     assert "deutlich besser" in export._VERDICT_HELP[L.V_RISK]
     assert "rankende Seite" in export._COLUMN_HELP[L.C_BEST_URL]
     assert "deutlich besser" in export._STAGE_HELP[L.STAGE_RISK]
+
+
+def test_advice_column_help_calls_it_a_hint_to_check():
+    assert export._COLUMN_HELP[L.C_ADVICE] == "Fester Hinweis, was zu prüfen ist, kein generierter Text. Entscheiden muss ein Mensch."
