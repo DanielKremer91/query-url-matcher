@@ -1,3 +1,4 @@
+import re
 import zipfile
 
 import pandas as pd
@@ -202,9 +203,35 @@ def write_excel(path, sheets: dict) -> None:
                         sheet.cell(row=row, column=col).fill = PatternFill("solid", fgColor=colour)
 
 
+_PLAIN_NUMBER = re.compile(r"^-?\d+\.\d+$")
+_NUMBER_IN_TEXT = re.compile(r"(Score|Position) (\d+)\.(\d+)")
+
+
+def _comma_in_text(name, df: pd.DataFrame) -> pd.DataFrame:
+    """Zahlen, die als Text vorliegen, mit Dezimalkomma (sonst liest deutsches Excel "4.3" als Datum)."""
+    out = df.copy()
+
+    def swap(value):
+        return value.replace(".", ",") if isinstance(value, str) else value
+
+    for column in (L.C_POSITION, L.C_CAND_POS):
+        if column in out.columns:
+            out[column] = out[column].map(swap)
+    if L.C_COMPETING in out.columns:
+        out[L.C_COMPETING] = out[L.C_COMPETING].map(
+            lambda v: _NUMBER_IN_TEXT.sub(r"\1 \2,\3", v) if isinstance(v, str) else v
+        )
+    if name == SHEET_README:
+        numeric = (out[L.R_AREA] == "Einstellung") & out[L.R_TEXT].map(lambda v: bool(_PLAIN_NUMBER.match(str(v))))
+        out.loc[numeric, L.R_TEXT] = out.loc[numeric, L.R_TEXT].map(swap)
+    return out
+
+
 def write_csv_zip(path, sheets: dict, sep: str = ";") -> None:
     # Semikolon ist das deutsche Excel-Format: dort gehört das Komma in die Zahl
     decimal = "," if sep == ";" else "."
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
         for name, df in sheets.items():
+            if decimal == ",":
+                df = _comma_in_text(name, df)
             archive.writestr(_CSV_NAMES[name], df.to_csv(index=False, sep=sep, decimal=decimal).encode("utf-8-sig"))

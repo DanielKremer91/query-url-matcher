@@ -240,3 +240,56 @@ def test_write_csv_zip_writes_decimal_comma_only_with_semicolon(tmp_path, sep, n
 
 def test_risk_help_covers_ranking_url_outside_the_export():
     assert "oder die rankende URL steht nicht im Frog-Export" in export._VERDICT_HELP[L.V_RISK]
+
+
+def _text_number_sheets():
+    decisions = _decisions()
+    decisions[L.C_POSITION] = ["4.3", "12", ""]
+    decisions[L.C_CAND_POS] = ["", "7.5", ""]
+    cannibal = pd.DataFrame(
+        {
+            L.C_QUERY: ["a"],
+            L.C_STAGE: [L.STAGE_RISK],
+            L.C_REASON: [L.REASON_BETTER],
+            L.C_COMPETING: ["https://a.de/x.html (Position 4.3, Score 0.842) | https://a.de/y (Score 0.9)"],
+        }
+    )
+    settings = {"Datum": "2026-10-05", "Modell": "multilingual-e5-large", "Schwelle": 0.8123, "Treffer je Query (Top-N)": 5}
+    return export.build_sheets(decisions, TOP, cannibal, settings)
+
+
+def _csv_frames(path, sep):
+    with zipfile.ZipFile(path) as archive:
+        return {
+            name: pd.read_csv(io.BytesIO(archive.read(name)), encoding="utf-8-sig", sep=sep, dtype=str, keep_default_na=False)
+            for name in ("entscheidung.csv", "kannibalisierung.csv", "lesehilfe.csv")
+        }
+
+
+def test_semicolon_csv_uses_decimal_comma_in_positions_settings_and_competing_urls(tmp_path):
+    sheets = _text_number_sheets()
+    export.write_csv_zip(tmp_path / "out.zip", sheets, sep=";")
+    frames = _csv_frames(tmp_path / "out.zip", ";")
+    decisions = frames["entscheidung.csv"]
+    assert decisions[L.C_POSITION].tolist() == ["4,3", "12", ""]
+    assert decisions[L.C_CAND_POS].tolist() == ["", "7,5", ""]
+    assert frames["kannibalisierung.csv"].iloc[0][L.C_COMPETING] == (
+        "https://a.de/x.html (Position 4,3, Score 0,842) | https://a.de/y (Score 0,9)"
+    )
+    readme = frames["lesehilfe.csv"].set_index(L.R_ENTRY)[L.R_TEXT]
+    assert readme["Schwelle"] == "0,8123"
+    assert readme["Datum"] == "2026-10-05" and readme["Modell"] == "multilingual-e5-large"
+    assert readme["Treffer je Query (Top-N)"] == "5"
+    assert sheets[export.SHEET_DECISION][L.C_POSITION].tolist() == ["4.3", "12", ""]  # Original unverändert
+
+
+def test_comma_csv_and_excel_keep_the_decimal_point_in_text(tmp_path):
+    sheets = _text_number_sheets()
+    export.write_csv_zip(tmp_path / "out.zip", sheets, sep=",")
+    frames = _csv_frames(tmp_path / "out.zip", ",")
+    assert frames["entscheidung.csv"][L.C_POSITION].tolist() == ["4.3", "12", ""]
+    assert "Position 4.3, Score 0.842" in frames["kannibalisierung.csv"].iloc[0][L.C_COMPETING]
+    export.write_excel(tmp_path / "out.xlsx", sheets)
+    book = load_workbook(tmp_path / "out.xlsx")
+    position_col = list(sheets[export.SHEET_DECISION].columns).index(L.C_POSITION) + 1
+    assert book[export.SHEET_DECISION].cell(row=2, column=position_col).value == "4.3"
