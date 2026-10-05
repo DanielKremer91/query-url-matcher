@@ -336,3 +336,12 @@ def test_smoke_median_proposal_warning_with_too_few_pairs(nb, capsys):
     out = capsys.readouterr().out
     assert "Ranking-Paare bis Position 5, für eine Kalibrierung sind 20 nötig." in out
     assert "Ohne Rankings gibt es keinen Maßstab" in out
+
+
+def test_smoke_header_only_ranking_file_stops_with_hint(nb, capsys):
+    _load(nb)
+    nb.uploads.append(("leer.csv", b"Keyword;URL;Position\n"))
+    with pytest.raises(colab.NotebookStop):
+        nb.run(5)
+    assert "❌ Die Datei enthält keine verwertbaren Zeilen" in capsys.readouterr().out
+    assert nb.ns.get("rankings") is None

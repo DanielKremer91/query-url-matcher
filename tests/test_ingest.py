@@ -156,3 +156,81 @@ def test_load_rankings_accepts_decimal_commas():
     )
     out = ingest.load_rankings(df)
     assert out["position"].tolist() == [3.5, 12.0]
+
+
+def test_read_table_loads_csv_with_very_long_cell():
+    long_text = "wort " * 40_000  # 200.000 Zeichen, mehr als das Feldlimit der python-Engine
+    raw = f"Address;Extract Main Content 1\nhttps://a.de/1;{long_text}\nhttps://a.de/2;kurz\n".encode("utf-8")
+    df = ingest.read_table(raw, "frog.csv")
+    assert len(df.iloc[0]["Extract Main Content 1"]) == len(long_text)
+    assert df.iloc[1]["Address"] == "https://a.de/2"
+
+
+def test_read_table_detects_separator_from_first_non_blank_line():
+    df = ingest.read_table("\n\nKeyword;URL\nfutter, nass;https://a.de/1\n".encode("utf-8"), "r.csv")
+    assert list(df.columns) == ["Keyword", "URL"]
+    assert df.iloc[0]["Keyword"] == "futter, nass"
+
+
+@pytest.mark.parametrize("value", ["NA", "null", "nan", "None", "N/A"])
+def test_read_table_keeps_na_like_text(value):
+    df = ingest.read_table(f"Query;Notiz\n{value};x\nfutter;\n".encode("utf-8"), "q.csv")
+    assert df.iloc[0]["Query"] == value
+    assert pd.isna(df.iloc[1]["Notiz"])
+    assert ingest.load_queries(df) == [value, "futter"]
+
+
+def test_read_table_excel_keeps_na_like_text():
+    buf = io.BytesIO()
+    pd.DataFrame({"Query": ["NA", "null"]}).to_excel(buf, index=False)
+    df = ingest.read_table(buf.getvalue(), "q.xlsx")
+    assert df["Query"].tolist() == ["NA", "null"]
+
+
+def test_load_rankings_header_only_file_raises_ingest_error():
+    df = ingest.read_table(b"Keyword;URL;Position\n", "r.csv")
+    with pytest.raises(ingest.IngestError, match="keine verwertbaren Zeilen"):
+        ingest.load_rankings(df)
+
+
+def test_load_rankings_without_usable_rows_raises_ingest_error():
+    df = pd.DataFrame({"Keyword": ["futter"], "URL": ["https://a.de/1"], "Position": ["x"]})
+    with pytest.raises(
+        ingest.IngestError,
+        match=r"^Die Datei enthält keine verwertbaren Zeilen \(Keyword, URL und Position müssen gefüllt sein\)\.$",
+    ):
+        ingest.load_rankings(df)
+
+
+def test_load_serps_header_only_file_raises_ingest_error():
+    df = ingest.read_table(b"Keyword;URL;Position;Type\n", "s.csv")
+    with pytest.raises(ingest.IngestError, match="keine verwertbaren Zeilen"):
+        ingest.load_serps(df)
+
+
+def test_load_serps_without_organic_type_raises_own_message():
+    df = pd.DataFrame(
+        {"Keyword": ["futter"], "URL": ["https://a.de/ad"], "Position": [1], "Type": ["Paid top"]}
+    )
+    with pytest.raises(ingest.IngestError, match=r"^Die Spalte Type enthält keinen Wert 'organic'\."):
+        ingest.load_serps(df)
+
+
+@pytest.mark.parametrize("header", ["Häufigste Suchanfragen", "Suchbegriff", "Search Term", "Suchanfragen"])
+def test_query_and_keyword_aliases_from_exports(header):
+    df = pd.DataFrame({header: ["futter"], "Klicks": [3]})
+    assert ingest.load_queries(df) == ["futter"]
+    ranking = pd.DataFrame({header: ["futter"], "URL": ["https://a.de/1"], "Position": [2]})
+    assert ingest.load_rankings(ranking)["query_norm"].tolist() == ["futter"]
+
+
+@pytest.mark.parametrize("header", ["Die häufigsten Seiten", "Seiten", "Landingpage"])
+def test_url_aliases_from_exports(header):
+    df = pd.DataFrame({header: ["https://a.de/1"], "Main Content": ["Text"]})
+    assert ingest.load_content(df).urls == ["https://a.de/1"]
+
+
+def test_load_queries_multi_column_without_alias_asks_for_column():
+    df = pd.DataFrame({"Begriff": ["futter"], "Klicks": [3]})
+    with pytest.raises(ingest.IngestError, match=r"Gefundene Spalten: \['Begriff', 'Klicks'\].*Spaltennamen"):
+        ingest.load_queries(df)

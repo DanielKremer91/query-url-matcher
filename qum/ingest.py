@@ -5,9 +5,45 @@ import pandas as pd
 
 from .normalize import host_of, normalize_query, normalize_url
 
-QUERY_ALIASES = ["query", "queries", "keyword", "keywords", "suchanfrage", "prompt", "top queries", "search query"]
-KEYWORD_ALIASES = ["keyword", "query", "top queries", "suchanfrage", "search query", "prompt"]
-URL_ALIASES = ["url", "address", "adresse", "page", "seite", "current url", "landing page", "target url"]
+QUERY_ALIASES = [
+    "query",
+    "queries",
+    "keyword",
+    "keywords",
+    "suchanfrage",
+    "suchanfragen",
+    "häufigste suchanfragen",
+    "suchbegriff",
+    "prompt",
+    "top queries",
+    "search query",
+    "search term",
+]
+KEYWORD_ALIASES = [
+    "keyword",
+    "query",
+    "top queries",
+    "suchanfrage",
+    "suchanfragen",
+    "häufigste suchanfragen",
+    "suchbegriff",
+    "search query",
+    "search term",
+    "prompt",
+]
+URL_ALIASES = [
+    "url",
+    "address",
+    "adresse",
+    "page",
+    "seite",
+    "seiten",
+    "die häufigsten seiten",
+    "current url",
+    "landing page",
+    "landingpage",
+    "target url",
+]
 CONTENT_ALIASES = [
     "extract main content 1",
     "main content",
@@ -42,21 +78,25 @@ def _decode(data: bytes) -> str:
         return data.decode("cp1252", errors="replace")
 
 
+# "NA", "null", "nan" usw. bleiben Text, nur leere Zellen fehlen
+_NA = {"keep_default_na": False, "na_values": [""]}
+
+
 def read_table(data: bytes, filename: str) -> pd.DataFrame:
     name = filename.lower()
     if name.endswith(".xlsx"):
-        return pd.read_excel(io.BytesIO(data))
+        return pd.read_excel(io.BytesIO(data), **_NA)
     if not name.endswith((".csv", ".tsv", ".txt")):
         raise IngestError(f"Format von '{filename}' wird nicht unterstützt. Erlaubt sind CSV, TSV und XLSX.")
     text = _decode(data)
-    lines = [line for line in text.splitlines() if line.strip()]
-    if not lines:
+    first = next((line for line in io.StringIO(text) if line.strip()), None)
+    if first is None:
         raise IngestError(f"Die Datei '{filename}' ist leer.")
-    sep = max(["\t", ";", ","], key=lines[0].count)
-    if lines[0].count(sep) == 0:
-        clean = [line.strip().strip('"') for line in lines]
+    sep = max(["\t", ";", ","], key=first.count)
+    if first.count(sep) == 0:
+        clean = [line.strip().strip('"') for line in text.splitlines() if line.strip()]
         return pd.DataFrame({clean[0]: clean[1:]})
-    return pd.read_csv(io.StringIO(text), sep=sep, engine="python")
+    return pd.read_csv(io.StringIO(text), sep=sep, **_NA)
 
 
 def find_column(df: pd.DataFrame, aliases: list) -> str | None:
@@ -87,6 +127,8 @@ def _blank(value) -> bool:
 
 def load_queries(df: pd.DataFrame, column: str | None = None) -> list:
     col = _require(df, column, [], "Query") if column else find_column(df, QUERY_ALIASES)
+    if col is None and len(df.columns) > 1:
+        col = _require(df, None, QUERY_ALIASES, "Query")
     if col is None:
         # keine Kopfzeile: die erste Zeile ist selbst eine Query
         col = df.columns[0]
@@ -125,9 +167,12 @@ def load_content(df: pd.DataFrame, url_col=None, content_col=None) -> ContentTab
     return ContentTable(urls, contents, skipped_empty, skipped_duplicate)
 
 
+NO_USABLE_ROWS = "Die Datei enthält keine verwertbaren Zeilen (Keyword, URL und Position müssen gefüllt sein)."
+
+
 def _ranking_frame(df, kcol, ucol, pcol, keep_keyword=False):
-    # Drop rows with blank keywords first
-    df = df[~df[kcol].map(_blank)]
+    # Zeilen ohne Keyword zuerst entfernen; astype(bool), weil die Maske bei leeren Tabellen object ist
+    df = df[~df[kcol].map(_blank).astype(bool)]
     out = pd.DataFrame(
         {
             "keyword": df[kcol].astype(str).str.strip(),
@@ -137,6 +182,8 @@ def _ranking_frame(df, kcol, ucol, pcol, keep_keyword=False):
         }
     )
     out = out.dropna(subset=["url", "position"])
+    if out.empty:
+        raise IngestError(NO_USABLE_ROWS)
     out["url_norm"] = out["url"].map(normalize_url)
     out["position"] = out["position"].astype(float)
     cols = ["query_norm", "url", "url_norm", "position"]
@@ -158,7 +205,13 @@ def load_serps(df, keyword_col=None, url_col=None, position_col=None, type_col=N
     pcol = _require(df, position_col, POSITION_ALIASES, "Position")
     tcol = type_col or find_column(df, TYPE_ALIASES)
     if tcol is not None:
-        df = df[df[tcol].astype(str).str.lower().str.contains("organic", na=False)]
+        organic = df[df[tcol].astype(str).str.lower().str.contains("organic", na=False)]
+        if organic.empty and not df.empty:
+            raise IngestError(
+                f"Die Spalte {tcol} enthält keinen Wert 'organic'. Ausgewertet werden nur organische Ergebnisse. "
+                "Prüfe, ob die Datei ein SERP-Export mit organischen Treffern ist."
+            )
+        df = organic
     return _ranking_frame(df, kcol, ucol, pcol, keep_keyword=True)
 
 

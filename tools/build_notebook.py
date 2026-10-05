@@ -185,10 +185,7 @@ known_queries = {ingest.normalize_query(q) for q in queries}
 known_urls = {normalize_url(u) for u in content.urls}
 covered = int(loaded["query_norm"].isin(known_queries).sum())
 colab.invalidate(globals(), *colab.VERDICT_STATE)
-if loaded.empty:
-    print("⚠️ Die Datei enthält keine Zeilen mit Keyword, URL und Position. Prüfe die Spalten und die Positionswerte.")
-    rankings, rankings_source = None, None
-elif covered == 0:
+if covered == 0:
     print("⚠️ Keine der Ranking-Zeilen passt zu deinen Queries. Prüfe, ob die Datei zu diesem Projekt gehört.")
     rankings, rankings_source = None, None
 elif not loaded["url_norm"].isin(known_urls).any():
