@@ -55,10 +55,49 @@ def test_readme_lists_present_sheets_settings_and_disclaimer():
 
 
 def test_every_sheet_has_query_first_except_readme_and_summary():
-    sheets = export.build_sheets(_decisions(with_cluster=True), TOP, CANNIBAL, SETTINGS)
+    pairs = pd.DataFrame({"Volume": [10], "Keyword": ["a"], "URL": ["u1"]})
+    sheets = export.build_sheets(_decisions(with_cluster=True), TOP, CANNIBAL, SETTINGS, pairs=pairs)
+    assert export.SHEET_PAIRS in sheets
     for name, df in sheets.items():
         if name not in (export.SHEET_README, export.SHEET_GAP_CLUSTERS):
-            assert df.columns[0] == L.C_QUERY, name
+            assert df.columns[0] in (L.C_QUERY, "Keyword"), name
+
+
+def test_pairs_keyword_column_moves_to_front_without_renaming():
+    pairs = pd.DataFrame({"Volume": [10], "Keyword": ["a"], "URL": ["u1"]})
+    sheet = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS, pairs=pairs)[export.SHEET_PAIRS]
+    assert list(sheet.columns) == ["Keyword", "Volume", "URL"]
+
+
+def test_pairs_without_keyword_column_stay_unchanged():
+    pairs = pd.DataFrame({"Volume": [10], "URL": ["u1"]})
+    sheet = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS, pairs=pairs)[export.SHEET_PAIRS]
+    assert list(sheet.columns) == ["Volume", "URL"]
+
+
+def test_every_label_column_has_a_help_text():
+    columns = [v for k, v in vars(L).items() if k.startswith("C_") and k != "C_SIDE"]
+    assert columns
+    for column in columns:
+        assert column in export._COLUMN_HELP, column
+
+
+def test_readme_explains_candidate_columns_and_stages_only_when_present():
+    decisions = _decisions(with_cluster=True)
+    decisions[L.C_CAND] = ["", "", "u1"]
+    readme = export.build_sheets(decisions, TOP, CANNIBAL, SETTINGS)[export.SHEET_README]
+    assert L.C_CAND in readme["Eintrag"].tolist()
+    stages = readme[readme["Bereich"] == "Stufe"]["Eintrag"].tolist()
+    assert stages == [L.STAGE_RISK, L.STAGE_VISIBLE]
+    plain = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS)[export.SHEET_README]
+    assert L.C_CAND not in plain["Eintrag"].tolist()
+    assert L.C_CLUSTER not in plain["Eintrag"].tolist()
+
+
+def test_readme_skips_columns_without_explanation():
+    pairs = pd.DataFrame({"Keyword": ["a"], "Volume": [10]})
+    readme = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS, pairs=pairs)[export.SHEET_README]
+    assert "Volume" not in readme["Eintrag"].tolist()
 
 
 def test_write_excel_creates_sheets_and_colours_verdicts(tmp_path):
@@ -81,3 +120,14 @@ def test_write_csv_zip_has_one_file_per_sheet(tmp_path):
         ]
         df = pd.read_csv(io.BytesIO(archive.read("entscheidung.csv")), encoding="utf-8-sig")
     assert df[L.C_QUERY].tolist() == ["a", "b", "c"]
+
+
+def test_write_excel_strips_control_characters_without_mutating_input(tmp_path):
+    decisions = _decisions()
+    decisions[L.C_CHUNK] = ["ok", "tab\x0bvertical", "unit\x1fsep"]
+    path = tmp_path / "out.xlsx"
+    export.write_excel(path, export.build_sheets(decisions, TOP, CANNIBAL, SETTINGS))
+    sheet = load_workbook(path)[export.SHEET_DECISION]
+    values = [sheet.cell(row=r, column=4).value for r in (2, 3, 4)]
+    assert values == ["ok", "tab vertical", "unit sep"]
+    assert decisions[L.C_CHUNK].tolist() == ["ok", "tab\x0bvertical", "unit\x1fsep"]

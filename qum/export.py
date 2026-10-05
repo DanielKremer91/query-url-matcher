@@ -1,10 +1,12 @@
 import zipfile
 
 import pandas as pd
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 from . import labels as L
+from .ingest import KEYWORD_ALIASES, find_column
 from .serp import gap_summary
 
 SHEET_README = "Lesehilfe"
@@ -35,12 +37,42 @@ _SHEET_HELP = {
 }
 
 _COLUMN_HELP = {
+    L.C_QUERY: "Die Suchanfrage, um die es in der Zeile geht.",
+    L.C_URL: "Die eigene Seite, die zur Query passt.",
+    L.C_CHUNK: "Der Textblock der Seite, der zur Query am besten passt.",
     L.C_S_CHUNK: "Cosinus-Ähnlichkeit zwischen Query und dem am besten passenden Textblock der Seite.",
     L.C_S_FULL: "Cosinus-Ähnlichkeit zwischen Query und dem gesamten Main Content der Seite.",
     L.C_S_COMBI: "Gewichtete Mischung aus Chunk-Score und Gesamt-URL-Score.",
+    L.C_R_CHUNK: "Rang der Seite nach Chunk-Score für diese Query. 1 = beste URL für diese Query unter allen URLs.",
+    L.C_R_FULL: "Rang der Seite nach Gesamt-URL-Score für diese Query. 1 = beste URL für diese Query unter allen URLs.",
+    L.C_R_COMBI: "Rang der Seite nach Kombi-Score für diese Query. 1 = beste URL für diese Query unter allen URLs.",
     L.C_METHOD: f"'{L.FULLTEXT}': ganzer Text als ein Embedding. '{L.CHUNK_MEAN}': Text zu lang, Näherung.",
+    L.C_VERDICT: "Einordnung der Query, siehe die Urteile weiter unten in dieser Lesehilfe.",
+    L.C_BEST_URL: "Die Seite mit dem höchsten Score für die Query, nach der gewählten Bewertungsgrundlage.",
+    L.C_RANK_URL: "Die URL, die laut Ranking-Export am besten für die Query rankt.",
+    L.C_POSITION: "Beste Position der rankenden URL für die Query im Ranking-Export.",
+    L.C_NOTE: "Ergänzender Hinweis, zum Beispiel wenn eine URL im Frog-Export fehlt.",
+    L.C_ADVICE: "Feste Empfehlung zum Urteil, kein generierter Text.",
     L.C_CLUSTER: "Keywords mit gleicher Nummer haben stark überlappende Google-Ergebnisse. 0 = kein Cluster.",
     L.C_CAND: "Bestehende Seite, die ein Keyword mit fast gleicher SERP bereits bedient.",
+    L.C_CAND_KW: "Das Nachbar-Keyword mit fast gleicher SERP, bei dem die Kandidaten-Seite passt.",
+    L.C_CAND_OVERLAP: "Anteil gemeinsamer URLs in den Google-Ergebnissen von Query und Nachbar-Keyword.",
+    L.C_CAND_SCORE: "Score der Lücken-Query selbst gegen die Kandidaten-Seite.",
+    L.C_CAND_CHUNK: "Der Textblock der Kandidaten-Seite, der zur Lücken-Query am besten passt.",
+    L.C_CAND_POS: "Position der Kandidaten-Seite für das Nachbar-Keyword im Ranking-Export.",
+    L.C_CAND_MORE: "Weitere Kandidaten-Seiten von anderen Nachbar-Keywords.",
+    L.C_STAGE: "Stufe der Kannibalisierung, siehe die Stufen weiter unten in dieser Lesehilfe.",
+    L.C_REASON: "Warum die Query als Kannibalisierung aufgeführt wird.",
+    L.C_COMPETING: "Die konkurrierenden eigenen URLs mit Score oder Position.",
+    L.C_PAIR_RANK: "Rang der Seite des Paares unter allen URLs für das Keyword. 1 = beste URL für diese Query unter allen URLs.",
+    L.C_GAP_COUNT: "Anzahl der Content-Lücken-Queries in diesem Cluster.",
+    L.C_NEW_PAGES: "Anzahl neuer Seiten, die dafür nötig wären: ein Cluster eine Seite, Queries ohne Cluster je eine.",
+    L.C_GAP_QUERIES: "Die Content-Lücken-Queries dieser Zeile, getrennt durch senkrechte Striche.",
+}
+
+_STAGE_HELP = {
+    L.STAGE_RISK: "Eine Seite rankt gut, eine andere passt besser, oder mehrere Seiten passen fast gleich gut.",
+    L.STAGE_VISIBLE: "Mehrere eigene Seiten ranken bereits für die Query.",
 }
 
 _VERDICT_HELP = {
@@ -73,11 +105,12 @@ def content_gaps(decisions: pd.DataFrame) -> pd.DataFrame:
     return decisions[decisions[L.C_VERDICT].isin([L.V_GAP, L.V_CHECK])].reset_index(drop=True)
 
 
-def _readme(sheet_names, settings) -> pd.DataFrame:
+def _readme(sheet_names, settings, present_columns) -> pd.DataFrame:
     rows = [("Hinweis", "Einordnung", DISCLAIMER)]
     rows += [("Blatt", name, _SHEET_HELP[name]) for name in sheet_names]
     rows += [("Urteil", verdict, text) for verdict, text in _VERDICT_HELP.items()]
-    rows += [("Spalte", column, text) for column, text in _COLUMN_HELP.items()]
+    rows += [("Stufe", stage, text) for stage, text in _STAGE_HELP.items()]
+    rows += [("Spalte", column, text) for column, text in _COLUMN_HELP.items() if column in present_columns]
     rows += [("Einstellung", key, str(value)) for key, value in settings.items()]
     return pd.DataFrame(rows, columns=["Bereich", "Eintrag", "Erklärung"])
 
@@ -92,13 +125,27 @@ def build_sheets(decisions, top, cannibal, settings, pairs=None) -> dict:
     if L.C_CLUSTER in decisions.columns:
         sheets[SHEET_GAP_CLUSTERS] = gap_summary(decisions)
     if pairs is not None:
+        keyword = find_column(pairs, KEYWORD_ALIASES)
+        if keyword is not None:
+            pairs = pairs[[keyword] + [c for c in pairs.columns if c != keyword]]
         sheets[SHEET_PAIRS] = pairs
-    return {SHEET_README: _readme(list(sheets), settings), **sheets}
+    present = {column for df in sheets.values() for column in df.columns}
+    return {SHEET_README: _readme(list(sheets), settings, present), **sheets}
+
+
+def _clean(df: pd.DataFrame) -> pd.DataFrame:
+    """Steuerzeichen entfernen, die openpyxl nicht schreiben kann. Das Original bleibt unverändert."""
+    out = df.copy()
+    for column in out.columns:
+        if out[column].dtype == object or pd.api.types.is_string_dtype(out[column]):
+            out[column] = out[column].map(lambda v: ILLEGAL_CHARACTERS_RE.sub(" ", v) if isinstance(v, str) else v)
+    return out
 
 
 def write_excel(path, sheets: dict) -> None:
     with pd.ExcelWriter(path, engine="openpyxl") as writer:
         for name, df in sheets.items():
+            df = _clean(df)
             df.to_excel(writer, sheet_name=name, index=False)
             sheet = writer.sheets[name]
             for cell in sheet[1]:
