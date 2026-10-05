@@ -2,6 +2,7 @@ import io
 import zipfile
 
 import pandas as pd
+import pytest
 from openpyxl import load_workbook
 
 from qum import export
@@ -120,8 +121,30 @@ def test_write_csv_zip_has_one_file_per_sheet(tmp_path):
         assert archive.namelist() == [
             "lesehilfe.csv", "entscheidung.csv", "top_treffer.csv", "kannibalisierung.csv", "content_luecken.csv",
         ]
-        df = pd.read_csv(io.BytesIO(archive.read("entscheidung.csv")), encoding="utf-8-sig")
+        df = pd.read_csv(io.BytesIO(archive.read("entscheidung.csv")), encoding="utf-8-sig", sep=";")
     assert df[L.C_QUERY].tolist() == ["a", "b", "c"]
+
+
+@pytest.mark.parametrize("sep", [";", ","])
+def test_write_csv_zip_round_trips_with_either_separator(tmp_path, sep):
+    path = tmp_path / "out.zip"
+    sheets = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS)
+    sheets[export.SHEET_DECISION].loc[0, L.C_QUERY] = "futter; nass, 10 kg"  # beide Trennzeichen im Text
+    export.write_csv_zip(path, sheets, sep=sep)
+    with zipfile.ZipFile(path) as archive:
+        raw = archive.read("entscheidung.csv").decode("utf-8-sig")
+        df = pd.read_csv(io.StringIO(raw), sep=sep)
+    assert raw.splitlines()[0].count(sep) == len(sheets[export.SHEET_DECISION].columns) - 1
+    assert list(df.columns) == list(sheets[export.SHEET_DECISION].columns)
+    assert df[L.C_QUERY].tolist() == ["futter; nass, 10 kg", "b", "c"]
+
+
+def test_write_csv_zip_defaults_to_semicolon(tmp_path):
+    path = tmp_path / "out.zip"
+    export.write_csv_zip(path, export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS))
+    with zipfile.ZipFile(path) as archive:
+        header = archive.read("entscheidung.csv").decode("utf-8-sig").splitlines()[0]
+    assert ";" in header
 
 
 def test_write_excel_strips_control_characters_without_mutating_input(tmp_path):

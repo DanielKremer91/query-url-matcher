@@ -192,7 +192,7 @@ def write_excel(path, sheets: dict) -> None:
                         sheet.cell(row=row, column=col).fill = PatternFill("solid", fgColor=colour)
 
 
-def write_csv_zip(path, sheets: dict) -> None:
+def write_csv_zip(path, sheets: dict, sep: str = ";") -> None:
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
         for name, df in sheets.items():
-            archive.writestr(_CSV_NAMES[name], df.to_csv(index=False).encode("utf-8-sig"))
+            archive.writestr(_CSV_NAMES[name], df.to_csv(index=False, sep=sep).encode("utf-8-sig"))

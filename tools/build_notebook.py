@@ -357,7 +357,9 @@ print("✅ Schritt 7 fertig. Weiter mit Schritt 8 (Export).")
 
 STEP8 = '''#@title Schritt 8: Export { display-mode: "form" }
 #@markdown Die Excel-Datei enthält ein Blatt je Auswertung und eine Lesehilfe.
+#@markdown Das Trennzeichen gilt nur für die zusätzliche CSV-ZIP.
 zusaetzlich_csv_zip = False #@param {type:"boolean"}
+csv_trennzeichen = "Semikolon (für deutsches Excel)" #@param ["Semikolon (für deutsches Excel)", "Komma"]
 
 from qum import colab, export
 
@@ -366,7 +368,8 @@ sheets = export.build_sheets(decisions, top, cannibal, settings, threshold_sourc
 export.write_excel("query_url_matcher.xlsx", sheets)
 colab.download("query_url_matcher.xlsx")
 if zusaetzlich_csv_zip:
-    export.write_csv_zip("query_url_matcher_csv.zip", sheets)
+    separator = "," if csv_trennzeichen == "Komma" else ";"
+    export.write_csv_zip("query_url_matcher_csv.zip", sheets, sep=separator)
     colab.download("query_url_matcher_csv.zip")
 print(f"✅ Schritt 8 fertig: {len(sheets)} Blätter exportiert. Schritt 9 ist optional.")
 '''

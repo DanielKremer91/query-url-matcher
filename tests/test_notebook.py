@@ -366,6 +366,30 @@ def test_smoke_uncalibrated_threshold_is_flagged_in_counts_and_export(nb, tmp_pa
     assert export.CAVEAT_THRESHOLD["median"] in _readme_notes(tmp_path / "query_url_matcher.xlsx")
 
 
+def _zip_header(path):
+    import zipfile
+
+    with zipfile.ZipFile(path) as archive:
+        return archive.read("entscheidung.csv").decode("utf-8-sig").splitlines()[0]
+
+
+def test_smoke_step_8_csv_zip_uses_semicolon_by_default_and_comma_on_request(nb, tmp_path):
+    _load(nb)
+    nb.run(7)
+    nb.run(8, zusaetzlich_csv_zip=True)
+    assert ";" in _zip_header(tmp_path / "query_url_matcher_csv.zip")
+    nb.run(8, zusaetzlich_csv_zip=True, csv_trennzeichen="Komma")
+    header = _zip_header(tmp_path / "query_url_matcher_csv.zip")
+    assert "," in header and ";" not in header
+
+
+def test_step_8_separator_dropdown_defaults_to_semicolon():
+    source = next(s for s in _code_cells() if s.startswith("#@title Schritt 8"))
+    match = re.search(r'^csv_trennzeichen = (".*?") #@param (\[.*\])$', source, flags=re.M)
+    assert json.loads(match.group(1)) == "Semikolon (für deutsches Excel)"
+    assert json.loads(match.group(2)) == ["Semikolon (für deutsches Excel)", "Komma"]
+
+
 def test_smoke_threshold_typed_by_hand_is_named_in_export(nb, tmp_path, capsys):
     from qum import export
 
