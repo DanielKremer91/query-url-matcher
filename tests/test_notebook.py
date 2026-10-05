@@ -633,3 +633,21 @@ def test_smoke_own_threshold_of_one_is_accepted(nb):
     _load(nb)
     nb.run(7, schwelle_bestimmen=OWN, eigene_schwelle=1.0)
     assert nb.ns["settings"]["Schwelle"] == 1.0
+
+
+def test_install_line_pins_the_package_version():
+    import tomllib
+
+    import qum
+
+    source = next(s for s in _code_cells() if s.startswith("#@title Schritt 2"))
+    match = re.search(
+        r'^!pip install -q "qum\[local\] @ git\+https://github\.com/DanielKremer91/query-url-matcher@v([^"]+)"$',
+        source,
+        flags=re.M,
+    )
+    assert match and match.group(1) == qum.__version__
+    pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    assert pyproject["project"]["version"] == qum.__version__
+    committed = (ROOT / "query_url_matcher.ipynb").read_text(encoding="utf-8")
+    assert f"query-url-matcher@v{qum.__version__}" in committed

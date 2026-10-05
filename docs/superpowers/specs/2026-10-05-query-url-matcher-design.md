@@ -17,7 +17,7 @@ Das Notebook sortiert vor und begründet. Die Entscheidung trifft ein Mensch. Da
 
 - **Nur Google Colab.** Kein Streamlit.
 - **Sprache:** Notebook, Meldungen und Export auf Deutsch.
-- **Aufbau:** getestetes Python-Paket `qum` im GitHub-Repo `query-url-matcher`, dazu ein dünnes Notebook `query_url_matcher.ipynb`, das das Paket per `pip install git+https://github.com/DanielKremer91/query-url-matcher` lädt.
+- **Aufbau:** getestetes Python-Paket `qum` im GitHub-Repo `query-url-matcher`, dazu ein dünnes Notebook `query_url_matcher.ipynb`, das das Paket per `pip install git+https://github.com/DanielKremer91/query-url-matcher@v<version>` lädt, festgelegt auf den Git-Tag der Paketversion (`qum.__version__`, gleich der Version in `pyproject.toml`).
 - **Lizenz:** MIT. README auf Deutsch mit „Open in Colab"-Button.
 - **Größenordnung:** einige tausend bis wenige zehntausend URLs. Vor dem Einbetten schätzt das Notebook die Zahl der Chunks und warnt ab 50.000.
 - **Kein generierter Text:** Empfehlungen sind feste Textbausteine mit eingesetzten Werten.

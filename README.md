@@ -86,6 +86,14 @@ Was du beim Ausprobieren erwarten kannst:
     .venv/bin/pytest -q
     .venv/bin/python -m tools.build_notebook   # nach Änderungen an tools/build_notebook.py
 
+Das Notebook installiert das Paket vom Git-Tag seiner Version (`@v0.1.0`). So gibst du eine neue Version frei:
+
+1. Version in `qum/__init__.py` und `pyproject.toml` erhöhen (beide gleich).
+2. Notebook neu bauen: `.venv/bin/python -m tools.build_notebook`.
+3. Committen.
+4. Tag anlegen: `git tag v<version>`.
+5. Mit Tag pushen: `git push && git push origin v<version>`.
+
 ## Modellvergleich
 
     .venv/bin/pip install -e ".[local]"

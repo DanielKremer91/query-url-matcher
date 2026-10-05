@@ -3,6 +3,8 @@
 import json
 from pathlib import Path
 
+from qum import __version__
+
 ROOT = Path(__file__).resolve().parents[1]
 
 INTRO = '''# Query-URL Matcher
@@ -41,7 +43,7 @@ STEP2 = '''#@title Schritt 2: Installation und Modellwahl { display-mode: "form"
 #@markdown Lege es an **und** aktiviere dort den Schalter "Notebook-Zugriff", sonst kann das Notebook den Key nicht lesen.
 modell = "multilingual-e5-large · Deutsch, kostenlos (Empfehlung)" #@param ["multilingual-e5-large · Deutsch, kostenlos (Empfehlung)", "multilingual-e5-base · Deutsch, kostenlos, schneller", "bge-m3 · Deutsch, kostenlos, lange Texte", "msmarco-distilbert-base-v4 · nur englische Projekte", "Gemini gemini-embedding-001 · API-Key nötig", "OpenAI text-embedding-3-large · API-Key nötig", "paraphrase-multilingual-mpnet-base-v2 · symmetrisch, NUR zum Vergleich"]
 
-!pip install -q "qum[local] @ git+https://github.com/DanielKremer91/query-url-matcher"
+!pip install -q "qum[local] @ git+https://github.com/DanielKremer91/query-url-matcher@v__VERSION__"
 
 from qum import colab
 from qum.embeddings import make_embedder
@@ -82,7 +84,7 @@ if spec.provider == "local":
 if spec.comparison_only:
     print("⚠️ Dieses Modell ist symmetrisch und nur als Gegenbeispiel gedacht. Nutze es nicht für die Auswertung.")
 print(f"✅ Schritt 2 fertig: Modell {spec.model_id} ist bereit. Weiter mit Schritt 3 (Schritt 4 neu ausführen, falls du schon gematcht hattest).")
-'''
+'''.replace("__VERSION__", __version__)  # installiert genau den Git-Tag der Paketversion
 
 STEP3 = '''#@title Schritt 3: Queries und Frog-Export hochladen { display-mode: "form" }
 #@markdown Die Spalten werden automatisch erkannt. Nur wenn die Zelle eine Spalte nicht findet, trägst du den Namen hier ein.
