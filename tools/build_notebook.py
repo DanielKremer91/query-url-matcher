@@ -344,8 +344,9 @@ if choice is None:
     display(examples_around(result, lead, median.value))
     print()
     print(
-        'ℹ️ Noch keine Urteile. Wähle oben bei schwelle_bestimmen einen Vorschlag oder "Eigener Wert" '
-        "(mit eigene_schwelle) und führe die Zelle erneut aus."
+        'ℹ️ Noch keine Urteile. Wähle oben bei schwelle_bestimmen "Aus Rankings kalibriert", '
+        '"Mittlerer bester Score (nicht kalibriert)" oder "Eigener Wert" (Wert bei eigene_schwelle eintragen) '
+        "und führe die Zelle erneut aus."
     )
 else:
     if choice == "rankings":
