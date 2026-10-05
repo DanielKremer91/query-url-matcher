@@ -18,9 +18,11 @@ class FakeSentenceModel:
 
     def __init__(self):
         self.seen = []
+        self.progress_flags = []
 
     def encode(self, texts, batch_size, normalize_embeddings, show_progress_bar):
         self.seen.append(list(texts))
+        self.progress_flags.append(show_progress_bar)
         return np.array([[float(len(t)), 1.0] for t in texts])
 
     def tokenizer(self, text, add_special_tokens=True, truncation=False):
@@ -32,6 +34,14 @@ def test_local_embedder_prefixes_e5_and_normalises():
     out = LocalEmbedder(get_model("e5-large"), model=model).embed(["futter"], "query")
     assert model.seen == [["query: futter"]]
     assert np.allclose(np.linalg.norm(out, axis=1), 1.0)
+
+
+def test_local_embedder_never_shows_its_own_progress_bar():
+    model = FakeSentenceModel()
+    emb = LocalEmbedder(get_model("e5-large"), model=model)
+    emb.embed(["futter"] * 10, "query")
+    emb.embed(["futter"] * 500, "passage")
+    assert model.progress_flags == [False, False]
 
 
 def test_local_embedder_sets_max_seq_length_for_comparison_model():

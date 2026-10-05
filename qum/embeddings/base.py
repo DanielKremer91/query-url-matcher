@@ -6,9 +6,9 @@ import numpy as np
 
 from ..models import ModelSpec
 
-_NO_RETRY = {400, 401, 403, 404}
 _RETRY_AFTER = {429, 503}
 _MAX_RETRY_AFTER = 60
+_ANNOUNCE_FROM = 5  # ab dieser Pause (Sekunden) steht eine Zeile im Notebook
 
 
 class EmbeddingError(RuntimeError):
@@ -55,11 +55,28 @@ def _retry_after(response: httpx.Response):
     return min(max(seconds, 0.0), _MAX_RETRY_AFTER) if math.isfinite(seconds) else None
 
 
-def post_json(client: httpx.Client, url: str, headers: dict, payload: dict, attempts: int = 6, sleep=time.sleep) -> dict:
-    """POST mit Wiederholung: Retry-After bei 429/503, sonst Pausen von 2, 4, 8, 16, 32 Sekunden."""
+def _worth_retrying(status: int) -> bool:
+    """Zeitüberschreitung (408), Ratenlimit (429) und Serverfehler (5xx); alles andere ist endgültig."""
+    return status in (408, 429) or 500 <= status <= 599
+
+
+def post_json(
+    client: httpx.Client,
+    url: str,
+    headers: dict,
+    payload: dict,
+    attempts: int = 6,
+    sleep=time.sleep,
+    notify=print,
+) -> dict:
+    """POST mit Wiederholung bei 408, 429, 5xx und Verbindungsfehlern.
+
+    Pausen: Retry-After bei 429/503, sonst 2, 4, 8, 16, 32 Sekunden. Ab 5 Sekunden meldet `notify` die Pause.
+    """
     error = None
     for attempt in range(attempts):
         wait = None
+        reason = "Verbindungsfehler zum Anbieter"
         try:
             response = client.post(url, headers=headers, json=payload, timeout=120)
         except httpx.HTTPError as exc:
@@ -73,9 +90,13 @@ def post_json(client: httpx.Client, url: str, headers: dict, payload: dict, atte
                         f"Die Antwort des Anbieters ist kein gültiges JSON: {response.text[:200]}"
                     ) from None
             error = EmbeddingError(f"HTTP {response.status_code}: {response.text[:200]}")
-            if response.status_code in _NO_RETRY:
+            if not _worth_retrying(response.status_code):
                 break
+            reason = f"Anbieter antwortet mit HTTP {response.status_code}"
             wait = _retry_after(response)
         if attempt < attempts - 1:
-            sleep(2 ** (attempt + 1) if wait is None else wait)
+            seconds = 2 ** (attempt + 1) if wait is None else wait
+            if seconds >= _ANNOUNCE_FROM:
+                notify(f"⏳ {reason}, Versuch {attempt + 1} von {attempts}, nächster in {seconds:g} s.")
+            sleep(seconds)
     raise error

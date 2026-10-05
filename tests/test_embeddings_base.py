@@ -97,7 +97,7 @@ def test_post_json_gives_up_after_six_attempts_with_exponential_backoff():
     sleeps = []
     client = _client([(500, {})] * 6)
     with pytest.raises(EmbeddingError, match="500"):
-        post_json(client, "https://x.test", {}, {}, sleep=sleeps.append)
+        post_json(client, "https://x.test", {}, {}, sleep=sleeps.append, notify=lambda m: None)
     assert sleeps == [2, 4, 8, 16, 32]
 
 
@@ -136,7 +136,7 @@ def test_post_json_honours_retry_after_on_429_and_503_capped_at_60():
             (200, {}),
         ]
     )
-    assert post_json(client, "https://x.test", {}, {}, sleep=sleeps.append) == {}
+    assert post_json(client, "https://x.test", {}, {}, sleep=sleeps.append, notify=lambda m: None) == {}
     assert sleeps == [7, 60, 8, 16]
 
 
@@ -149,13 +149,71 @@ def test_post_json_non_json_success_raises_embedding_error():
         post_json(client, "https://x.test", {}, {}, sleep=lambda s: None)
 
 
-@pytest.mark.parametrize("status", [400, 401, 403, 404])
+@pytest.mark.parametrize("status", [400, 401, 403, 404, 409, 413, 422])
 def test_post_json_does_not_retry_client_errors(status):
     sleeps = []
     client = _client([(status, {"error": "bad key"})])
     with pytest.raises(EmbeddingError, match=str(status)):
         post_json(client, "https://x.test", {}, {}, sleep=sleeps.append)
     assert sleeps == []
+
+
+@pytest.mark.parametrize("status", [408, 429, 500, 502, 503, 504])
+def test_post_json_retries_timeouts_rate_limits_and_server_errors(status):
+    sleeps = []
+    client = _client([(status, {}), (200, {"ok": True})])
+    assert post_json(client, "https://x.test", {}, {}, sleep=sleeps.append, notify=lambda m: None) == {"ok": True}
+    assert sleeps == [2]
+
+
+def test_post_json_notifies_before_waits_of_five_seconds_or_longer():
+    sleeps, messages = [], []
+    client = _client([(500, {})] * 4 + [(200, {"ok": True})])
+    out = post_json(client, "https://x.test", {}, {}, sleep=sleeps.append, notify=messages.append)
+    assert out == {"ok": True}
+    assert sleeps == [2, 4, 8, 16]
+    # die erste Pause (2 s) bleibt still, jede längere wird angekündigt
+    assert messages == [
+        "⏳ Anbieter antwortet mit HTTP 500, Versuch 3 von 6, nächster in 8 s.",
+        "⏳ Anbieter antwortet mit HTTP 500, Versuch 4 von 6, nächster in 16 s.",
+    ]
+
+
+def test_post_json_notifies_about_connection_errors_and_retry_after_waits():
+    sleeps, messages, calls = [], [], []
+
+    def handler(request):
+        calls.append(request)
+        if len(calls) == 1:
+            raise httpx.ConnectError("weg")
+        if len(calls) == 2:
+            return httpx.Response(429, json={}, headers={"Retry-After": "30"})
+        return httpx.Response(200, json={"ok": True})
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    assert post_json(client, "https://x.test", {}, {}, sleep=sleeps.append, notify=messages.append) == {"ok": True}
+    assert sleeps == [2, 30]
+    assert messages == ["⏳ Anbieter antwortet mit HTTP 429, Versuch 2 von 6, nächster in 30 s."]
+
+
+def test_post_json_names_connection_errors_in_the_notice():
+    messages = []
+
+    def handler(request):
+        raise httpx.ConnectError("weg")
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    with pytest.raises(EmbeddingError, match="Verbindungsfehler"):
+        post_json(client, "https://x.test", {}, {}, attempts=4, sleep=lambda s: None, notify=messages.append)
+    assert messages == ["⏳ Verbindungsfehler zum Anbieter, Versuch 3 von 4, nächster in 8 s."]
+
+
+def test_post_json_does_not_notify_without_a_wait():
+    messages = []
+    client = _client([(400, {})])
+    with pytest.raises(EmbeddingError):
+        post_json(client, "https://x.test", {}, {}, sleep=lambda s: None, notify=messages.append)
+    assert messages == []
 
 
 def test_cache_embeds_each_text_once_per_role():
@@ -211,3 +269,124 @@ def test_cache_embeds_in_slices_and_keeps_finished_slices_on_failure(tmp_path):
     out = fresh.embed(texts, "passage")
     assert fresh_inner.calls == [(texts[512:], "passage")]  # die ersten zwei Scheiben kamen aus dem Cache
     assert np.allclose(out, FakeEmbedder().embed(texts, "passage"))
+
+
+def _texts(n):
+    return [f"wort{i} text" for i in range(n)]
+
+
+def test_cache_reports_overall_progress_for_several_slices():
+    progress = []
+    cached = CachedEmbedder(FakeEmbedder(), notify=lambda done, total: progress.append((done, total)))
+    cached.embed(_texts(600), "passage")
+    assert progress == [(256, 600), (512, 600), (600, 600)]
+
+
+def test_cache_progress_counts_only_missing_texts():
+    progress = []
+    cached = CachedEmbedder(FakeEmbedder(), notify=lambda done, total: progress.append((done, total)))
+    cached.embed(_texts(100), "passage")
+    cached.embed(_texts(400), "passage")  # 100 kommen aus dem Cache, 300 fehlen
+    assert progress == [(256, 300), (300, 300)]
+
+
+def test_cache_stays_quiet_for_a_single_slice():
+    progress = []
+    cached = CachedEmbedder(FakeEmbedder(), notify=lambda done, total: progress.append((done, total)))
+    cached.embed(_texts(CachedEmbedder.SLICE), "passage")
+    assert progress == []
+
+
+def test_default_progress_line_is_updated_in_place_and_closed(capsys):
+    cached = CachedEmbedder(FakeEmbedder())
+    cached.embed(_texts(600), "passage")
+    out = capsys.readouterr().out
+    assert out.count("\n") == 1 and out.endswith("\n")
+    assert out.split("\r")[1:] == [
+        "⏳ 256 von 600 Texten eingebettet …",
+        "⏳ 512 von 600 Texten eingebettet …",
+        "⏳ 600 von 600 Texten eingebettet …\n",
+    ]
+    cached.embed(_texts(20), "passage")  # alles im Cache: keine neue Zeile
+    assert capsys.readouterr().out == ""
+
+
+def test_default_progress_line_uses_german_thousands_separator(capsys):
+    from qum.embeddings.cache import ProgressLine
+
+    line = ProgressLine()
+    line(1280, 20000)
+    line.close()
+    assert capsys.readouterr().out == "\r⏳ 1.280 von 20.000 Texten eingebettet …\n"
+
+
+def test_default_progress_line_is_closed_when_a_slice_fails(capsys):
+    cached = CachedEmbedder(FailingOnThirdCall())
+    with pytest.raises(EmbeddingError):
+        cached.embed(_texts(600), "passage")
+    out = capsys.readouterr().out
+    assert out.endswith("\n")  # die offene Zeile ist beendet, die Fehlermeldung beginnt sauber
+
+
+class _Clock:
+    def __init__(self, step):
+        self.now, self.step = -step, step
+
+    def __call__(self):
+        self.now += self.step
+        return self.now
+
+
+def _count_saves(cached):
+    saves = []
+    original = cached._save
+    cached._save = lambda: (saves.append(len(cached._store)), original())
+    return saves
+
+
+def test_cache_saves_at_most_every_60_seconds_and_once_at_the_end(tmp_path):
+    cached = CachedEmbedder(FakeEmbedder(), cache_dir=tmp_path, notify=lambda d, t: None, clock=_Clock(25))
+    saves = _count_saves(cached)
+    cached.embed(_texts(1000), "passage")  # vier Scheiben; Uhr: Start 0, danach 25, 50, 75, 100
+    assert saves == [768, 1000]  # nach der dritten Scheibe (75 s) und am Ende
+    fresh_inner = FakeEmbedder()
+    CachedEmbedder(fresh_inner, cache_dir=tmp_path).embed(_texts(1000), "passage")
+    assert fresh_inner.calls == []
+
+
+def test_cache_saves_only_once_when_everything_is_fast(tmp_path):
+    cached = CachedEmbedder(FakeEmbedder(), cache_dir=tmp_path, notify=lambda d, t: None, clock=lambda: 0.0)
+    saves = _count_saves(cached)
+    cached.embed(_texts(1000), "passage")
+    assert saves == [1000]
+
+
+def test_cache_saves_before_the_error_propagates(tmp_path):
+    cached = CachedEmbedder(FailingOnThirdCall(), cache_dir=tmp_path, notify=lambda d, t: None, clock=lambda: 0.0)
+    saves = _count_saves(cached)
+    with pytest.raises(EmbeddingError):
+        cached.embed(_texts(600), "passage")
+    assert saves == [512]
+
+
+def test_cache_saves_on_keyboard_interrupt(tmp_path):
+    class Interrupted(FakeEmbedder):
+        def embed(self, texts, role):
+            if len(self.calls) == 2:
+                raise KeyboardInterrupt
+            return super().embed(texts, role)
+
+    cached = CachedEmbedder(Interrupted(), cache_dir=tmp_path, notify=lambda d, t: None, clock=lambda: 0.0)
+    with pytest.raises(KeyboardInterrupt):
+        cached.embed(_texts(600), "passage")
+    fresh_inner = FakeEmbedder()
+    CachedEmbedder(fresh_inner, cache_dir=tmp_path).embed(_texts(600), "passage")
+    assert fresh_inner.calls == [(_texts(600)[512:], "passage")]
+
+
+def test_cache_does_not_rewrite_the_file_when_nothing_was_missing(tmp_path):
+    cached = CachedEmbedder(FakeEmbedder(), cache_dir=tmp_path, notify=lambda d, t: None)
+    cached.embed(_texts(10), "passage")
+    saves = _count_saves(cached)
+    cached.embed(_texts(10), "passage")
+    assert saves == []

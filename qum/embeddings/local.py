@@ -23,7 +23,7 @@ class LocalEmbedder(Embedder):
             prepare(self.spec, texts, role),
             batch_size=32,
             normalize_embeddings=True,
-            show_progress_bar=len(texts) > 64,
+            show_progress_bar=False,  # den Gesamtfortschritt meldet CachedEmbedder
         )
         return l2_normalize(np.asarray(vectors))
 

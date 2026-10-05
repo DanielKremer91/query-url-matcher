@@ -1,5 +1,6 @@
 import hashlib
 import os
+import time
 import zipfile
 from pathlib import Path
 
@@ -8,15 +9,36 @@ import numpy as np
 from .base import Embedder, EmbeddingError
 
 
+class ProgressLine:
+    """Eine Fortschrittszeile, die an Ort und Stelle überschrieben wird."""
+
+    def __init__(self):
+        self._open = False
+
+    def __call__(self, done: int, total: int) -> None:
+        shown = f"{done:,} von {total:,}".replace(",", ".")
+        print(f"\r⏳ {shown} Texten eingebettet …", end="", flush=True)
+        self._open = True
+
+    def close(self) -> None:
+        if self._open:
+            print(flush=True)
+            self._open = False
+
+
 class CachedEmbedder(Embedder):
     """Bettet jeden Text je Rolle nur einmal ein. Optional auf Platte gesichert."""
 
-    # fehlende Texte gehen in Scheiben an den Anbieter; jede fertige Scheibe wird sofort gesichert
+    # fehlende Texte gehen in Scheiben an den Anbieter, damit fertige Scheiben einen Abbruch überleben
     SLICE = 256
+    # die Cache-Datei wird während eines Aufrufs höchstens so oft geschrieben (Sekunden)
+    SAVE_INTERVAL = 60
 
-    def __init__(self, inner: Embedder, cache_dir=None):
+    def __init__(self, inner: Embedder, cache_dir=None, notify=None, clock=time.monotonic):
         self.inner = inner
         self.spec = inner.spec
+        self._notify = ProgressLine() if notify is None else notify
+        self._clock = clock
         self._store = {}
         self._path = Path(cache_dir) / f"{self.spec.key}.npz" if cache_dir else None
         if self._path is not None and self._path.exists():
@@ -41,13 +63,32 @@ class CachedEmbedder(Embedder):
             if key not in self._store and key not in missing:
                 missing[key] = text
         todo = list(missing)
-        for start in range(0, len(todo), self.SLICE):
-            part = todo[start : start + self.SLICE]
-            vectors = self.inner.embed([missing[key] for key in part], role)
-            if len(vectors) != len(part):
-                raise EmbeddingError(f"Der Anbieter hat {len(vectors)} statt {len(part)} Embeddings geliefert.")
-            self._store.update(zip(part, vectors))
-            self._save()
+        show_progress = len(todo) > self.SLICE
+        last_save = self._clock()
+        unsaved = False
+        try:
+            for start in range(0, len(todo), self.SLICE):
+                part = todo[start : start + self.SLICE]
+                vectors = self.inner.embed([missing[key] for key in part], role)
+                if len(vectors) != len(part):
+                    raise EmbeddingError(f"Der Anbieter hat {len(vectors)} statt {len(part)} Embeddings geliefert.")
+                self._store.update(zip(part, vectors))
+                unsaved = True
+                if show_progress:
+                    self._notify(start + len(part), len(todo))
+                now = self._clock()
+                if now - last_save >= self.SAVE_INTERVAL:
+                    self._save()
+                    last_save, unsaved = now, False
+        finally:
+            # fertige Scheiben überleben Fehler und Abbruch
+            try:
+                if unsaved:
+                    self._save()
+            finally:
+                close = getattr(self._notify, "close", None)
+                if close is not None:
+                    close()
         return np.vstack([self._store[key] for key in keys])
 
     def fits_context(self, text):
