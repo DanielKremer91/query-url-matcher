@@ -26,7 +26,7 @@ def test_columns():
     df = build_decisions(result, result.lead("chunk"), 0.6)
     assert list(df.columns) == [
         L.C_QUERY, L.C_VERDICT, L.C_BEST_URL, L.C_CHUNK, L.C_S_CHUNK, L.C_S_FULL, L.C_S_COMBI,
-        L.C_RANK_URL, L.C_POSITION, L.C_NOTE, L.C_ADVICE,
+        L.C_LEAD_GAP, L.C_RANK_URL, L.C_POSITION, L.C_NOTE, L.C_ADVICE,
     ]
 
 
@@ -229,3 +229,29 @@ def test_negative_margin_is_rejected():
     result = make_result(["q"], [U1], [[0.9]])
     with pytest.raises(ValueError):
         build_decisions(result, result.lead("chunk"), 0.6, margin=-0.01)
+
+
+def test_lead_gap_for_a_clear_winner():
+    result = make_result(["q"], [U1, U2], [[0.9, 0.6]])
+    df = build_decisions(result, result.lead("chunk"), 0.6)
+    assert df[L.C_LEAD_GAP].tolist() == [0.3]
+
+
+def test_lead_gap_is_negative_when_the_shown_ranking_url_is_slightly_behind():
+    row = _ok_row([0.842, 0.848, 0.1])
+    assert row[L.C_VERDICT] == L.V_OK
+    assert row[L.C_BEST_URL] == U1
+    assert row[L.C_LEAD_GAP] == -0.006
+
+
+def test_lead_gap_is_empty_with_a_single_url():
+    result = make_result(["q"], [U1], [[0.8]])
+    df = build_decisions(result, result.lead("chunk"), 0.6)
+    assert df[L.C_LEAD_GAP].tolist() == [None]
+
+
+def test_lead_gap_uses_the_chosen_lead_not_the_chunk_score():
+    result = make_result(["q"], [U1, U2], [[0.9, 0.8]], full_scores=[[0.2, 0.6]])
+    df = build_decisions(result, result.lead("full"), 0.5)
+    assert df[L.C_BEST_URL].tolist() == [U2]
+    assert df[L.C_LEAD_GAP].tolist() == [0.4]

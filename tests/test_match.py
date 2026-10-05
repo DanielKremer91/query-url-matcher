@@ -116,12 +116,26 @@ def test_top_hits_columns_order_and_ranks():
     df = top_hits(result, basis="chunk", weight=0.7, top_n=2)
     assert list(df.columns) == [
         L.C_QUERY, L.C_URL, L.C_CHUNK, L.C_S_CHUNK, L.C_S_FULL, L.C_S_COMBI,
-        L.C_R_CHUNK, L.C_R_FULL, L.C_R_COMBI, L.C_METHOD,
+        L.C_GAP_TO_BEST, L.C_R_CHUNK, L.C_R_FULL, L.C_R_COMBI, L.C_METHOD,
     ]
     assert df[L.C_URL].tolist() == ["u2", "u3"]
     assert df[L.C_R_CHUNK].tolist() == [1, 2]
     assert df[L.C_R_FULL].tolist() == [3, 2]
     assert df[L.C_S_CHUNK].tolist() == [0.9, 0.7]
+
+
+def test_top_hits_gap_to_best_is_zero_for_the_best_row_and_positive_below():
+    result = make_result(["q"], ["u1", "u2", "u3"], [[0.5, 0.9, 0.7]], [[0.9, 0.1, 0.5]])
+    df = top_hits(result, basis="chunk", top_n=3)
+    assert df[L.C_GAP_TO_BEST].tolist() == [0, 0.2, 0.4]
+    full = top_hits(result, basis="full", top_n=3)
+    assert full[L.C_URL].tolist() == ["u1", "u3", "u2"]
+    assert full[L.C_GAP_TO_BEST].tolist() == [0, 0.4, 0.8]
+
+
+def test_top_hits_gap_to_best_is_per_query():
+    result = make_result(["a", "b"], ["u1", "u2"], [[0.9, 0.6], [0.3, 0.2]])
+    assert top_hits(result, top_n=2)[L.C_GAP_TO_BEST].tolist() == [0, 0.3, 0, 0.1]
 
 
 def test_top_hits_sorted_by_selected_basis():

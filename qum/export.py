@@ -44,6 +44,12 @@ _COLUMN_HELP = {
     L.C_S_CHUNK: "Cosinus-Ähnlichkeit zwischen Query und dem am besten passenden Textblock der Seite.",
     L.C_S_FULL: "Cosinus-Ähnlichkeit zwischen Query und dem gesamten Main Content der Seite.",
     L.C_S_COMBI: "Gewichtete Mischung aus Chunk-Score und Gesamt-URL-Score.",
+    L.C_LEAD_GAP: (
+        "Abstand des Scores der besten URL zum Score der nächstbesten Seite. "
+        "Ein großer Vorsprung heißt: eine Seite sticht klar heraus, auch wenn der absolute Score niedrig ist. "
+        "Negativ, wenn eine andere Seite knapp davor liegt."
+    ),
+    L.C_GAP_TO_BEST: "Abstand dieses Treffers zum besten Treffer der Query (0 = bester Treffer).",
     L.C_R_CHUNK: "Rang der Seite nach Chunk-Score für diese Query. 1 = beste URL für diese Query unter allen URLs.",
     L.C_R_FULL: "Rang der Seite nach Gesamt-URL-Score für diese Query. 1 = beste URL für diese Query unter allen URLs.",
     L.C_R_COMBI: "Rang der Seite nach Kombi-Score für diese Query. 1 = beste URL für diese Query unter allen URLs.",

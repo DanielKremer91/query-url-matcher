@@ -83,6 +83,7 @@ def top_hits(result: MatchResult, basis: str = "chunk", weight: float = 0.7, top
     r_chunk, r_full, r_combi = ranks(result.chunk_scores), ranks(result.full_scores), ranks(combined)
     rows = []
     for i, query in enumerate(result.queries):
+        best = float(lead[i].max())
         for j in np.argsort(-lead[i], kind="stable")[:top_n]:
             rows.append(
                 {
@@ -92,6 +93,7 @@ def top_hits(result: MatchResult, basis: str = "chunk", weight: float = 0.7, top
                     L.C_S_CHUNK: round(float(result.chunk_scores[i, j]), 4),
                     L.C_S_FULL: round(float(result.full_scores[i, j]), 4),
                     L.C_S_COMBI: round(float(combined[i, j]), 4),
+                    L.C_GAP_TO_BEST: round(best - float(lead[i, j]), 4),
                     L.C_R_CHUNK: int(r_chunk[i, j]),
                     L.C_R_FULL: int(r_full[i, j]),
                     L.C_R_COMBI: int(r_combi[i, j]),

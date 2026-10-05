@@ -168,14 +168,14 @@ Standard ist eine Excel-Datei, per Häkchen zusätzlich ein ZIP mit einer CSV je
 | Blatt | Inhalt | Vorhanden |
 |---|---|---|
 | Lesehilfe | Bedeutung jedes Blatts und jeder Spalte, alle Einstellungen des Laufs | immer |
-| Entscheidung | eine Zeile je Query: Urteil, beste URL, Passage, drei Scores, rankende URL mit Position, Cluster, Nachbar-Kandidat, Empfehlung | immer |
-| Top-Treffer | Top-N-URLs je Query mit Scores, Rängen, Methode der Gesamt-URL | immer |
+| Entscheidung | eine Zeile je Query: Urteil, beste URL, Passage, drei Scores, Vorsprung vor der zweitbesten URL, rankende URL mit Position, Cluster, Nachbar-Kandidat, Empfehlung | immer |
+| Top-Treffer | Top-N-URLs je Query mit Scores, Abstand zur besten URL, Rängen, Methode der Gesamt-URL | immer |
 | Kannibalisierung | Abschnitt 8 | immer (Stufe „bereits sichtbar" nur mit Rankings) |
 | Content-Lücken | Lücken-Queries, mit SERPs zusätzlich Cluster und Nachbar-Kandidat | immer |
 | Lücken je Cluster | Zusammenfassung: Lücken je Cluster und Zahl der neuen Seiten | nur mit SERPs |
 | Paare | Abschnitt 10 | nur wenn der Schritt lief |
 
-Die Query steht in jedem Blatt in der ersten Spalte. Urteile sind farbig hinterlegt.
+Die Query steht in jedem Blatt in der ersten Spalte. Urteile sind farbig hinterlegt. Zwei Spalten zeigen, wie klar die beste Seite vorn liegt, weil kurze Queries absolut niedrig scoren: „Vorsprung vor zweitbester URL" (Entscheidung, Score der gezeigten Seite minus bester Score aller anderen URLs, negativ wenn eine andere Seite knapp vorn liegt, leer bei nur einer URL) und „Abstand zur besten URL" (Top-Treffer, bester Score der Query minus Score der Zeile). Beide beruhen auf dem Score der gewählten Bewertungsgrundlage, sind auf vier Nachkommastellen gerundet und ändern kein Urteil.
 
 ## 13. Paketaufbau
 

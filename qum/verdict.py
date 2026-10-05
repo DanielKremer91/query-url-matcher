@@ -88,6 +88,13 @@ def risk_kind(scores, ranking_j, margin) -> str:
     return RISK_PLAIN
 
 
+def lead_gap(scores, j):
+    """Vorsprung der URL j vor der besten anderen URL (negativ, wenn eine andere vorn liegt). Leer bei nur einer URL."""
+    if len(scores) < 2:
+        return None
+    return round(float(scores[j]) - float(np.delete(scores, j).max()), 4)
+
+
 def build_decisions(result, lead, threshold, rankings=None, good_position=10, weight=0.7, margin=0.01) -> pd.DataFrame:
     check_margin(margin)
     u_index = {normalize_url(u): j for j, u in enumerate(result.urls)}
@@ -141,6 +148,7 @@ def build_decisions(result, lead, threshold, rankings=None, good_position=10, we
                 L.C_S_CHUNK: round(float(result.chunk_scores[i, j]), 4),
                 L.C_S_FULL: round(float(result.full_scores[i, j]), 4),
                 L.C_S_COMBI: round(float(combined[i, j]), 4),
+                L.C_LEAD_GAP: lead_gap(lead[i], j),
                 L.C_RANK_URL: rank_url,
                 L.C_POSITION: position,
                 L.C_NOTE: note,
