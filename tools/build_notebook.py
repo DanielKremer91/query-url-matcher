@@ -22,7 +22,7 @@ Dieses Notebook vergleicht deine Suchanfragen (oder Prompts) per Embeddings mit 
 | Eigene Rankings | optional | Keyword, URL, Position (GSC, Ahrefs, SISTRIX) |
 | Top-10-SERPs | optional | Ahrefs-Export mit Keyword, URL, Position, Type |
 
-Schon ohne Ranking-Dateien bekommst du das Matching mit Urteilen zu passender Seite und Content-Lücke und den Hinweis, wenn mehrere Seiten fast gleich gut passen (Kannibalisierung). Eigene Rankings ergänzen die Urteile, die sich auf Rankings stützen (zum Beispiel "Kannibalisierungs-Risiko" und "Rankt trotz schwachem Match"), und kalibrieren die Schwelle für "passend". Top-10-SERPs bündeln die Lücken zusätzlich zu Themen.
+Schon ohne Ranking-Dateien bekommst du das Matching mit Urteilen zu passender Seite und Content-Lücke und den Hinweis, wenn mehrere Seiten fast gleich gut passen (Kannibalisierung). Eigene Rankings ergänzen die Urteile, die sich auf Rankings stützen (zum Beispiel "Kannibalisierungs-Risiko" und "Rankt trotz schwachem Match"), und ermöglichen eine Kalibrierung der Schwelle für "passend" (ab 20 gut rankenden Paaren, Wahl in Schritt 7). Top-10-SERPs bündeln die Lücken zusätzlich zu Themen.
 
 ## So gehst du vor
 
@@ -186,7 +186,8 @@ print(f"✅ Schritt 4 fertig: {len(top)} Treffer berechnet. Optional weiter mit 
 
 STEP5 = '''#@title Schritt 5 (optional): Eigene Rankings hochladen { display-mode: "form" }
 #@markdown Export mit Keyword, URL und Position, zum Beispiel aus GSC, Ahrefs (Organic Keywords) oder SISTRIX.
-#@markdown Ergänzt die Urteile, die sich auf Rankings stützen, und kalibriert die Schwelle für "passend".
+#@markdown Ergänzt die Urteile, die sich auf Rankings stützen, und ermöglicht eine Kalibrierung der Schwelle für "passend"
+#@markdown (ab 20 gut rankenden Paaren, Wahl in Schritt 7).
 #@markdown Kannibalisierung und Content-Lücken gibt es auch ohne Rankings.
 keyword_spalte = "" #@param {type:"string"}
 url_spalte_ranking = "" #@param {type:"string"}
@@ -302,10 +303,19 @@ from qum.verdict import build_decisions
 
 colab.require(globals(), 4, "result", "lead", "top", "size", "overlap", "weight", "basis_label", "n_top")
 choice = L.THRESHOLD_CHOICE[schwelle_bestimmen]
+# bei einem Abbruch bleiben frühere Urteile stehen: das soll die Meldung sagen
+kept = " Bis dahin gelten die Urteile aus dem letzten Lauf von Schritt 7." if globals().get("decisions") is not None else ""
 if min(kalibrierung_bis_position, rankt_gut_bis_position, sichtbar_bis_position) < 1:
-    colab.stop("Alle Positionen (Kalibrierung, rankt gut, sichtbar) müssen mindestens 1 sein.")
+    colab.stop(f"Alle Positionen (Kalibrierung, rankt gut, sichtbar) müssen mindestens 1 sein.{kept}")
+if not 0 <= abstand_fast_gleich < 0.1:
+    colab.stop(
+        'Der Abstand für "fast gleich" muss mindestens 0 und kleiner als 0.1 sein. Er ist eine Differenz von '
+        f"Cosinus-Scores (zum Beispiel 0.01), kein Prozentwert.{kept}"
+    )
 if choice == "manuell" and not 0 < eigene_schwelle <= 1:
-    colab.stop("Die eigene Schwelle muss größer als 0 und höchstens 1 sein. Trage sie bei eigene_schwelle ein, zum Beispiel 0.82.")
+    colab.stop(
+        f"Die eigene Schwelle muss größer als 0 und höchstens 1 sein. Trage sie bei eigene_schwelle ein, zum Beispiel 0.82.{kept}"
+    )
 calibrated = calibrated_threshold(result, lead, rankings, max_position=kalibrierung_bis_position)
 median = median_threshold(result, lead)
 if rankings is None:
@@ -316,7 +326,7 @@ else:
 if choice == "rankings" and calibrated is None:
     colab.stop(
         f"Die Kalibrierung aus Rankings ist nicht verfügbar. {no_calibration} "
-        "Wähle bei schwelle_bestimmen eine andere Option und führe die Zelle erneut aus."
+        f"Wähle bei schwelle_bestimmen eine andere Option und führe die Zelle erneut aus.{kept}"
     )
 colab.invalidate(globals(), *colab.VERDICT_STATE)
 
@@ -343,11 +353,13 @@ if choice is None:
     print("Paare knapp über und knapp unter diesem Wert:")
     display(examples_around(result, lead, median.value))
     print()
+    available = ['"Aus Rankings kalibriert"'] if calibrated is not None else []
+    available.append('"Mittlerer bester Score (nicht kalibriert)"')
     print(
-        'ℹ️ Noch keine Urteile. Wähle oben bei schwelle_bestimmen "Aus Rankings kalibriert", '
-        '"Mittlerer bester Score (nicht kalibriert)" oder "Eigener Wert" (Wert bei eigene_schwelle eintragen) '
-        "und führe die Zelle erneut aus."
+        f'ℹ️ Noch keine Urteile. Wähle oben bei schwelle_bestimmen {", ".join(available)} oder "Eigener Wert" '
+        "(Wert bei eigene_schwelle eintragen) und führe die Zelle erneut aus."
     )
+    proposals_only = True
 else:
     if choice == "rankings":
         threshold = calibrated.value
@@ -405,7 +417,7 @@ csv_trennzeichen = "Semikolon (für deutsches Excel)" #@param ["Semikolon (für 
 
 from qum import colab, export
 
-colab.require(globals(), 7, "decisions", "top", "cannibal", "settings", "threshold_source")
+colab.require_verdicts(globals())
 sheets = export.build_sheets(decisions, top, cannibal, settings, threshold_source=threshold_source)
 export.write_excel("query_url_matcher.xlsx", sheets)
 colab.download("query_url_matcher.xlsx")
@@ -430,7 +442,7 @@ from qum.pairs import score_pairs, stale_columns
 colab.require(globals(), 2, "spec", "embedder")
 colab.require(globals(), 3, "content")
 colab.require(globals(), 4, "result", "size", "overlap", "basis", "weight")
-colab.require(globals(), 7, "decisions", "top", "cannibal", "settings", "threshold_source")
+colab.require_verdicts(globals())
 with colab.guard():
     name, data = colab.upload("Keyword-URL-Paare (Keyword, URL)")
     pair_table = colab.read_table(data, name)

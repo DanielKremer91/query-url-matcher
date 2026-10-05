@@ -149,6 +149,11 @@ def test_read_table_passes_ingest_errors_through():
 EXAMPLES = ROOT / "examples"
 CHOICES = ["Erst Vorschläge ansehen", "Aus Rankings kalibriert", "Mittlerer bester Score (nicht kalibriert)", "Eigener Wert"]
 SHOW, CALIBRATED, MEDIAN, OWN = CHOICES
+NO_VERDICTS_YET = (
+    '❌ Schritt 7 hat noch keine Urteile gebildet. Wähle bei "schwelle_bestimmen" eine der Optionen '
+    "und führe Schritt 7 erneut aus."
+)
+KEPT = "Bis dahin gelten die Urteile aus dem letzten Lauf von Schritt 7."
 
 
 def _cell_code(step: int) -> str:
@@ -410,7 +415,9 @@ def test_notebook_does_not_claim_rankings_unlock_cannibalisation_or_gaps():
     assert "Schaltet die Urteile zu Kannibalisierung und Content-Lücke frei" not in text
     assert "Mit eigenen Rankings kommen die Urteile zu Kannibalisierung und Content-Lücke dazu" not in text
     step5 = next(s for s in _code_cells() if s.startswith("#@title Schritt 5"))
-    assert "kalibriert" in step5
+    assert "ermöglicht eine Kalibrierung der Schwelle" in step5 and "ab 20 gut rankenden Paaren" in step5
+    intro = next(source for kind, source in CELLS if kind == "markdown")
+    assert "ermöglichen eine Kalibrierung der Schwelle" in intro and "kalibrieren die Schwelle" not in intro
 
 
 def test_example_files_use_reserved_example_domains():
@@ -577,7 +584,7 @@ def test_smoke_step_7_default_shows_proposals_and_builds_no_verdicts(nb, capsys)
         assert nb.ns[name] is None, name
     with pytest.raises(colab.NotebookStop):
         nb.run(8)
-    assert "❌ Bitte zuerst Schritt 7 (Schwelle und Urteile) ausführen." in capsys.readouterr().out
+    assert NO_VERDICTS_YET in capsys.readouterr().out
 
 
 @pytest.mark.parametrize(
@@ -651,3 +658,78 @@ def test_install_line_pins_the_package_version():
     assert pyproject["project"]["version"] == qum.__version__
     committed = (ROOT / "query_url_matcher.ipynb").read_text(encoding="utf-8")
     assert f"query-url-matcher@v{qum.__version__}" in committed
+
+
+
+@pytest.mark.parametrize("value", [-0.01, 0.1, 2])
+def test_smoke_margin_outside_its_range_stops(nb, capsys, value):
+    _load(nb)
+    with pytest.raises(colab.NotebookStop):
+        nb.run(7, schwelle_bestimmen=MEDIAN, abstand_fast_gleich=value)
+    out = capsys.readouterr().out
+    assert "Differenz von Cosinus-Scores (zum Beispiel 0.01), kein Prozentwert" in out
+    assert KEPT not in out
+
+
+def test_smoke_margin_zero_is_accepted(nb):
+    _load(nb)
+    nb.run(7, schwelle_bestimmen=MEDIAN, abstand_fast_gleich=0)
+    assert nb.ns["settings"]["Abstand fast gleich"] == 0
+
+
+def _closing_line(out):
+    return next(line for line in out.splitlines() if line.startswith("ℹ️ Noch keine Urteile"))
+
+
+def test_smoke_proposals_closing_line_lists_only_available_options(nb, capsys):
+    _load(nb)
+    nb.run(7)
+    line = _closing_line(capsys.readouterr().out)
+    assert "Aus Rankings kalibriert" not in line
+    assert '"Mittlerer bester Score (nicht kalibriert)"' in line and '"Eigener Wert"' in line
+    nb.uploads.append(_many_rankings())
+    nb.run(5)
+    nb.run(7)
+    assert '"Aus Rankings kalibriert"' in _closing_line(capsys.readouterr().out)
+
+
+def test_smoke_steps_8_and_9_after_proposals_only_say_so(nb, capsys):
+    _load(nb)
+    nb.run(7)
+    capsys.readouterr()
+    for step in (8, 9):
+        with pytest.raises(colab.NotebookStop):
+            nb.run(step)
+        out = capsys.readouterr().out
+        assert NO_VERDICTS_YET in out and "Bitte zuerst Schritt 7" not in out
+    nb.run(4)  # ein früherer Schritt setzt den Zustand zurück
+    with pytest.raises(colab.NotebookStop):
+        nb.run(8)
+    assert "❌ Bitte zuerst Schritt 7 (Schwelle und Urteile) ausführen." in capsys.readouterr().out
+    nb.run(7, schwelle_bestimmen=MEDIAN)
+    nb.run(8)
+    assert "✅ Schritt 8 fertig" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        {"schwelle_bestimmen": OWN, "eigene_schwelle": 0},
+        {"schwelle_bestimmen": CALIBRATED},
+        {"schwelle_bestimmen": MEDIAN, "abstand_fast_gleich": 0.5},
+        {"schwelle_bestimmen": MEDIAN, "rankt_gut_bis_position": 0},
+    ],
+)
+def test_smoke_rejected_step_7_says_the_last_verdicts_still_apply(nb, capsys, form):
+    _load(nb)
+    with pytest.raises(colab.NotebookStop):
+        nb.run(7, **form)
+    assert KEPT not in capsys.readouterr().out
+    nb.run(7, schwelle_bestimmen=MEDIAN, eigene_schwelle=0, abstand_fast_gleich=0.01, rankt_gut_bis_position=10)
+    before = nb.ns["decisions"]
+    capsys.readouterr()
+    with pytest.raises(colab.NotebookStop):
+        nb.run(7, **form)
+    out = capsys.readouterr().out
+    assert out.startswith("❌ ") and out.rstrip().endswith(KEPT)
+    assert nb.ns["decisions"] is before
