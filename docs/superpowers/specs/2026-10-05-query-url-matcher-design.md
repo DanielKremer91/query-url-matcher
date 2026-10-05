@@ -37,7 +37,7 @@ Nicht im Umfang: eigener Crawler, Verarbeitung von Millionen Seiten, Ollama, ein
 Regeln:
 
 - CSV (auch UTF-16) und Excel werden gelesen. Das Trennzeichen (`;`, Tab oder `,`) wird an der ersten Zeile erkannt.
-- Steht jede Zeile in einer einzigen Zelle (zum Beispiel eine Excel-Spalte mit „Keyword;URL;Position"), zerlegt das Notebook sie automatisch: nur wenn die Kopfzelle ein Trennzeichen enthält, mindestens ein Teil davon ein bekannter Spaltenname ist (Query, Keyword, URL, Content, Position oder Type, wie bei der Spaltenerkennung) und mindestens 80 % der Zeilen gleich viele Felder haben. Eine Liste von Prompts ohne Kopfzeile, die Kommas enthalten, bleibt so eine Spalte.
+- Steht jede Zeile in einer einzigen Zelle (zum Beispiel eine Excel-Spalte mit „Keyword;URL;Position"), zerlegt das Notebook sie automatisch: nur wenn die Kopfzelle ein Trennzeichen enthält, mindestens ein Teil davon ein bekannter Spaltenname ist (Query, Keyword, URL, Content, Position oder Type, wie bei der Spaltenerkennung) und mindestens 80 % der Zeilen gleich viele Felder haben. Eine Liste von Prompts ohne Kopfzeile, die Kommas enthalten, bleibt so eine Spalte. Bleibt eine solche Datei mit unbekannten Spaltennamen unzerlegt, erklärt die Meldung „Spalte nicht erkannt" zusätzlich, wie man sie reparieren kann.
 - Spalten werden über Aliaslisten erkannt (GSC, Ahrefs, SISTRIX, Semrush, Screaming Frog) und vor dem Rechnen als Vorschau gezeigt. Wird eine Pflichtspalte nicht erkannt, nennt die Fehlermeldung die gefundenen Spalten, und der Nutzer trägt den Spaltennamen im Formular ein. Fehlt in der SERP-Datei die Spalte Type, gelten alle Zeilen als organisch.
 - URL und Content bleiben zeilenweise zusammen. Zeilen ohne Content und doppelte URLs werden übersprungen und gezählt gemeldet.
 - Eigene Rankings und SERPs sind zwei getrennte Uploads. Fehlt die Ranking-Datei, zieht das Notebook die eigenen Rankings aus der SERP-Datei: Zeilen, deren Host im Frog-Export vorkommt. Liegen beide vor, gilt für Positionen die Ranking-Datei.
@@ -121,7 +121,7 @@ Steht die rankende URL nicht im Frog-Export, wird das in einer Hinweisspalte ver
 
 Eigene Auswertung mit zwei Stufen:
 
-- **Risiko:** Urteil „Kannibalisierungs-Risiko" aus Abschnitt 7, oder zwei und mehr eigene URLs passen und liegen im Leit-Score höchstens 0,01 auseinander (einstellbar; e5-Scores liegen in einem engen Band, ein größerer Abstand markiert zu viel). Der zweite Fall funktioniert auch ohne Rankings. Bei „in Ordnung" zählt dieselbe Regel wie in Abschnitt 7 (weitere passende URLs nah an der rankenden), mit eigenem Grund; die rankende URL steht zuerst.
+- **Risiko:** Urteil „Kannibalisierungs-Risiko" aus Abschnitt 7, oder zwei und mehr eigene URLs passen und liegen im Leit-Score höchstens 0,01 auseinander (einstellbar; e5-Scores liegen in einem engen Band, ein größerer Abstand markiert zu viel). Der zweite Fall funktioniert auch ohne Rankings. Bei „in Ordnung" zählt dieselbe Regel wie in Abschnitt 7 (weitere passende URLs nah an der rankenden), mit eigenem Grund; die rankende URL steht zuerst. Der Grund beim Urteil „Kannibalisierungs-Risiko" folgt derselben Unterscheidung wie die Empfehlung: „deutlich besser", „besser" oder „nicht verglichen" (rankende URL fehlt im Export).
 - **Bereits sichtbar:** zwei oder mehr eigene URLs ranken für die Query mit Position ≤ 20 (einstellbar).
 
 Ausgegeben werden die Query, die Stufe, die konkurrierenden URLs mit Scores und Positionen.
@@ -163,7 +163,7 @@ Ohne die Schritte 5 und 6 arbeitet das Notebook wie das alte Skript, nur mit den
 
 ## 12. Export
 
-Standard ist eine Excel-Datei, per Häkchen zusätzlich ein ZIP mit einer CSV je Blatt (UTF-8 mit BOM). Das Trennzeichen ist wählbar: Semikolon (Vorgabe, für deutsches Excel) schreibt Zahlen mit Dezimalkomma, Komma schreibt sie mit Dezimalpunkt. Beim Semikolon gilt das Dezimalkomma auch für Zahlen, die als Text vorliegen: Positionen, Zahlen-Einstellungen in der Lesehilfe und „Score …"/„Position …" in den konkurrierenden URLs. Die Excel-Datei bleibt unverändert.
+Standard ist eine Excel-Datei, per Häkchen zusätzlich ein ZIP mit einer CSV je Blatt (UTF-8 mit BOM). Das Trennzeichen ist wählbar: Semikolon (Vorgabe, für deutsches Excel) schreibt Zahlen mit Dezimalkomma, Komma schreibt sie mit Dezimalpunkt. Beim Semikolon gilt das Dezimalkomma auch für Zahlen, die als Text vorliegen: Positionen, Zahlen-Einstellungen in der Lesehilfe und „Score …"/„Position …" (auch negativ) in den konkurrierenden URLs und der Empfehlung. Die Excel-Datei bleibt unverändert.
 
 | Blatt | Inhalt | Vorhanden |
 |---|---|---|

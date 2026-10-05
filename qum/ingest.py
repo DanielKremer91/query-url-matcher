@@ -155,10 +155,14 @@ def _require(df, given, aliases, what):
         return given
     found = find_column(df, aliases)
     if found is None:
-        raise IngestError(
-            f"{what}-Spalte nicht erkannt. Gefundene Spalten: {list(df.columns)}. "
-            f"Trage den Spaltennamen im Formular ein."
-        )
+        message = f"{what}-Spalte nicht erkannt. Gefundene Spalten: {list(df.columns)}. Trage den Spaltennamen im Formular ein."
+        # eine Spalte, deren Name ein Trennzeichen enthält: die Zeilen wurden nicht zerlegt (unbekannte Spaltennamen)
+        if df.shape[1] == 1 and any(sep in str(df.columns[0]) for sep in (";", "\t", ",")):
+            message += (
+                " Die Datei scheint alle Spalten in einer Zelle zu enthalten. Benenne die Spalten in der ersten Zeile "
+                "mit bekannten Namen (z. B. Keyword, URL, Position) oder speichere die Datei als CSV mit getrennten Spalten."
+            )
+        raise IngestError(message)
     return found
 
 

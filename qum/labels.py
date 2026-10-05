@@ -62,6 +62,8 @@ STAGE_RISK = "Risiko"
 STAGE_VISIBLE = "Bereits sichtbar"
 
 REASON_BETTER = "Eine andere Seite passt deutlich besser als die rankende"
+REASON_BETTER_PLAIN = "Eine andere Seite passt besser als die rankende"
+REASON_NOT_IN_EXPORT = "Rankende URL steht nicht im Frog-Export und wurde nicht verglichen"
 REASON_OK_CLOSE = "Rankende Seite passt, eine weitere passt fast gleich gut"
 REASON_CLOSE = "Mehrere Seiten passen fast gleich gut"
 REASON_RANKING = "Mehrere eigene Seiten ranken für die Query"

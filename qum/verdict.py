@@ -75,6 +75,19 @@ def close_to_ranking(scores, ranking_j, threshold, margin) -> list:
     ]
 
 
+# Art des Risikos: entscheidet über die Empfehlung und den Grund im Blatt Kannibalisierung
+RISK_CLEAR, RISK_PLAIN, RISK_NOT_IN_EXPORT = "deutlich", "knapp", "nicht im Export"
+
+
+def risk_kind(scores, ranking_j, margin) -> str:
+    """Nichts verglichen (rankende URL fehlt im Export), deutlich besser (mehr als ein positiver Abstand) oder knapp."""
+    if ranking_j is None:
+        return RISK_NOT_IN_EXPORT
+    if margin > 0 and not within_margin(scores.max(), scores[ranking_j], margin):
+        return RISK_CLEAR
+    return RISK_PLAIN
+
+
 def build_decisions(result, lead, threshold, rankings=None, good_position=10, weight=0.7, margin=0.01) -> pd.DataFrame:
     check_margin(margin)
     u_index = {normalize_url(u): j for j, u in enumerate(result.urls)}
@@ -115,8 +128,7 @@ def build_decisions(result, lead, threshold, rankings=None, good_position=10, we
                     advice = ADVICE_OK_CLOSE.format(other=result.urls[others[0]])
             else:
                 verdict = L.V_RISK
-                clearly = ranking_j is not None and margin > 0 and not within_margin(lead[i, j], lead[i, ranking_j], margin)
-                if ranking_j is not None and not clearly:
+                if risk_kind(lead[i], ranking_j, margin) == RISK_PLAIN:
                     advice = ADVICE_RISK_PLAIN.format(best=result.urls[j], rank_url=rank_url, position=position)
         else:
             verdict = L.V_USE if fits else L.V_GAP

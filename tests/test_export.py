@@ -246,12 +246,13 @@ def _text_number_sheets():
     decisions = _decisions()
     decisions[L.C_POSITION] = ["4.3", "12", ""]
     decisions[L.C_CAND_POS] = ["", "7.5", ""]
+    decisions[L.C_ADVICE] = ["https://a.de/x.html rankt auf Position 4.3, semantisch passt https://a.de/y besser.", "", ""]
     cannibal = pd.DataFrame(
         {
             L.C_QUERY: ["a"],
             L.C_STAGE: [L.STAGE_RISK],
             L.C_REASON: [L.REASON_BETTER],
-            L.C_COMPETING: ["https://a.de/x.html (Position 4.3, Score 0.842) | https://a.de/y (Score 0.9)"],
+            L.C_COMPETING: ["https://a.de/x.html (Position 4.3, Score 0.842) | https://a.de/y (Score -0.0123)"],
         }
     )
     settings = {"Datum": "2026-10-05", "Modell": "multilingual-e5-large", "Schwelle": 0.8123, "Treffer je Query (Top-N)": 5}
@@ -273,8 +274,9 @@ def test_semicolon_csv_uses_decimal_comma_in_positions_settings_and_competing_ur
     decisions = frames["entscheidung.csv"]
     assert decisions[L.C_POSITION].tolist() == ["4,3", "12", ""]
     assert decisions[L.C_CAND_POS].tolist() == ["", "7,5", ""]
+    assert decisions[L.C_ADVICE].tolist()[0] == "https://a.de/x.html rankt auf Position 4,3, semantisch passt https://a.de/y besser."
     assert frames["kannibalisierung.csv"].iloc[0][L.C_COMPETING] == (
-        "https://a.de/x.html (Position 4,3, Score 0,842) | https://a.de/y (Score 0,9)"
+        "https://a.de/x.html (Position 4,3, Score 0,842) | https://a.de/y (Score -0,0123)"
     )
     readme = frames["lesehilfe.csv"].set_index(L.R_ENTRY)[L.R_TEXT]
     assert readme["Schwelle"] == "0,8123"
@@ -289,6 +291,7 @@ def test_comma_csv_and_excel_keep_the_decimal_point_in_text(tmp_path):
     frames = _csv_frames(tmp_path / "out.zip", ",")
     assert frames["entscheidung.csv"][L.C_POSITION].tolist() == ["4.3", "12", ""]
     assert "Position 4.3, Score 0.842" in frames["kannibalisierung.csv"].iloc[0][L.C_COMPETING]
+    assert "Position 4.3," in frames["entscheidung.csv"][L.C_ADVICE].tolist()[0]
     export.write_excel(tmp_path / "out.xlsx", sheets)
     book = load_workbook(tmp_path / "out.xlsx")
     position_col = list(sheets[export.SHEET_DECISION].columns).index(L.C_POSITION) + 1

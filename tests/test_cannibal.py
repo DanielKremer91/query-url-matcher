@@ -3,7 +3,7 @@ import pytest
 
 from qum import labels as L
 from qum.cannibal import find_cannibalization
-from qum.verdict import ADVICE, ADVICE_OK_CLOSE, build_decisions
+from qum.verdict import ADVICE, ADVICE_NOT_IN_EXPORT, ADVICE_OK_CLOSE, ADVICE_RISK_PLAIN, build_decisions
 from tests.conftest import make_result
 
 U1, U2, U3 = "https://a.de/1", "https://a.de/2", "https://a.de/3"
@@ -60,6 +60,8 @@ def test_risk_row_for_ranking_url_outside_export_shows_position_only():
     df = _run(["q"], [[0.9, 0.1, 0.1]], rankings)
     assert df[L.C_STAGE].tolist() == [L.STAGE_RISK]
     assert df.iloc[0][L.C_COMPETING] == f"{alt} (Position 2) | {U1} (Score 0.9)"
+    assert df.iloc[0][L.C_REASON] == L.REASON_NOT_IN_EXPORT
+    assert L.REASON_NOT_IN_EXPORT == "Rankende URL steht nicht im Frog-Export und wurde nicht verglichen"
 
 
 def test_default_margin_is_one_hundredth():
@@ -135,9 +137,18 @@ def test_negative_margin_is_rejected():
 
 
 def test_decision_and_cannibalisation_sheet_agree():
-    queries = ["ok-nah", "ok-allein", "risiko", "nah-ohne-ranking"]
-    scores = [[0.842, 0.848, 0.1], [0.9, 0.7, 0.1], [0.7, 0.9, 0.1], [0.81, 0.805, 0.1]]
-    rankings = _rankings([("ok-nah", U1, U1, 3.0), ("ok-allein", U1, U1, 2.0), ("risiko", U1, U1, 4.0)])
+    alt = "https://a.de/alt"
+    queries = ["ok-nah", "ok-allein", "risiko", "nah-ohne-ranking", "knapp-unter-schwelle", "nicht-im-export"]
+    scores = [[0.842, 0.848, 0.1], [0.9, 0.7, 0.1], [0.7, 0.9, 0.1], [0.81, 0.805, 0.1], [0.795, 0.803, 0.1], [0.9, 0.1, 0.1]]
+    rankings = _rankings(
+        [
+            ("ok-nah", U1, U1, 3.0),
+            ("ok-allein", U1, U1, 2.0),
+            ("risiko", U1, U1, 4.0),
+            ("knapp-unter-schwelle", U1, U1, 3.0),
+            ("nicht-im-export", alt, alt, 2.0),
+        ]
+    )
     result = make_result(queries, [U1, U2, U3], scores)
     lead = result.lead("chunk")
     decisions = build_decisions(result, lead, 0.8, rankings, margin=0.01)
@@ -152,5 +163,33 @@ def test_decision_and_cannibalisation_sheet_agree():
             other = entry.iloc[0][L.C_COMPETING].split(" | ")[1].split(" (")[0]
             assert row[L.C_ADVICE] == ADVICE_OK_CLOSE.format(other=other)
         if row[L.C_VERDICT] == L.V_RISK:
-            assert entry[L.C_REASON].tolist() == [L.REASON_BETTER]
-    assert decisions[L.C_VERDICT].tolist() == [L.V_OK, L.V_OK, L.V_RISK, L.V_USE]
+            values = {"best": row[L.C_BEST_URL], "rank_url": row[L.C_RANK_URL], "position": row[L.C_POSITION]}
+            expected = {
+                ADVICE[L.V_RISK].format(**values): L.REASON_BETTER,
+                ADVICE_RISK_PLAIN.format(**values): L.REASON_BETTER_PLAIN,
+                ADVICE_NOT_IN_EXPORT.format(**values): L.REASON_NOT_IN_EXPORT,
+            }[row[L.C_ADVICE]]
+            assert entry[L.C_REASON].tolist() == [expected], row[L.C_QUERY]
+    assert decisions[L.C_VERDICT].tolist() == [L.V_OK, L.V_OK, L.V_RISK, L.V_USE, L.V_RISK, L.V_RISK]
+    reasons = dict(zip(cannibal[L.C_QUERY], cannibal[L.C_REASON]))
+    assert reasons["knapp-unter-schwelle"] == L.REASON_BETTER_PLAIN
+    assert reasons["nicht-im-export"] == L.REASON_NOT_IN_EXPORT
+
+
+
+def test_risk_with_margin_zero_uses_the_plain_reason():
+    rankings = _rankings([("q", U1, U1, 3.0)])
+    result = make_result(["q"], [U1, U2, U3], [[0.842, 0.843, 0.1]])
+    lead = result.lead("chunk")
+    decisions = build_decisions(result, lead, 0.6, rankings, margin=0)
+    df = find_cannibalization(result, lead, 0.6, decisions, rankings, margin=0)
+    assert df[L.C_REASON].tolist() == [L.REASON_BETTER_PLAIN]
+    assert L.REASON_BETTER_PLAIN == "Eine andere Seite passt besser als die rankende"
+
+
+def test_risk_with_ranking_url_below_threshold_uses_the_plain_reason():
+    rankings = _rankings([("q", U1, U1, 3.0)])
+    result = make_result(["q"], [U1, U2, U3], [[0.795, 0.803, 0.1]])
+    lead = result.lead("chunk")
+    decisions = build_decisions(result, lead, 0.8, rankings)
+    assert find_cannibalization(result, lead, 0.8, decisions, rankings)[L.C_REASON].tolist() == [L.REASON_BETTER_PLAIN]

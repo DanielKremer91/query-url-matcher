@@ -204,7 +204,7 @@ def write_excel(path, sheets: dict) -> None:
 
 
 _PLAIN_NUMBER = re.compile(r"^-?\d+\.\d+$")
-_NUMBER_IN_TEXT = re.compile(r"(Score|Position) (\d+)\.(\d+)")
+_NUMBER_IN_TEXT = re.compile(r"(Score|Position) (-?\d+)\.(\d+)")
 
 
 def _comma_in_text(name, df: pd.DataFrame) -> pd.DataFrame:
@@ -217,10 +217,9 @@ def _comma_in_text(name, df: pd.DataFrame) -> pd.DataFrame:
     for column in (L.C_POSITION, L.C_CAND_POS):
         if column in out.columns:
             out[column] = out[column].map(swap)
-    if L.C_COMPETING in out.columns:
-        out[L.C_COMPETING] = out[L.C_COMPETING].map(
-            lambda v: _NUMBER_IN_TEXT.sub(r"\1 \2,\3", v) if isinstance(v, str) else v
-        )
+    for column in (L.C_COMPETING, L.C_ADVICE):
+        if column in out.columns:
+            out[column] = out[column].map(lambda v: _NUMBER_IN_TEXT.sub(r"\1 \2,\3", v) if isinstance(v, str) else v)
     if name == SHEET_README:
         numeric = (out[L.R_AREA] == "Einstellung") & out[L.R_TEXT].map(lambda v: bool(_PLAIN_NUMBER.match(str(v))))
         out.loc[numeric, L.R_TEXT] = out.loc[numeric, L.R_TEXT].map(swap)

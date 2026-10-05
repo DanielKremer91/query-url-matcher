@@ -376,3 +376,25 @@ def test_read_table_splits_only_when_a_split_name_is_a_known_column():
     assert df.shape == (2, 1)
     df = ingest.read_table(_xlsx(["a;b", "c;d"], "Spalte eins; KEYWORD "), "x.xlsx")
     assert list(df.columns) == ["Spalte eins", "KEYWORD"]
+
+
+ALL_IN_ONE_CELL = (
+    "Die Datei scheint alle Spalten in einer Zelle zu enthalten. Benenne die Spalten in der ersten Zeile mit bekannten "
+    "Namen (z. B. Keyword, URL, Position) oder speichere die Datei als CSV mit getrennten Spalten."
+)
+
+
+def test_unsplit_file_with_unknown_names_explains_how_to_fix_it():
+    df = ingest.read_table(_xlsx(["a;https://a.example/1;3"], "Begriff;Adresse X;Rang"), "x.xlsx")
+    assert df.shape == (1, 1)
+    with pytest.raises(ingest.IngestError) as error:
+        ingest.load_rankings(df)
+    assert "Keyword-Spalte nicht erkannt" in str(error.value)
+    assert str(error.value).endswith(ALL_IN_ONE_CELL)
+
+
+def test_ordinary_missing_column_has_no_extra_sentence():
+    df = pd.DataFrame({"Begriff": ["a"], "Adresse X": ["b"]})
+    with pytest.raises(ingest.IngestError) as error:
+        ingest.load_rankings(df)
+    assert ALL_IN_ONE_CELL not in str(error.value)

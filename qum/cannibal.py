@@ -3,7 +3,23 @@ import pandas as pd
 
 from . import labels as L
 from .normalize import normalize_query, normalize_url
-from .verdict import check_margin, close_to_ranking, format_position, within_margin
+from .verdict import (
+    RISK_CLEAR,
+    RISK_NOT_IN_EXPORT,
+    RISK_PLAIN,
+    check_margin,
+    close_to_ranking,
+    format_position,
+    risk_kind,
+    within_margin,
+)
+
+# gleiche Unterscheidung wie die Empfehlung im Blatt Entscheidung
+_RISK_REASON = {
+    RISK_CLEAR: L.REASON_BETTER,
+    RISK_PLAIN: L.REASON_BETTER_PLAIN,
+    RISK_NOT_IN_EXPORT: L.REASON_NOT_IN_EXPORT,
+}
 
 def _describe(url, score=None, position="") -> str:
     parts = []
@@ -47,7 +63,8 @@ def find_cannibalization(
                 _describe(rank_url, score_of(i, normalize_url(rank_url)), decision[L.C_POSITION]),
                 _describe(result.urls[best], lead[i, best], format_position(best_position)),
             ]
-            rows.append((query, L.STAGE_RISK, L.REASON_BETTER, " | ".join(competing)))
+            reason = _RISK_REASON[risk_kind(lead[i], u_index.get(normalize_url(rank_url)), margin)]
+            rows.append((query, L.STAGE_RISK, reason, " | ".join(competing)))
         elif decision[L.C_VERDICT] == L.V_OK:
             # dieselbe Regel wie der Hinweis in der Empfehlung: weitere passende Seiten nah an der rankenden
             ranking_j = u_index[normalize_url(decision[L.C_RANK_URL])]
