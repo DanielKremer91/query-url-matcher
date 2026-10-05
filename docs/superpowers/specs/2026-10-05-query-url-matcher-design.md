@@ -37,7 +37,7 @@ Nicht im Umfang: eigener Crawler, Verarbeitung von Millionen Seiten, Ollama, ein
 Regeln:
 
 - CSV (auch UTF-16 und Tab-getrennt) und Excel werden gelesen.
-- Spalten werden über Aliaslisten erkannt (GSC, Ahrefs, SISTRIX, Semrush, Screaming Frog) und vor dem Rechnen als Vorschau gezeigt. Wird eine Pflichtspalte nicht erkannt, wählt der Nutzer sie im Formular.
+- Spalten werden über Aliaslisten erkannt (GSC, Ahrefs, SISTRIX, Semrush, Screaming Frog) und vor dem Rechnen als Vorschau gezeigt. Wird eine Pflichtspalte nicht erkannt, nennt die Fehlermeldung die gefundenen Spalten, und der Nutzer trägt den Spaltennamen im Formular ein. Fehlt in der SERP-Datei die Spalte Type, gelten alle Zeilen als organisch.
 - URL und Content bleiben zeilenweise zusammen. Zeilen ohne Content und doppelte URLs werden übersprungen und gezählt gemeldet.
 - Eigene Rankings und SERPs sind zwei getrennte Uploads. Fehlt die Ranking-Datei, zieht das Notebook die eigenen Rankings aus der SERP-Datei: Zeilen, deren Host im Frog-Export vorkommt. Liegen beide vor, gilt für Positionen die Ranking-Datei.
 - Abgleich von Queries: Kleinschreibung, getrimmt, Mehrfach-Leerzeichen zusammengezogen.
@@ -161,7 +161,8 @@ Standard ist eine Excel-Datei, per Häkchen zusätzlich ein ZIP mit einer CSV je
 | Entscheidung | eine Zeile je Query: Urteil, beste URL, Passage, drei Scores, rankende URL mit Position, Cluster, Nachbar-Kandidat, Empfehlung | immer |
 | Top-Treffer | Top-N-URLs je Query mit Scores, Rängen, Methode der Gesamt-URL | immer |
 | Kannibalisierung | Abschnitt 8 | immer (Stufe „bereits sichtbar" nur mit Rankings) |
-| Content-Lücken | Lücken-Queries, mit SERPs zusätzlich Cluster, Nachbar-Kandidat, Zusammenfassung je Cluster | immer |
+| Content-Lücken | Lücken-Queries, mit SERPs zusätzlich Cluster und Nachbar-Kandidat | immer |
+| Lücken je Cluster | Zusammenfassung: Lücken je Cluster und Zahl der neuen Seiten | nur mit SERPs |
 | Paare | Abschnitt 10 | nur wenn der Schritt lief |
 
 Die Query steht in jedem Blatt in der ersten Spalte. Urteile sind farbig hinterlegt.
