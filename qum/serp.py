@@ -1,5 +1,5 @@
 import math
-from collections import deque
+from collections import Counter, defaultdict, deque
 
 import pandas as pd
 
@@ -23,17 +23,22 @@ def top_urls_per_keyword(serps: pd.DataFrame) -> dict:
 
 
 def overlap_edges(kw_urls: dict, min_overlap: float = 0.5) -> dict:
-    keywords = sorted(kw_urls)
-    sets = {k: set(kw_urls[k]) for k in keywords}
+    """Kanten (a, b) mit a < b. Gezählt werden nur Paare mit gemeinsamer URL, über einen Index URL -> Keywords."""
+    sets = {k: set(urls) for k, urls in kw_urls.items()}
+    by_url = defaultdict(list)
+    for keyword in sorted(sets):
+        for url in sets[keyword]:
+            by_url[url].append(keyword)
+    shared = Counter()
+    for keywords in by_url.values():
+        for a_idx, a in enumerate(keywords):
+            for b in keywords[a_idx + 1 :]:
+                shared[(a, b)] += 1
     edges = {}
-    for a_idx, a in enumerate(keywords):
-        for b in keywords[a_idx + 1 :]:
-            denominator = min(len(sets[a]), len(sets[b]), 10)
-            if denominator == 0:
-                continue
-            overlap = len(sets[a] & sets[b]) / denominator
-            if overlap >= min_overlap:
-                edges[(a, b)] = overlap
+    for (a, b), count in sorted(shared.items()):
+        overlap = count / min(len(sets[a]), len(sets[b]), 10)
+        if overlap >= min_overlap:
+            edges[(a, b)] = overlap
     return edges
 
 
@@ -62,8 +67,10 @@ def _components(nodes: set, neighbours: dict) -> list:
     return out
 
 
-def cluster_keywords(kw_urls: dict, min_overlap: float = 0.5, min_density: float = 0.5) -> dict:
-    neighbours = _neighbours(kw_urls, overlap_edges(kw_urls, min_overlap))
+def cluster_keywords(kw_urls: dict, min_overlap: float = 0.5, min_density: float = 0.5, edges=None) -> dict:
+    if edges is None:
+        edges = overlap_edges(kw_urls, min_overlap)
+    neighbours = _neighbours(kw_urls, edges)
     assignments = {k: 0 for k in kw_urls}
     next_id = 1
     todo = deque([set(kw_urls)])
@@ -94,7 +101,7 @@ def apply_serp(decisions, result, lead, serps, rankings=None, min_overlap=0.5, m
     kw_urls = top_urls_per_keyword(serps)
     edges = overlap_edges(kw_urls, min_overlap)
     neighbours = _neighbours(kw_urls, edges)
-    clusters = cluster_keywords(kw_urls, min_overlap, min_density)
+    clusters = cluster_keywords(kw_urls, min_overlap, min_density, edges)
 
     out = decisions.copy()
     norms = [normalize_query(q) for q in result.queries]

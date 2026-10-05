@@ -206,3 +206,47 @@ def test_gap_summary_counts_one_page_per_cluster():
 def test_count_new_pages_without_cluster_column():
     decisions = pd.DataFrame({L.C_QUERY: ["a", "b"], L.C_VERDICT: [L.V_GAP, L.V_GAP]})
     assert count_new_pages(decisions) == 2
+
+
+def _brute_force_edges(kw_urls, min_overlap):
+    keywords = sorted(kw_urls)
+    sets = {k: set(kw_urls[k]) for k in keywords}
+    edges = {}
+    for a_idx, a in enumerate(keywords):
+        for b in keywords[a_idx + 1 :]:
+            denominator = min(len(sets[a]), len(sets[b]), 10)
+            if denominator and len(sets[a] & sets[b]) / denominator >= min_overlap:
+                edges[(a, b)] = len(sets[a] & sets[b]) / denominator
+    return edges
+
+
+def test_indexed_edges_equal_brute_force_on_random_input():
+    import random
+
+    rng = random.Random(7)
+    for _ in range(20):
+        kw_urls = {
+            f"k{i}": _urls(*rng.sample(range(25), rng.randint(0, 10))) for i in range(rng.randint(2, 30))
+        }
+        for min_overlap in (0.1, 0.3, 0.5, 0.8, 1.0):
+            assert overlap_edges(kw_urls, min_overlap) == _brute_force_edges(kw_urls, min_overlap)
+
+
+def test_cluster_keywords_accepts_precomputed_edges():
+    kw = {k: _urls(1, 2, 3, 4) for k in ["a", "b", "c"]}
+    kw["d"] = _urls(7, 8, 9)
+    edges = overlap_edges(kw, 0.5)
+    assert cluster_keywords(kw, 0.5, 0.5, edges=edges) == cluster_keywords(kw, 0.5, 0.5)
+    assert cluster_keywords(kw, 0.5, 0.5, edges={}) == {k: 0 for k in kw}
+
+
+def test_apply_serp_computes_edges_once(monkeypatch):
+    import qum.serp as serp
+
+    calls = []
+    original = serp.overlap_edges
+    monkeypatch.setattr(serp, "overlap_edges", lambda *a, **k: calls.append(1) or original(*a, **k))
+    result = make_result(["a", "b"], ["https://x.de/1"], [[0.9], [0.1]])
+    decisions = build_decisions(result, result.lead("chunk"), 0.5)
+    serp.apply_serp(decisions, result, result.lead("chunk"), _serps({"a": _urls(1, 2), "b": _urls(1, 2)}))
+    assert len(calls) == 1

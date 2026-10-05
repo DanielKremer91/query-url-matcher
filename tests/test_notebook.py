@@ -395,3 +395,97 @@ def test_example_files_use_reserved_example_domains():
         hosts = pd.read_csv(EXAMPLES / name, sep=";")[column].map(lambda u: urlsplit(u).netloc)
         assert hosts.str.endswith(".example").all(), name
     assert "www.tierbedarf.example" in (EXAMPLES / "frog_export.csv").read_text(encoding="utf-8")
+
+
+class _FakeCuda:
+    def __init__(self, available):
+        self.available, self.calls = available, 0
+
+    def is_available(self):
+        self.calls += 1
+        return self.available
+
+
+def _run_step_2(nb, monkeypatch, label, gpu):
+    import sys
+    import types
+
+    import qum.embeddings
+    from qum.embeddings.cache import CachedEmbedder
+    from tests.conftest import FakeEmbedder
+
+    torch = types.ModuleType("torch")
+    torch.cuda = _FakeCuda(gpu)
+    monkeypatch.setitem(sys.modules, "torch", torch)
+    monkeypatch.setattr(qum.embeddings, "make_embedder", lambda spec, **kw: CachedEmbedder(FakeEmbedder(spec)))
+    monkeypatch.setattr(colab, "secret", lambda name: "test-key")
+    nb.run(2, modell=label)
+    return torch.cuda
+
+
+def test_smoke_step_2_warns_without_gpu_for_local_models(nb, monkeypatch, capsys):
+    cuda = _run_step_2(nb, monkeypatch, MODELS["e5-large"].label, gpu=False)
+    out = capsys.readouterr().out
+    assert cuda.calls == 1
+    assert "⚠️ Keine GPU" in out and "T4 GPU" in out
+    assert "✅ Schritt 2 fertig" in out
+
+
+def test_smoke_step_2_stays_quiet_with_gpu(nb, monkeypatch, capsys):
+    _run_step_2(nb, monkeypatch, MODELS["e5-large"].label, gpu=True)
+    assert "Keine GPU" not in capsys.readouterr().out
+
+
+def test_smoke_step_2_does_not_check_gpu_for_api_models(nb, monkeypatch, capsys):
+    cuda = _run_step_2(nb, monkeypatch, MODELS["openai"].label, gpu=False)
+    assert cuda.calls == 0
+    assert "Keine GPU" not in capsys.readouterr().out
+
+
+def test_intro_recommends_gpu_runtime_for_local_models():
+    intro = next(source for kind, source in CELLS if kind == "markdown")
+    assert "Laufzeit → Laufzeittyp ändern → T4 GPU" in intro
+
+
+def test_smoke_rejected_rerun_of_step_4_keeps_previous_settings(nb, capsys):
+    nb.run(3, "queries.csv", "frog_export.csv")
+    nb.run(4)
+    before = {name: nb.ns[name] for name in ("size", "overlap", "basis", "result")}
+    with pytest.raises(colab.NotebookStop):
+        nb.run(4, chunk_groesse=10, chunk_overlap=10, bewertungsgrundlage="Kombi")
+    assert {name: nb.ns[name] for name in before} == before
+
+
+def test_smoke_default_overlap_not_below_chunk_size_explains_itself(nb, capsys):
+    nb.run(3, "queries.csv", "frog_export.csv")
+    capsys.readouterr()
+    with pytest.raises(colab.NotebookStop):
+        nb.run(4, chunk_groesse=1, chunk_overlap=0)  # Standard-Overlap des Test-Modells ist 1
+    out = capsys.readouterr().out
+    assert "Standard-Overlap des Modells (1)" in out and "Trage 0 ein" not in out
+
+
+def test_smoke_serps_with_few_urls_per_keyword_warn(nb, capsys):
+    _load(nb)
+    own_only = (
+        "Keyword;URL;Position;Type\n"
+        "getreidefreies hundefutter;https://www.tierbedarf.example/hundefutter/getreidefreies-hundefutter;5;Organic\n"
+    )
+    nb.uploads.append(("serps.csv", own_only.encode()))
+    nb.run(6)
+    assert "⚠️ Im Schnitt nur 1 URLs je Keyword." in capsys.readouterr().out
+    nb.run(6, "serps.csv")
+    assert "Im Schnitt nur" not in capsys.readouterr().out
+
+
+def test_smoke_step_9_accepts_an_earlier_pairs_export(nb, capsys):
+    _load(nb)
+    nb.run(7)
+    lines = (EXAMPLES / "rankings.csv").read_text(encoding="utf-8").splitlines()
+    earlier = "\n".join([lines[0] + ";Hinweis;Score Chunk"] + [line + ";alt;0.1" for line in lines[1:]]) + "\n"
+    nb.uploads.append(("paare.csv", earlier.encode()))
+    nb.run(9)
+    out = capsys.readouterr().out
+    assert "ℹ️ Die Datei enthält schon Ergebnisspalten (Score Chunk, Hinweis)" in out
+    assert "✅ Schritt 9 fertig" in out
+    assert list(nb.ns["pairs"].columns).count("Hinweis") == 1

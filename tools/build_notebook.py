@@ -26,6 +26,8 @@ Schon ohne Ranking-Dateien bekommst du das Matching mit Urteilen zu passender Se
 
 Führe die Zellen einzeln von oben nach unten aus (Play-Symbol links), nicht mit "Alle ausführen": Die Zellen fragen nach Uploads. Jede Zelle endet mit einer Zeile, die sagt, wie es weitergeht. Die Schritte 5, 6 und 9 sind optional. Wenn du einen früheren Schritt erneut ausführst, setzt das Notebook alles zurück, was darauf aufbaut, und sagt dir, welchen Schritt du danach wiederholen musst.
 
+Für die kostenlosen lokalen Modelle: Laufzeit → Laufzeittyp ändern → T4 GPU, sonst dauert das Einbetten sehr lange.
+
 Für die Modelle mit API-Key legst du im Secrets-Panel (Schlüssel-Symbol links) das Secret an und aktivierst dort den Schalter "Notebook-Zugriff".
 
 ## Wichtig
@@ -66,6 +68,17 @@ except OSError as error:
     )
 spec, embedder = new_spec, new_embedder
 colab.invalidate(globals(), *colab.MATCH_STATE)
+if spec.provider == "local":
+    try:
+        import torch
+
+        if not torch.cuda.is_available():
+            print(
+                "⚠️ Keine GPU gefunden. Mit einem lokalen Modell dauert das Einbetten so sehr lange. "
+                "Stelle unter Laufzeit → Laufzeittyp ändern → T4 GPU um und führe die Zellen ab Schritt 2 erneut aus."
+            )
+    except ImportError:
+        pass
 if spec.comparison_only:
     print("⚠️ Dieses Modell ist symmetrisch und nur als Gegenbeispiel gedacht. Nutze es nicht für die Auswertung.")
 print(f"✅ Schritt 2 fertig: Modell {spec.model_id} ist bereit. Weiter mit Schritt 3 (Schritt 4 neu ausführen, falls du schon gematcht hattest).")
@@ -133,27 +146,34 @@ if chunk_groesse < 0 or chunk_overlap < 0:
     colab.stop("Chunk-Größe und Overlap dürfen nicht negativ sein. 0 bedeutet: Standardwert des Modells.")
 if top_n < 1:
     colab.stop("Die Zahl der Treffer je Query (top_n) muss mindestens 1 sein.")
-size = chunk_groesse or spec.chunk_size
-overlap = chunk_overlap or spec.chunk_overlap
-if overlap >= size:
+# erst prüfen, übernommen wird erst nach erfolgreichem Matching (zusammen mit dem Ergebnis)
+new_size = chunk_groesse or spec.chunk_size
+new_overlap = chunk_overlap or spec.chunk_overlap
+if new_overlap >= new_size:
+    if chunk_overlap == 0:
+        colab.stop(
+            f"Der Standard-Overlap des Modells ({new_overlap}) ist nicht kleiner als die gewählte Chunk-Größe "
+            f"({new_size}). Trage einen kleineren Overlap oder eine größere Chunk-Größe ein."
+        )
     colab.stop(
-        f"Der Overlap ({overlap}) muss kleiner sein als die Chunk-Größe ({size}). "
+        f"Der Overlap ({new_overlap}) muss kleiner sein als die Chunk-Größe ({new_size}). "
         "Trage 0 ein, um den Standardwert des Modells zu nutzen."
     )
-basis = L.BASIS[bewertungsgrundlage]
-n_chunks = estimate_chunks(content.contents, size, overlap)
-print(f"ℹ️ {len(content.urls)} URLs ergeben {n_chunks} Chunks ({size} Wörter, Overlap {overlap}).")
+new_basis = L.BASIS[bewertungsgrundlage]
+n_chunks = estimate_chunks(content.contents, new_size, new_overlap)
+print(f"ℹ️ {len(content.urls)} URLs ergeben {n_chunks} Chunks ({new_size} Wörter, Overlap {new_overlap}).")
 if n_chunks >= 50000:
     print("⚠️ Das sind sehr viele Chunks (ab 50.000). Der Lauf wird trotzdem fortgesetzt und kann lange dauern. Schränke den Frog-Export auf ein Verzeichnis ein, wenn dir das zu lange ist.")
 colab.invalidate(globals(), *colab.MATCH_STATE)
 with colab.guard():
-    new_result = run_matching(queries, content.urls, content.contents, embedder, size, overlap)
+    new_result = run_matching(queries, content.urls, content.contents, embedder, new_size, new_overlap)
 inner = embedder.inner
 if hasattr(inner, "truncated_share"):
     flat = [c for per_url in new_result.chunks for c in per_url]
     share = inner.truncated_share(flat[:2000])
     if share > 0.05:
         print(f"⚠️ {share:.0%} der Chunks sind länger als das Modell lesen kann. Verkleinere die Chunk-Größe.")
+size, overlap, basis = new_size, new_overlap, new_basis
 weight, basis_label, n_top = kombi_gewicht_chunk, bewertungsgrundlage, top_n
 result = new_result
 lead = result.lead(basis, weight)
@@ -237,6 +257,14 @@ if serps is not None and rankings_source != "Datei":
     else:
         rankings, rankings_source = derived, "SERPs"
         print(f"ℹ️ Keine eigene Ranking-Datei: {len(rankings)} eigene Rankings aus den SERPs übernommen.")
+if serps is not None:
+    per_keyword = serps.groupby("query_norm")["url_norm"].nunique().median()
+    if per_keyword < 5:
+        n = f"{per_keyword:g}".replace(".", ",")
+        print(
+            f"⚠️ Im Schnitt nur {n} URLs je Keyword. Für das Clustering werden die kompletten Top 10 je Keyword "
+            "gebraucht, mit eigenen Rankings allein ist es nicht aussagekräftig."
+        )
 if serps is None:
     print("ℹ️ Die SERPs wurden nicht übernommen. Weiter mit Schritt 7 oder lade eine andere Datei hoch.")
 else:
@@ -352,7 +380,7 @@ paare_url_spalte = "" #@param {type:"string"}
 
 from qum import colab, export
 from qum import labels as L
-from qum.pairs import score_pairs
+from qum.pairs import score_pairs, stale_columns
 
 colab.require(globals(), 2, "spec", "embedder")
 colab.require(globals(), 3, "content")
@@ -360,8 +388,10 @@ colab.require(globals(), 4, "result", "size", "overlap", "basis", "weight")
 colab.require(globals(), 7, "decisions", "top", "cannibal", "settings", "threshold_source")
 with colab.guard():
     name, data = colab.upload("Keyword-URL-Paare (Keyword, URL)")
+    pair_table = colab.read_table(data, name)
+    stale = stale_columns(pair_table, keep=(paare_keyword_spalte, paare_url_spalte))
     pairs = score_pairs(
-        colab.read_table(data, name),
+        pair_table,
         content.urls,
         content.contents,
         embedder,
@@ -372,6 +402,8 @@ with colab.guard():
         keyword_col=paare_keyword_spalte or None,
         url_col=paare_url_spalte or None,
     )
+if stale:
+    print(f"ℹ️ Die Datei enthält schon Ergebnisspalten ({', '.join(stale)}). Sie werden ignoriert und neu berechnet.")
 missing = (pairs[L.C_NOTE] != "").sum()
 if missing:
     print(f"ℹ️ {missing} Paare haben eine URL, die nicht im Frog-Export steht.")

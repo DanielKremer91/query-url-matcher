@@ -5,7 +5,12 @@ from .ingest import KEYWORD_ALIASES, URL_ALIASES, _require
 from .match import ranks, run_matching
 from .normalize import normalize_url
 
-_NEW_COLUMNS = [L.C_S_CHUNK, L.C_S_FULL, L.C_S_COMBI, L.C_PAIR_RANK, L.C_BEST_URL, L.C_NOTE]
+OUTPUT_COLUMNS = [L.C_S_CHUNK, L.C_S_FULL, L.C_S_COMBI, L.C_PAIR_RANK, L.C_BEST_URL, L.C_NOTE]
+
+
+def stale_columns(df, keep=()) -> list:
+    """Ergebnisspalten, die schon in der Eingabe stehen (etwa aus einem früheren Paare-Export)."""
+    return [column for column in OUTPUT_COLUMNS if column in df.columns and column not in keep]
 
 
 def score_pairs(
@@ -14,9 +19,10 @@ def score_pairs(
     kcol = _require(df, keyword_col, KEYWORD_ALIASES, "Keyword")
     ucol = _require(df, url_col, URL_ALIASES, "URL")
 
-    work = df.dropna(subset=[kcol, ucol]).reset_index(drop=True)
+    work = df.drop(columns=stale_columns(df, keep=(kcol, ucol)))
+    work = work.dropna(subset=[kcol, ucol]).reset_index(drop=True)
     if work.empty:
-        return work.assign(**{column: [] for column in _NEW_COLUMNS})
+        return work.assign(**{column: [] for column in OUTPUT_COLUMNS})
 
     keywords = list(dict.fromkeys(str(k).strip() for k in work[kcol]))
     result = run_matching(keywords, urls, contents, embedder, chunk_size, chunk_overlap)
@@ -44,6 +50,6 @@ def score_pairs(
                     "",
                 )
             )
-    scored = pd.DataFrame(rows, columns=_NEW_COLUMNS)
+    scored = pd.DataFrame(rows, columns=OUTPUT_COLUMNS)
     scored[L.C_PAIR_RANK] = scored[L.C_PAIR_RANK].astype("Int64")
     return pd.concat([work, scored], axis=1)
