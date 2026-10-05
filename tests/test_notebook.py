@@ -513,3 +513,22 @@ def test_smoke_step_9_accepts_an_earlier_pairs_export(nb, capsys):
     assert "ℹ️ Die Datei enthält schon Ergebnisspalten (Score Chunk, Hinweis)" in out
     assert "✅ Schritt 9 fertig" in out
     assert list(nb.ns["pairs"].columns).count("Hinweis") == 1
+
+
+def test_step_7_margin_defaults_to_one_hundredth():
+    source = next(s for s in _code_cells() if s.startswith("#@title Schritt 7"))
+    assert re.search(r"^abstand_fast_gleich = 0\.01 #@param", source, flags=re.M)
+
+
+def test_smoke_step_7_margin_reaches_the_verdicts(nb):
+    from qum import labels as L
+
+    _load(nb)
+    # die Ratgeber-Seite rankt für "hundeleine", passt aber deutlich schlechter als die beste Seite
+    weak = "Keyword;URL;Position\nhundeleine;https://www.tierbedarf.example/ratgeber/hundefutter-arten;3\n"
+    nb.uploads.append(("rankings.csv", weak.encode()))
+    nb.run(5)
+    nb.run(7, schwelle=0.3)
+    assert nb.ns["decisions"][L.C_VERDICT].tolist().count(L.V_RISK) == 1
+    nb.run(7, schwelle=0.3, abstand_fast_gleich=1.0)
+    assert L.V_RISK not in nb.ns["decisions"][L.C_VERDICT].tolist()

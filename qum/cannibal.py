@@ -3,7 +3,7 @@ import pandas as pd
 
 from . import labels as L
 from .normalize import normalize_query, normalize_url
-from .verdict import format_position
+from .verdict import format_position, within_margin
 
 def _describe(url, score=None, position="") -> str:
     parts = []
@@ -23,7 +23,7 @@ def _rankings_by_query(rankings) -> dict:
 
 
 def find_cannibalization(
-    result, lead, threshold, decisions, rankings=None, margin=0.02, visible_position=20
+    result, lead, threshold, decisions, rankings=None, margin=0.01, visible_position=20
 ) -> pd.DataFrame:
     u_index = {normalize_url(u): j for j, u in enumerate(result.urls)}
     by_query = _rankings_by_query(rankings)
@@ -38,11 +38,7 @@ def find_cannibalization(
         own = by_query.get(normalize_query(query), [])
         order = np.argsort(-lead[i], kind="stable")
         best = order[0]
-        # verglichen werden die angezeigten Werte (4 Nachkommastellen), sonst kippt der Rand durch Rundungsfehler
-        top = round(float(lead[i, best]), 4)
-        close = [
-            j for j in order if lead[i, j] >= threshold and top - round(float(lead[i, j]), 4) <= margin + 1e-9
-        ]
+        close = [j for j in order if lead[i, j] >= threshold and within_margin(lead[i, best], lead[i, j], margin)]
         if decision[L.C_VERDICT] == L.V_RISK:
             rank_url = decision[L.C_RANK_URL]
             best_position = next((r.position for r in own if r.url_norm == normalize_url(result.urls[best])), None)

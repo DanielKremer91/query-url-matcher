@@ -32,7 +32,12 @@ def format_position(position) -> str:
     return str(int(position)) if float(position).is_integer() else f"{position:.1f}"
 
 
-def build_decisions(result, lead, threshold, rankings=None, good_position=10, weight=0.7) -> pd.DataFrame:
+def within_margin(top, score, margin) -> bool:
+    """Verglichen werden die angezeigten Werte (4 Nachkommastellen), sonst kippt der Rand durch Rundungsfehler."""
+    return round(float(top), 4) - round(float(score), 4) <= margin + 1e-9
+
+
+def build_decisions(result, lead, threshold, rankings=None, good_position=10, weight=0.7, margin=0.01) -> pd.DataFrame:
     u_index = {normalize_url(u): j for j, u in enumerate(result.urls)}
     best_ranking = {}
     if rankings is not None:
@@ -57,8 +62,10 @@ def build_decisions(result, lead, threshold, rankings=None, good_position=10, we
                 note = L.NOTE_NOT_IN_EXPORT
             if not fits:
                 verdict = L.V_WATCH
-            elif ranking_j is not None and lead[i, ranking_j] >= lead[i, j]:
+            elif ranking_j is not None and within_margin(lead[i, j], lead[i, ranking_j], margin):
+                # die rankende Seite gehört zu den besten Treffern: die Zeile beschreibt sie
                 verdict = L.V_OK
+                j = ranking_j
             else:
                 verdict = L.V_RISK
         else:

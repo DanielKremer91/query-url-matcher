@@ -100,10 +100,12 @@ Mit Rankings, in dieser Prüfreihenfolge:
 | Ranking | Matching | Urteil |
 |---|---|---|
 | gut | keine URL passt | rankt trotz schwachem Match, beobachten |
-| gut | rankende URL ist bester Treffer | in Ordnung |
-| gut | eine andere URL ist bester Treffer und passt | Kannibalisierungs-Risiko |
+| gut | rankende URL liegt höchstens um den Abstand „fast gleich" hinter dem besten Treffer | in Ordnung |
+| gut | rankende URL liegt weiter dahinter oder fehlt im Export, der beste Treffer passt | Kannibalisierungs-Risiko |
 | schwach oder keines | beste URL passt | bestehende Seite nutzen, nicht neu bauen |
 | schwach oder keines | keine URL passt | Content-Lücke |
+
+Der Abstand „fast gleich" ist derselbe wie in Abschnitt 8 (Default 0,01, einstellbar). Verglichen werden die auf 4 Nachkommastellen gerundeten Leit-Scores. Bei „in Ordnung" beziehen sich beste URL, Passage und die drei Scores auf die rankende URL, damit die Zeile keine andere Seite als beste nennt.
 
 Steht die rankende URL nicht im Frog-Export, wird das in einer Hinweisspalte vermerkt und die Query wie „andere URL" behandelt.
 
@@ -111,7 +113,7 @@ Steht die rankende URL nicht im Frog-Export, wird das in einer Hinweisspalte ver
 
 Eigene Auswertung mit zwei Stufen:
 
-- **Risiko:** Urteil „Kannibalisierungs-Risiko" aus Abschnitt 7, oder zwei und mehr eigene URLs passen und liegen im Leit-Score höchstens 0,02 auseinander (einstellbar). Der zweite Fall funktioniert auch ohne Rankings.
+- **Risiko:** Urteil „Kannibalisierungs-Risiko" aus Abschnitt 7, oder zwei und mehr eigene URLs passen und liegen im Leit-Score höchstens 0,01 auseinander (einstellbar; e5-Scores liegen in einem engen Band, ein größerer Abstand markiert zu viel). Der zweite Fall funktioniert auch ohne Rankings.
 - **Bereits sichtbar:** zwei oder mehr eigene URLs ranken für die Query mit Position ≤ 20 (einstellbar).
 
 Ausgegeben werden die Query, die Stufe, die konkurrierenden URLs mit Scores und Positionen.

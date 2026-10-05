@@ -91,8 +91,47 @@ def test_exact_tie_between_ranking_and_best_url_is_ok():
     rankings = _rankings([("q", U2, U2, 3.0)])
     result = make_result(["q"], [U1, U2], [[0.8, 0.8]])
     row = build_decisions(result, result.lead("chunk"), 0.6, rankings).iloc[0]
-    assert row[L.C_BEST_URL] == U1
+    assert row[L.C_BEST_URL] == U2  # die rankende Seite gehört zu den besten Treffern
     assert row[L.C_VERDICT] == L.V_OK
+
+
+def _ranking_u1(scores, **kwargs):
+    rankings = _rankings([("q", U1, U1, 3.0)])
+    result = make_result(["q"], [U1, U2], [scores], full_scores=[[s - 0.1 for s in scores]])
+    return build_decisions(result, result.lead("chunk"), 0.6, rankings, **kwargs).iloc[0]
+
+
+def test_ranking_url_just_behind_the_top_is_ok_and_named_as_best():
+    row = _ranking_u1([0.842, 0.843])
+    assert row[L.C_VERDICT] == L.V_OK
+    assert row[L.C_BEST_URL] == U1
+    assert row[L.C_CHUNK] == f"Text {U1}"
+    assert row[L.C_S_CHUNK] == 0.842
+    assert row[L.C_S_FULL] == 0.742
+    assert row[L.C_S_COMBI] == round(0.7 * 0.842 + 0.3 * 0.742, 4)
+
+
+def test_ranking_url_clearly_behind_the_top_is_risk():
+    row = _ranking_u1([0.790, 0.860])
+    assert row[L.C_VERDICT] == L.V_RISK
+    assert row[L.C_BEST_URL] == U2
+    assert row[L.C_S_CHUNK] == 0.86
+
+
+def test_ranking_url_exactly_at_the_margin_is_ok():
+    assert _ranking_u1([0.80, 0.81])[L.C_VERDICT] == L.V_OK
+    assert _ranking_u1([0.80, 0.8101])[L.C_VERDICT] == L.V_RISK
+
+
+def test_verdict_margin_is_adjustable():
+    assert _ranking_u1([0.790, 0.860], margin=0.1)[L.C_VERDICT] == L.V_OK
+    assert _ranking_u1([0.842, 0.843], margin=0)[L.C_VERDICT] == L.V_RISK
+
+
+def test_nothing_fits_is_checked_before_the_margin():
+    row = _ranking_u1([0.55, 0.555])
+    assert row[L.C_VERDICT] == L.V_WATCH
+    assert row[L.C_BEST_URL] == U2
 
 
 def test_ranking_url_missing_in_export_gets_its_own_advice():

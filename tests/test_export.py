@@ -211,3 +211,10 @@ def test_write_excel_keeps_formula_like_text_as_text(tmp_path):
     cells = [sheet.cell(row=r, column=c) for c in (1, 4) for r in (2, 3, 4)]
     assert [cell.value for cell in cells] == ["=cmd|x", "+49 hotline", "@home", "= 5 Euro", "-20 % Rabatt", "normal"]
     assert all(cell.data_type == "s" for cell in cells)
+
+
+def test_help_texts_describe_the_margin_rule():
+    assert "fast gleich" in export._VERDICT_HELP[L.V_OK]
+    assert "deutlich besser" in export._VERDICT_HELP[L.V_RISK]
+    assert "rankende Seite" in export._COLUMN_HELP[L.C_BEST_URL]
+    assert "deutlich besser" in export._STAGE_HELP[L.STAGE_RISK]

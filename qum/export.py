@@ -48,7 +48,10 @@ _COLUMN_HELP = {
     L.C_R_COMBI: "Rang der Seite nach Kombi-Score für diese Query. 1 = beste URL für diese Query unter allen URLs.",
     L.C_METHOD: f"'{L.FULLTEXT}': ganzer Text als ein Embedding. '{L.CHUNK_MEAN}': Text zu lang, Näherung.",
     L.C_VERDICT: "Einordnung der Query, siehe die Urteile weiter unten in dieser Lesehilfe.",
-    L.C_BEST_URL: "Die Seite mit dem höchsten Score für die Query, nach der gewählten Bewertungsgrundlage.",
+    L.C_BEST_URL: (
+        "Die Seite mit dem höchsten Score für die Query, nach der gewählten Bewertungsgrundlage. "
+        "Bei 'In Ordnung' die rankende Seite, wenn sie fast gleich gut passt."
+    ),
     L.C_RANK_URL: "Die URL, die laut Ranking-Export am besten für die Query rankt.",
     L.C_POSITION: "Beste Position der rankenden URL für die Query im Ranking-Export.",
     L.C_NOTE: "Ergänzender Hinweis, zum Beispiel wenn eine URL im Frog-Export fehlt.",
@@ -71,15 +74,15 @@ _COLUMN_HELP = {
 }
 
 _STAGE_HELP = {
-    L.STAGE_RISK: "Eine Seite rankt gut, eine andere passt besser, oder mehrere Seiten passen fast gleich gut.",
+    L.STAGE_RISK: "Eine Seite rankt gut, eine andere passt deutlich besser, oder mehrere Seiten passen fast gleich gut.",
     L.STAGE_VISIBLE: "Mehrere eigene Seiten ranken bereits für die Query.",
 }
 
 _VERDICT_HELP = {
     L.V_MATCH: "Mindestens eine Seite erreicht die Schwelle.",
     L.V_GAP: "Keine Seite erreicht die Schwelle.",
-    L.V_OK: "Die rankende Seite ist auch der beste semantische Treffer.",
-    L.V_RISK: "Eine Seite rankt gut, eine andere eigene Seite passt semantisch besser.",
+    L.V_OK: "Die rankende Seite passt semantisch am besten oder fast gleich gut wie die beste (Abstand 'fast gleich').",
+    L.V_RISK: "Eine Seite rankt gut, eine andere eigene Seite passt semantisch deutlich besser (mehr als der Abstand 'fast gleich').",
     L.V_WATCH: "Die Query rankt gut, obwohl keine Seite die Schwelle erreicht.",
     L.V_USE: "Kein gutes Ranking, aber eine passende Seite existiert.",
     L.V_CHECK: "Lücke, aber ein Keyword mit stark überlappender SERP hat bereits eine passende Seite.",

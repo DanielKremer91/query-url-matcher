@@ -7,7 +7,7 @@
 ## Was es beantwortet
 
 - Gibt es für eine Query schon eine passende Seite oder Textstelle?
-- Passt eine andere Seite besser als die, die gerade rankt (Kannibalisierungs-Risiko)?
+- Passt eine andere Seite deutlich besser als die, die gerade rankt (Kannibalisierungs-Risiko)? Liegt die rankende Seite höchstens 0,01 hinter der besten (einstellbar in Schritt 7), gilt sie als bester Treffer.
 - Für welche Queries fehlt Content, und wie viele neue Seiten sind das wirklich?
 
 Das Notebook sortiert vor und begründet. Die Entscheidung trifft ein Mensch.

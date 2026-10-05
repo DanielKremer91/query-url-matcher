@@ -280,7 +280,8 @@ kalibrierung_bis_position = 5 #@param {type:"integer"}
 #@markdown Ab welcher Position gilt eine Query als gut rankend?
 rankt_gut_bis_position = 10 #@param {type:"integer"}
 #@markdown Kannibalisierung: maximaler Score-Abstand für "fast gleich gut" und Positionsgrenze für "rankt ebenfalls".
-abstand_fast_gleich = 0.02 #@param {type:"number"}
+#@markdown Liegt die rankende Seite höchstens um diesen Abstand hinter der besten, gilt sie als bester Treffer ("In Ordnung").
+abstand_fast_gleich = 0.01 #@param {type:"number"}
 sichtbar_bis_position = 20 #@param {type:"integer"}
 #@markdown Clustering (nur mit Schritt 6): Mindest-Überschneidung der Top 10 und Mindest-Dichte im Cluster, in Prozent.
 serp_ueberschneidung = 50 #@param {type:"slider", min:10, max:100, step:5}
@@ -320,7 +321,7 @@ print(f"Verwendete Schwelle: {threshold:.4f}")
 print("Diese Paare liegen knapp über und knapp unter der Schwelle. Passt die Grenze?")
 display(examples_around(result, lead, threshold))
 
-new_decisions = build_decisions(result, lead, threshold, rankings, rankt_gut_bis_position, weight)
+new_decisions = build_decisions(result, lead, threshold, rankings, rankt_gut_bis_position, weight, abstand_fast_gleich)
 new_cannibal = find_cannibalization(result, lead, threshold, new_decisions, rankings, abstand_fast_gleich, sichtbar_bis_position)
 if serps is not None:
     new_decisions = apply_serp(new_decisions, result, lead, serps, rankings, serp_ueberschneidung / 100, cluster_dichte / 100)

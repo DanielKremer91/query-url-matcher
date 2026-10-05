@@ -61,6 +61,11 @@ def test_risk_row_for_ranking_url_outside_export_shows_position_only():
     assert df.iloc[0][L.C_COMPETING] == f"{alt} (Position 2) | {U1} (Score 0.9)"
 
 
+def test_default_margin_is_one_hundredth():
+    assert _run(["q"], [[0.80, 0.785, 0.1]]).empty
+    assert len(_run(["q"], [[0.80, 0.79, 0.1]])) == 1
+
+
 def test_margin_boundary_counts_as_close():
     df = _run(["q"], [[0.80, 0.78, 0.1]], margin=0.02)
     assert df[L.C_STAGE].tolist() == [L.STAGE_RISK]
