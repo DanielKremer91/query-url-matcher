@@ -138,7 +138,8 @@ print(f"✅ Schritt 3 fertig: {len(queries)} Queries und {len(content.urls)} URL
 '''
 
 STEP4 = '''#@title Schritt 4: Matching { display-mode: "form" }
-#@markdown Der Content wird automatisch in überlappende Textblöcke (Chunks) zerlegt. **0 = Empfehlung für das gewählte Modell.**
+#@markdown Chunking ist immer aktiv: Der Content wird in überlappende Textblöcke (Chunks) zerlegt, je Query zählt der beste Block.
+#@markdown **0 heißt: empfohlene Größe für das gewählte Modell** (bei e5: 250 Wörter, Overlap 40). Nur ändern, wenn du bewusst andere Werte willst.
 chunk_groesse = 0 #@param {type:"integer"}
 chunk_overlap = 0 #@param {type:"integer"}
 #@markdown Welcher Score entscheidet über "passend" und die Sortierung? Im Export stehen immer alle drei.

@@ -765,3 +765,8 @@ def test_smoke_step_3_names_the_columns_actually_used(nb, capsys):
     out = capsys.readouterr().out
     assert "URL = Address, Content = Extract Main Content 1" in out
     assert "None" not in out
+
+
+def test_step_4_says_chunking_is_always_on():
+    source = next(s for s in _code_cells() if s.startswith("#@title Schritt 4"))
+    assert "Chunking ist immer aktiv" in source and "0 heißt: empfohlene Größe" in source
