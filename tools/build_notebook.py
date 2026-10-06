@@ -45,9 +45,16 @@ modell = "multilingual-e5-large · Deutsch, kostenlos (Empfehlung)" #@param ["mu
 
 !pip install -q "qum[local] @ git+https://github.com/DanielKremer91/query-url-matcher@v__VERSION__"
 
+import logging
+import warnings
+
 from qum import colab
 from qum.embeddings import make_embedder
 from qum.models import model_by_label
+
+# Hinweis von Hugging Face zu Downloads ohne Token ausblenden: Die Modelle sind frei verfügbar, ein Token ist nicht nötig.
+logging.getLogger("huggingface_hub.utils._http").setLevel(logging.ERROR)
+warnings.filterwarnings("ignore", message=".*unauthenticated requests to the HF Hub.*")
 
 new_spec = model_by_label(modell)
 api_key = None
