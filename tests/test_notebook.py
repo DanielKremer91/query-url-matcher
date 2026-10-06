@@ -791,3 +791,11 @@ def test_smoke_steps_5_and_6_name_the_detected_columns(nb, capsys):
     out = capsys.readouterr().out
     assert "Erkannte Spalten: Keyword = Keyword, URL = URL, Position = Position" in out
     assert "Erkannte Spalten: Keyword = Keyword, URL = URL, Position = Position, Type = Type" in out
+
+
+def test_step_7_explains_every_field():
+    source = next(s for s in _code_cells() if s.startswith("#@title Schritt 7"))
+    for name in ("kalibrierung_bis_position", "rankt_gut_bis_position", "abstand_fast_gleich", "sichtbar_bis_position",
+                 "serp_ueberschneidung", "cluster_dichte"):
+        assert f"**{name}" in source, name
+    assert "75 %" in source

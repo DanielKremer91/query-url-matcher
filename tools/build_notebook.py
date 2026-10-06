@@ -313,15 +313,15 @@ STEP7 = '''#@title Schritt 7: Schwelle prüfen und Urteile bilden { display-mode
 schwelle_bestimmen = "Erst Vorschläge ansehen" #@param ["Erst Vorschläge ansehen", "Aus Rankings kalibriert", "Mittlerer bester Score (nicht kalibriert)", "Eigener Wert"]
 #@markdown Nur für "Eigener Wert": die Schwelle, größer als 0 und höchstens 1 (zum Beispiel 0.82).
 eigene_schwelle = 0.0 #@param {type:"number"}
-#@markdown Kalibrierung: Paare bis zu dieser Position gelten als "rankt heute gut" und liefern den Vorschlag aus Rankings.
+#@markdown **kalibrierung_bis_position** (nur für "Aus Rankings kalibriert"): Paare aus Query und eigener URL, die bis zu dieser Position ranken, gelten als Beispiele für "die Seite passt sicher". Die Schwelle wird so gesetzt, dass 75 % dieser Beispiele sie erreichen. Höherer Wert: mehr Beispiele, meist etwas niedrigere Schwelle.
 kalibrierung_bis_position = 5 #@param {type:"integer"}
-#@markdown Ab welcher Position gilt eine Query als gut rankend?
+#@markdown **rankt_gut_bis_position:** Bis zu dieser Position gilt eine Query als gut rankend. Davon hängt das Urteil ab: "In Ordnung" oder "Kannibalisierungs-Risiko" bei gutem Ranking, "Bestehende Seite nutzen" oder "Content-Lücke" bei schwachem.
 rankt_gut_bis_position = 10 #@param {type:"integer"}
-#@markdown Kannibalisierung: maximaler Score-Abstand für "fast gleich gut" und Positionsgrenze für "rankt ebenfalls".
-#@markdown Liegt die rankende Seite höchstens um diesen Abstand hinter der besten, gilt sie als bester Treffer ("In Ordnung").
+#@markdown **abstand_fast_gleich:** Score-Unterschied, bis zu dem zwei Seiten als gleich gut gelten (0.01 = ein Hundertstel). Liegt die rankende Seite höchstens so weit hinter der besten, lautet das Urteil "In Ordnung". Liegen zwei passende Seiten so nah beieinander, gibt es einen Kannibalisierungs-Hinweis.
 abstand_fast_gleich = 0.01 #@param {type:"number"}
+#@markdown **sichtbar_bis_position:** Ranken zwei eigene URLs für dieselbe Query bis zu dieser Position, meldet das Tool "Kannibalisierung bereits sichtbar".
 sichtbar_bis_position = 20 #@param {type:"integer"}
-#@markdown Clustering (nur mit Schritt 6): Mindest-Überschneidung der Top 10 und Mindest-Dichte im Cluster, in Prozent.
+#@markdown **serp_ueberschneidung** und **cluster_dichte** (nur mit Schritt 6): Zwei Keywords gelten als verwandt, wenn sich mindestens so viel Prozent ihrer Top-10-URLs überschneiden. Ein Keyword bleibt nur im Cluster, wenn es mit mindestens so viel Prozent der anderen Mitglieder verwandt ist. Höhere Werte ergeben kleinere, engere Cluster.
 serp_ueberschneidung = 50 #@param {type:"slider", min:10, max:100, step:5}
 cluster_dichte = 50 #@param {type:"slider", min:10, max:100, step:5}
 
