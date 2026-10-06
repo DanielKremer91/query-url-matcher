@@ -85,7 +85,7 @@ _STAGE_HELP = {
     L.STAGE_VISIBLE: "Mehrere eigene Seiten ranken bereits für die Query.",
 }
 
-_VERDICT_HELP = {
+VERDICT_HELP = {
     L.V_MATCH: "Mindestens eine Seite erreicht die Schwelle.",
     L.V_GAP: "Keine Seite erreicht die Schwelle.",
     L.V_OK: (
@@ -147,7 +147,7 @@ def _readme(sheet_names, settings, present_columns, threshold_source=None) -> pd
     if threshold_source in CAVEAT_THRESHOLD:
         rows.append(("Hinweis", "Schwelle", CAVEAT_THRESHOLD[threshold_source]))
     rows += [("Blatt", name, _SHEET_HELP[name]) for name in sheet_names]
-    rows += [("Urteil", verdict, text) for verdict, text in _VERDICT_HELP.items()]
+    rows += [("Urteil", verdict, text) for verdict, text in VERDICT_HELP.items()]
     rows += [("Stufe", stage, text) for stage, text in _STAGE_HELP.items()]
     rows += [("Spalte", column, text) for column, text in _COLUMN_HELP.items() if column in present_columns]
     rows += [("Einstellung", key, str(value)) for key, value in settings.items()]

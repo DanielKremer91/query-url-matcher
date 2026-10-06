@@ -308,13 +308,17 @@ else:
 '''
 
 STEP7 = '''#@title Schritt 7: Schwelle prüfen und Urteile bilden { display-mode: "form" }
-#@markdown **Ab welchem Score gilt eine Seite als "passend"?** Beim ersten Lauf zeigt die Zelle nur die Vorschläge mit Beispielen.
-#@markdown Wähle danach, wie die Schwelle bestimmt wird, und führe die Zelle erneut aus. Erst dann entstehen die Urteile.
+#@markdown **Was passiert hier?** Das Tool entscheidet je Query, ob eine deiner Seiten schon passt, und bildet daraus die Urteile (passende Seite, Kannibalisierung, Content-Lücke). Dafür braucht es eine Grenze: den Cosinus-Score, ab dem eine Seite als "passend" gilt. Das ist die **Schwelle**.
+#@markdown **So gehst du vor:** ① Zelle mit ▶ starten. Du siehst die möglichen Schwellen, jeweils mit Beispielpaaren knapp darüber und knapp darunter. ② Prüfe an den Beispielen, ob die Grenze stimmt: Oberhalb sollten passende Seiten stehen, unterhalb eher unpassende. Wähle dann bei schwelle_bestimmen eine Option. ③ Zelle erneut starten. Jetzt entstehen die Urteile.
+#@markdown ### Schwelle
+#@markdown **schwelle_bestimmen:** "Erst Vorschläge ansehen" zeigt nur die Vorschläge, ohne Urteile. "Aus Rankings kalibriert" leitet die Schwelle aus deinen heute gut rankenden Seiten ab. Das ist am verlässlichsten und braucht Rankings aus Schritt 5 oder 6. "Mittlerer bester Score" ist nur ein Behelf ohne Rankings: Etwa die Hälfte der Queries liegt per Konstruktion darunter. "Eigener Wert" nimmt die Zahl aus eigene_schwelle.
 schwelle_bestimmen = "Erst Vorschläge ansehen" #@param ["Erst Vorschläge ansehen", "Aus Rankings kalibriert", "Mittlerer bester Score (nicht kalibriert)", "Eigener Wert"]
-#@markdown Nur für "Eigener Wert": die Schwelle, größer als 0 und höchstens 1 (zum Beispiel 0.82).
+#@markdown **eigene_schwelle** (nur für "Eigener Wert"): größer als 0 und höchstens 1, zum Beispiel 0.82. Orientiere dich an den Beispielpaaren aus dem ersten Lauf.
 eigene_schwelle = 0.0 #@param {type:"number"}
 #@markdown **kalibrierung_bis_position** (nur für "Aus Rankings kalibriert"): Paare aus Query und eigener URL, die bis zu dieser Position ranken, gelten als Beispiele für "die Seite passt sicher". Die Schwelle wird so gesetzt, dass 75 % dieser Beispiele sie erreichen. Höherer Wert: mehr Beispiele, meist etwas niedrigere Schwelle.
 kalibrierung_bis_position = 5 #@param {type:"integer"}
+#@markdown ### Feineinstellungen
+#@markdown Für den ersten Lauf kannst du alle Werte darunter auf den Voreinstellungen lassen.
 #@markdown **rankt_gut_bis_position:** Bis zu dieser Position gilt eine Query als gut rankend. Davon hängt das Urteil ab: "In Ordnung" oder "Kannibalisierungs-Risiko" bei gutem Ranking, "Bestehende Seite nutzen" oder "Content-Lücke" bei schwachem.
 rankt_gut_bis_position = 10 #@param {type:"integer"}
 #@markdown **abstand_fast_gleich:** Score-Unterschied, bis zu dem zwei Seiten als gleich gut gelten (0.01 = ein Hundertstel). Liegt die rankende Seite höchstens so weit hinter der besten, lautet das Urteil "In Ordnung". Liegen zwei passende Seiten so nah beieinander, gibt es einen Kannibalisierungs-Hinweis.
@@ -327,7 +331,7 @@ cluster_dichte = 50 #@param {type:"slider", min:10, max:100, step:5}
 
 from datetime import date
 
-from qum import colab
+from qum import colab, export
 from qum import labels as L
 from qum.cannibal import find_cannibalization
 from qum.serp import apply_serp, count_new_pages
@@ -439,6 +443,11 @@ else:
     print(f"   {cannibal[L.C_QUERY].nunique():>5} Queries mit Kannibalisierungs-Hinweis")
     uncalibrated = " (Schwelle nicht kalibriert)" if threshold_source == "median" else ""
     print(f"   {count_new_pages(decisions):>5} neue Seiten aus den Content-Lücken{uncalibrated}")
+    print()
+    print("Was die Urteile bedeuten:")
+    for verdict in counts.index:
+        print(f"   {verdict}: {export.VERDICT_HELP[verdict]}")
+    print("Die Empfehlung je Query und alle Werte stehen im Export (Schritt 8), die Lesehilfe erklärt jede Spalte.")
     print("✅ Schritt 7 fertig. Weiter mit Schritt 8 (Export).")
 '''
 

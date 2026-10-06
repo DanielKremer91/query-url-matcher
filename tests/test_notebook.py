@@ -799,3 +799,18 @@ def test_step_7_explains_every_field():
                  "serp_ueberschneidung", "cluster_dichte"):
         assert f"**{name}" in source, name
     assert "75 %" in source
+
+
+def test_smoke_step_7_explains_the_verdicts_it_shows(nb, capsys):
+    _load(nb)
+    nb.run(7, schwelle_bestimmen=MEDIAN)
+    out = capsys.readouterr().out
+    assert "Was die Urteile bedeuten:" in out
+    assert "Content-Lücke: Keine Seite erreicht die Schwelle." in out
+
+
+def test_step_7_explains_the_procedure_and_every_option():
+    source = next(s for s in _code_cells() if s.startswith("#@title Schritt 7"))
+    for text in ("**Was passiert hier?**", "**So gehst du vor:**", '"Erst Vorschläge ansehen" zeigt', '"Aus Rankings kalibriert" leitet',
+                 '"Mittlerer bester Score" ist nur ein Behelf', '"Eigener Wert" nimmt', "### Feineinstellungen"):
+        assert text in source, text

@@ -165,9 +165,9 @@ def test_candidate_position_help_refers_to_the_gap_query():
 
 
 def test_help_texts_do_not_overclaim_serp_similarity():
-    texts = list(export._COLUMN_HELP.values()) + list(export._VERDICT_HELP.values())
+    texts = list(export._COLUMN_HELP.values()) + list(export.VERDICT_HELP.values())
     assert all("fast gleicher SERP" not in text for text in texts)
-    assert "stark überlappender SERP" in export._VERDICT_HELP[L.V_CHECK]
+    assert "stark überlappender SERP" in export.VERDICT_HELP[L.V_CHECK]
 
 
 def _notes(readme):
@@ -214,8 +214,8 @@ def test_write_excel_keeps_formula_like_text_as_text(tmp_path):
 
 
 def test_help_texts_describe_the_margin_rule():
-    assert "fast gleich" in export._VERDICT_HELP[L.V_OK]
-    assert "deutlich besser" in export._VERDICT_HELP[L.V_RISK]
+    assert "fast gleich" in export.VERDICT_HELP[L.V_OK]
+    assert "deutlich besser" in export.VERDICT_HELP[L.V_RISK]
     assert "rankende Seite" in export._COLUMN_HELP[L.C_BEST_URL]
     assert "deutlich besser" in export._STAGE_HELP[L.STAGE_RISK]
 
@@ -239,7 +239,7 @@ def test_write_csv_zip_writes_decimal_comma_only_with_semicolon(tmp_path, sep, n
 
 
 def test_risk_help_covers_ranking_url_outside_the_export():
-    assert "oder die rankende URL steht nicht im Frog-Export" in export._VERDICT_HELP[L.V_RISK]
+    assert "oder die rankende URL steht nicht im Frog-Export" in export.VERDICT_HELP[L.V_RISK]
 
 
 def _text_number_sheets():
