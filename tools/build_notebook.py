@@ -114,9 +114,10 @@ if not new_queries or not new_content.urls:
     colab.stop("Es wurden keine Queries oder keine Seiten mit Content gefunden.")
 
 query_found = query_spalte or ingest.find_column(query_table, ingest.QUERY_ALIASES)
-url_found = url_spalte or ingest.find_column(content_table, ingest.URL_ALIASES)
-content_found = content_spalte or ingest.find_column(content_table, ingest.CONTENT_ALIASES)
-print(f"Erkannte Spalten: Query = {query_found or '(keine Kopfzeile)'}, URL = {url_found}, Content = {content_found}")
+print(
+    f"Erkannte Spalten: Query = {query_found or '(keine Kopfzeile)'}, "
+    f"URL = {new_content.url_column}, Content = {new_content.content_column}"
+)
 if query_found is None:
     print("ℹ️ In der Queries-Datei wurde keine Kopfzeile erkannt. Die erste Zeile wird als Query behandelt.")
 

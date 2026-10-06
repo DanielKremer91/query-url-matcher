@@ -758,3 +758,10 @@ def test_upload_steps_explain_where_the_upload_button_appears():
         if "colab.upload(" in source:
             first_hint = next(line for line in source.splitlines() if line.startswith("#@markdown"))
             assert "Play-Symbol" in first_hint and "Dateien auswählen" in first_hint, source.splitlines()[0]
+
+
+def test_smoke_step_3_names_the_columns_actually_used(nb, capsys):
+    nb.run(3, "queries.csv", "frog_export.csv")
+    out = capsys.readouterr().out
+    assert "URL = Address, Content = Extract Main Content 1" in out
+    assert "None" not in out

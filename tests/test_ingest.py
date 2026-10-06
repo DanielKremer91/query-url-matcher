@@ -417,3 +417,9 @@ def test_load_content_custom_extraction_ambiguous_raises():
     df = pd.DataFrame({"Address": ["https://a.de/1"], "Content Teaser 1": ["a"], "Main Content Extractor 1": ["b"]})
     with pytest.raises(ingest.IngestError, match="Content"):
         ingest.load_content(df)
+
+
+def test_load_content_reports_the_columns_it_used():
+    df = pd.DataFrame({"Address": ["https://a.de/1"], "Toom Main Content Extracotr 1": ["Text"]})
+    table = ingest.load_content(df)
+    assert (table.url_column, table.content_column) == ("Address", "Toom Main Content Extracotr 1")

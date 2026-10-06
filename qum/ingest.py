@@ -74,6 +74,8 @@ class ContentTable:
     contents: list
     skipped_empty: int
     skipped_duplicate: int
+    url_column: str | None = None  # die tatsächlich verwendeten Spalten, für die Anzeige im Notebook
+    content_column: str | None = None
 
 
 def _decode(data: bytes) -> str:
@@ -217,7 +219,7 @@ def load_content(df: pd.DataFrame, url_col=None, content_col=None) -> ContentTab
         seen.add(key)
         urls.append(str(url).strip())
         contents.append(str(content))
-    return ContentTable(urls, contents, skipped_empty, skipped_duplicate)
+    return ContentTable(urls, contents, skipped_empty, skipped_duplicate, ucol, ccol)
 
 
 NO_USABLE_ROWS = "Die Datei enthält keine verwertbaren Zeilen (Keyword, URL und Position müssen gefüllt sein)."
