@@ -22,11 +22,15 @@ Dieses Notebook vergleicht deine Suchanfragen (oder Prompts) per Embeddings mit 
 | Eigene Rankings | optional | Keyword, URL, Position (GSC, Ahrefs, SISTRIX) |
 | Top-10-SERPs | optional | Ahrefs-Export mit Keyword, URL, Position, Type |
 
-Schon ohne Ranking-Dateien bekommst du das Matching mit Urteilen zu passender Seite und Content-Lücke und den Hinweis, wenn mehrere Seiten fast gleich gut passen (Kannibalisierung). Eigene Rankings ergänzen die Urteile, die sich auf Rankings stützen (zum Beispiel "Kannibalisierungs-Risiko" und "Rankt trotz schwachem Match"), und ermöglichen eine Kalibrierung der Schwelle für "passend" (ab 20 gut rankenden Paaren, Wahl in Schritt 7). Top-10-SERPs bündeln die Lücken zusätzlich zu Themen.
+Schon ohne Ranking-Dateien bekommst du das Matching mit Urteilen zu passender Seite und Content-Lücke und den Hinweis, wenn mehrere Seiten fast gleich gut passen (Kannibalisierung). Eigene Rankings ergänzen die Urteile, die sich auf Rankings stützen (zum Beispiel "Kannibalisierungs-Risiko" und "Rankt trotz schwachem Match"), und ermöglichen eine Kalibrierung der Schwelle für "passend" (ab 20 gut rankenden Paaren, Wahl in Schritt 7b). Top-10-SERPs bündeln die Lücken zusätzlich zu Themen.
 
 ## So gehst du vor
 
-Führe die Zellen einzeln von oben nach unten aus (Play-Symbol links), nicht mit "Alle ausführen": Die Zellen fragen nach Uploads. Jede Zelle endet mit einer Zeile, die sagt, wie es weitergeht. Die Schritte 5, 6 und 9 sind optional. Wenn du einen früheren Schritt erneut ausführst, setzt das Notebook alles zurück, was darauf aufbaut, und sagt dir, welchen Schritt du danach wiederholen musst.
+Führe die Zellen einzeln von oben nach unten aus (Play-Symbol links), nicht mit "Alle ausführen": Die Zellen fragen nach Uploads. Jede Zelle endet mit einer Zeile, die sagt, wie es weitergeht. Die Schritte 5, 6 und 9 sind optional.
+
+Schwelle und Urteile entstehen in drei Zellen mit je einer Aufgabe: **Schritt 7a** zeigt Vorschläge für die Schwelle "passend" mit Beispielen, **Schritt 7b** legt die Schwelle fest, **Schritt 7c** bildet die Urteile. Willst du nur die Feineinstellungen der Urteile ändern, reicht es, Schritt 7c erneut zu starten.
+
+Wenn du einen früheren Schritt erneut ausführst, setzt das Notebook alles zurück, was darauf aufbaut, und sagt dir, welchen Schritt du danach wiederholen musst.
 
 Das Notebook fordert beim Start automatisch eine kostenlose T4-GPU an. Teilt Colab gerade keine zu, läuft es auf der CPU: Bei einigen hundert Seiten reicht das, bei mehreren tausend Seiten dauert das Einbetten deutlich länger.
 
@@ -142,7 +146,7 @@ STEP4 = '''#@title Schritt 4: Matching { display-mode: "form" }
 #@markdown **0 heißt: empfohlene Größe für das gewählte Modell** (bei e5: 250 Wörter, Overlap 40). Nur ändern, wenn du bewusst andere Werte willst.
 chunk_groesse = 0 #@param {type:"integer"}
 chunk_overlap = 0 #@param {type:"integer"}
-#@markdown **bewertungsgrundlage:** Je Query und Seite gibt es drei Cosinus-Werte. Der gewählte entscheidet, ob eine Seite als "passend" gilt (mit der Schwelle aus Schritt 7), welche Seite die beste ist und wie sortiert wird. Im Export stehen immer alle drei.
+#@markdown **bewertungsgrundlage:** Je Query und Seite gibt es drei Cosinus-Werte. Der gewählte entscheidet, ob eine Seite als "passend" gilt (mit der Schwelle aus Schritt 7b), welche Seite die beste ist und wie sortiert wird. Im Export stehen immer alle drei.
 #@markdown **Chunk** (Empfehlung): Query gegen den besten Textabschnitt der Seite. Findet Seiten, die die Query in einem Abschnitt beantworten, auch wenn die Seite breiter ist.
 #@markdown **Gesamt-URL:** Query gegen die Seite als Ganzes. Bevorzugt Seiten, die sich komplett um das Thema drehen.
 #@markdown **Kombi:** Mischung aus beiden, der Anteil des Chunk-Werts steht im Regler darunter (0.7 = 70 % Chunk, 30 % Gesamt-URL).
@@ -194,14 +198,14 @@ result = new_result
 lead = result.lead(basis, weight)
 top = top_hits(result, basis, weight, n_top)
 display(top.head(10))
-print(f"✅ Schritt 4 fertig: {len(top)} Treffer berechnet. Optional weiter mit Schritt 5 und 6, sonst Schritt 7.")
+print(f"✅ Schritt 4 fertig: {len(top)} Treffer berechnet. Optional weiter mit Schritt 5 und 6, sonst Schritt 7a.")
 '''
 
 STEP5 = '''#@title Schritt 5 (optional): Eigene Rankings hochladen { display-mode: "form" }
 #@markdown **▶ Klicke links auf das Play-Symbol. Unter der Zelle erscheint dann der Knopf „Dateien auswählen".**
 #@markdown Export mit Keyword, URL und Position, zum Beispiel aus GSC, Ahrefs (Organic Keywords) oder SISTRIX.
 #@markdown Ergänzt die Urteile, die sich auf Rankings stützen, und ermöglicht eine Kalibrierung der Schwelle für "passend"
-#@markdown (ab 20 gut rankenden Paaren, Wahl in Schritt 7).
+#@markdown (ab 20 gut rankenden Paaren, Wahl in Schritt 7b).
 #@markdown Kannibalisierung und Content-Lücken gibt es auch ohne Rankings.
 #@markdown **Die Felder unten bleiben normalerweise leer.** Nur wenn die Zelle mit ❌ „…-Spalte nicht erkannt" abbricht, trägst du den Namen aus der Meldung ein und startest die Zelle erneut.
 keyword_spalte = "" #@param {type:"string"}
@@ -239,9 +243,9 @@ elif not loaded["url_norm"].isin(known_urls).any():
     rankings, rankings_source = None, None
 else:
     rankings, rankings_source = loaded, "Datei"
-    print(f"✅ Schritt 5 fertig: {len(rankings)} Ranking-Zeilen, davon {covered} zu deinen Queries. Weiter mit Schritt 6 oder 7.")
+    print(f"✅ Schritt 5 fertig: {len(rankings)} Ranking-Zeilen, davon {covered} zu deinen Queries. Weiter mit Schritt 6 oder 7a.")
 if rankings is None:
-    print("ℹ️ Die Ranking-Datei wurde nicht übernommen, das Notebook bleibt im reinen Matching. Weiter mit Schritt 7 oder lade eine andere Datei hoch.")
+    print("ℹ️ Die Ranking-Datei wurde nicht übernommen, das Notebook bleibt im reinen Matching. Weiter mit Schritt 7a oder lade eine andere Datei hoch.")
 '''
 
 STEP6 = '''#@title Schritt 6 (optional): Top-10-SERPs hochladen { display-mode: "form" }
@@ -302,23 +306,113 @@ if serps is not None:
             "gebraucht, mit eigenen Rankings allein ist es nicht aussagekräftig."
         )
 if serps is None:
-    print("ℹ️ Die SERPs wurden nicht übernommen. Weiter mit Schritt 7 oder lade eine andere Datei hoch.")
+    print("ℹ️ Die SERPs wurden nicht übernommen. Weiter mit Schritt 7a oder lade eine andere Datei hoch.")
 else:
-    print(f"✅ Schritt 6 fertig: SERPs für {serps['query_norm'].nunique()} Keywords geladen. Weiter mit Schritt 7.")
+    print(f"✅ Schritt 6 fertig: SERPs für {serps['query_norm'].nunique()} Keywords geladen. Weiter mit Schritt 7a.")
 '''
 
-STEP7 = '''#@title Schritt 7: Schwelle prüfen und Urteile bilden { display-mode: "form" }
-#@markdown **Was passiert hier?** Das Tool entscheidet je Query, ob eine deiner Seiten schon passt, und bildet daraus die Urteile (passende Seite, Kannibalisierung, Content-Lücke). Dafür braucht es eine Grenze: den Cosinus-Score, ab dem eine Seite als "passend" gilt. Das ist die **Schwelle**.
-#@markdown **So gehst du vor:** ① Zelle mit ▶ starten. Du siehst die möglichen Schwellen, jeweils mit Beispielpaaren knapp darüber und knapp darunter. ② Prüfe an den Beispielen, ob die Grenze stimmt: Oberhalb sollten passende Seiten stehen, unterhalb eher unpassende. Wähle dann bei schwelle_bestimmen eine Option. ③ Zelle erneut starten. Jetzt entstehen die Urteile.
-#@markdown ### Schwelle
-#@markdown **schwelle_bestimmen:** "Erst Vorschläge ansehen" zeigt nur die Vorschläge, ohne Urteile. "Aus Rankings kalibriert" leitet die Schwelle aus deinen heute gut rankenden Seiten ab. Das ist am verlässlichsten und braucht Rankings aus Schritt 5 oder 6. "Mittlerer bester Score" ist nur ein Behelf ohne Rankings: Etwa die Hälfte der Queries liegt per Konstruktion darunter. "Eigener Wert" nimmt die Zahl aus eigene_schwelle.
-schwelle_bestimmen = "Erst Vorschläge ansehen" #@param ["Erst Vorschläge ansehen", "Aus Rankings kalibriert", "Mittlerer bester Score (nicht kalibriert)", "Eigener Wert"]
-#@markdown **eigene_schwelle** (nur für "Eigener Wert"): größer als 0 und höchstens 1, zum Beispiel 0.82. Orientiere dich an den Beispielpaaren aus dem ersten Lauf.
-eigene_schwelle = 0.0 #@param {type:"number"}
-#@markdown **kalibrierung_bis_position** (nur für "Aus Rankings kalibriert"): Paare aus Query und eigener URL, die bis zu dieser Position ranken, gelten als Beispiele für "die Seite passt sicher". Die Schwelle wird so gesetzt, dass 75 % dieser Beispiele sie erreichen. Höherer Wert: mehr Beispiele, meist etwas niedrigere Schwelle.
+STEP7A = '''#@title Schritt 7a: Vorschläge für die Schwelle ansehen { display-mode: "form" }
+#@markdown **▶ Einfach starten, hier ist nichts einzutragen.**
+#@markdown **Was ist die Schwelle?** Der Cosinus-Score, ab dem eine Seite für eine Query als "passend" gilt. Diese Zelle zeigt nur Vorschläge für die Schwelle und bildet noch keine Urteile. Zu jedem Vorschlag siehst du Beispielpaare: Oberhalb der Schwelle sollten passende Seiten stehen, unterhalb eher unpassende.
+#@markdown **kalibrierung_bis_position** (optionale Feineinstellung, nur für "Aus Rankings kalibriert"): Paare aus Query und eigener URL, die bis zu dieser Position ranken, gelten als Beispiele für "die Seite passt sicher". Die Schwelle wird so gesetzt, dass 75 % dieser Beispiele sie erreichen. Höherer Wert: mehr Beispiele, meist etwas niedrigere Schwelle.
 kalibrierung_bis_position = 5 #@param {type:"integer"}
-#@markdown ### Feineinstellungen
-#@markdown Für den ersten Lauf kannst du alle Werte darunter auf den Voreinstellungen lassen.
+
+from qum import colab
+from qum.threshold import MIN_PAIRS, calibrated_threshold, calibration_scores, examples_around, median_threshold
+
+colab.require(globals(), 4, "result", "lead")
+# bei einem Abbruch bleiben frühere Urteile stehen: das soll die Meldung sagen
+kept = " Bis dahin gelten die Urteile aus dem letzten Lauf von Schritt 7c." if globals().get("decisions") is not None else ""
+if kalibrierung_bis_position < 1:
+    colab.stop(f"kalibrierung_bis_position muss mindestens 1 sein.{kept}")
+colab.invalidate(globals(), *colab.VERDICT_STATE)
+new_calibrated = calibrated_threshold(result, lead, rankings, max_position=kalibrierung_bis_position)
+new_median = median_threshold(result, lead)
+if rankings is None:
+    new_reason = "Es sind keine Rankings geladen (Schritt 5 oder 6)."
+else:
+    n_pairs = len(calibration_scores(result, lead, rankings, max_position=kalibrierung_bis_position))
+    new_reason = f"Nur {n_pairs} Ranking-Paare bis Position {kalibrierung_bis_position}, für eine Kalibrierung sind {MIN_PAIRS} nötig."
+
+print("Die Schwelle ist die Cosinus-Ähnlichkeit zwischen Query und Seite, ab der eine Seite als passend gilt.")
+print()
+if new_calibrated is None:
+    print(f"Aus Rankings kalibriert: nicht verfügbar. {new_reason}")
+else:
+    print(
+        f"Aus Rankings kalibriert: {new_calibrated.value:.4f}. Diesen Score erreichen 75 % der {new_calibrated.n_pairs} "
+        f"Paare aus Query und eigener Seite, die heute bis Position {kalibrierung_bis_position} ranken."
+    )
+    print("Paare knapp über und knapp unter diesem Wert:")
+    display(examples_around(result, lead, new_calibrated.value))
+print()
+print(f"Mittlerer bester Score (nicht kalibriert): {new_median.value:.4f}. Das ist der mittlere Score der besten Treffer je Query.")
+print('⚠️ Dieser Wert ist kein Maßstab für "passend": Etwa die Hälfte deiner Queries liegt per Konstruktion darunter.')
+print("Paare knapp über und knapp unter diesem Wert:")
+display(examples_around(result, lead, new_median.value))
+print()
+available = ['"Aus Rankings kalibriert"'] if new_calibrated is not None else []
+available.append('"Mittlerer bester Score (nicht kalibriert)"')
+print(
+    f'ℹ️ Noch keine Urteile. Wähle in Schritt 7b bei schwelle_waehlen {", ".join(available)} oder "Eigener Wert" '
+    "(Wert bei eigene_schwelle eintragen)."
+)
+calibrated, median, no_calibration = new_calibrated, new_median, new_reason
+calibration_position = kalibrierung_bis_position
+print("✅ Schritt 7a fertig. Weiter mit Schritt 7b: Schwelle festlegen.")
+'''
+
+STEP7B = '''#@title Schritt 7b: Schwelle festlegen { display-mode: "form" }
+#@markdown Wähle, welche Schwelle gilt. Die Vorschläge und Beispielpaare dazu hat Schritt 7a gezeigt.
+#@markdown **schwelle_waehlen:**
+#@markdown **Aus Rankings kalibriert** (Vorgabe): leitet die Schwelle aus deinen heute gut rankenden Seiten ab. Das ist am verlässlichsten und braucht Rankings aus Schritt 5 oder 6.
+#@markdown **Mittlerer bester Score (nicht kalibriert):** nur ein Behelf ohne Rankings. Etwa die Hälfte der Queries liegt per Konstruktion darunter.
+#@markdown **Eigener Wert:** nimmt die Zahl aus eigene_schwelle. Orientiere dich an den Beispielen aus Schritt 7a.
+schwelle_waehlen = "Aus Rankings kalibriert" #@param ["Aus Rankings kalibriert", "Mittlerer bester Score (nicht kalibriert)", "Eigener Wert"]
+#@markdown **eigene_schwelle** (nur für "Eigener Wert"): größer als 0 und höchstens 1, zum Beispiel 0.82.
+eigene_schwelle = 0.0 #@param {type:"number"}
+
+from qum import colab
+from qum import labels as L
+from qum.threshold import examples_around
+
+colab.require(globals(), 4, "result", "lead")
+colab.require(globals(), "7a", "median", "calibration_position")
+choice = L.THRESHOLD_CHOICE[schwelle_waehlen]
+# bei einem Abbruch bleiben frühere Urteile stehen: das soll die Meldung sagen
+kept = " Bis dahin gelten die Urteile aus dem letzten Lauf von Schritt 7c." if globals().get("decisions") is not None else ""
+if choice == "manuell" and not 0 < eigene_schwelle <= 1:
+    colab.stop(
+        f"Die eigene Schwelle muss größer als 0 und höchstens 1 sein. Trage sie bei eigene_schwelle ein, zum Beispiel 0.82.{kept}"
+    )
+if choice == "rankings" and calibrated is None:
+    colab.stop(
+        f"Die Kalibrierung aus Rankings ist nicht verfügbar. {no_calibration} "
+        f"Wähle bei schwelle_waehlen eine andere Option und starte die Zelle erneut.{kept}"
+    )
+colab.invalidate(globals(), *colab.DECISION_STATE)
+if choice == "rankings":
+    threshold = calibrated.value
+    print(
+        f"Verwendete Schwelle {threshold:.4f}, aus Rankings kalibriert. Diesen Score erreichen 75 % der {calibrated.n_pairs} "
+        f"Paare aus Query und eigener Seite, die heute bis Position {calibration_position} ranken."
+    )
+elif choice == "median":
+    threshold = median.value
+    print(f"Verwendete Schwelle {threshold:.4f}, mittlerer bester Score (nicht kalibriert). Das ist der mittlere Score der besten Treffer je Query.")
+    print('⚠️ Dieser Wert ist kein Maßstab für "passend": Etwa die Hälfte deiner Queries liegt per Konstruktion darunter.')
+else:
+    threshold = float(eigene_schwelle)
+    print(f"Verwendete Schwelle {threshold:.4f}, eigener Wert.")
+threshold_source, threshold_label = choice, schwelle_waehlen
+print("Diese Paare liegen knapp über und knapp unter der Schwelle. Passt die Grenze?")
+display(examples_around(result, lead, threshold))
+print(f"✅ Schritt 7b fertig: Schwelle {threshold:.4f}. Weiter mit Schritt 7c: Urteile bilden.")
+'''
+
+STEP7C = '''#@title Schritt 7c: Urteile bilden { display-mode: "form" }
+#@markdown **▶ Starten. Die Werte darunter kannst du für den ersten Lauf auf den Voreinstellungen lassen.**
+#@markdown Die Zelle entscheidet mit der Schwelle aus Schritt 7b je Query, ob eine deiner Seiten schon passt, und bildet daraus die Urteile (passende Seite, Kannibalisierung, Content-Lücke). Willst du nur die Feineinstellungen ändern, starte nur diese Zelle erneut.
 #@markdown **rankt_gut_bis_position:** Bis zu dieser Position gilt eine Query als gut rankend. Davon hängt das Urteil ab: "In Ordnung" oder "Kannibalisierungs-Risiko" bei gutem Ranking, "Bestehende Seite nutzen" oder "Content-Lücke" bei schwachem.
 rankt_gut_bis_position = 10 #@param {type:"integer"}
 #@markdown **abstand_fast_gleich:** Score-Unterschied, bis zu dem zwei Seiten als gleich gut gelten (0.01 = ein Hundertstel). Liegt die rankende Seite höchstens so weit hinter der besten, lautet das Urteil "In Ordnung". Liegen zwei passende Seiten so nah beieinander, gibt es einen Kannibalisierungs-Hinweis.
@@ -335,120 +429,58 @@ from qum import colab, export
 from qum import labels as L
 from qum.cannibal import find_cannibalization
 from qum.serp import apply_serp, count_new_pages
-from qum.threshold import MIN_PAIRS, calibrated_threshold, calibration_scores, examples_around, median_threshold
 from qum.verdict import build_decisions
 
 colab.require(globals(), 4, "result", "lead", "top", "size", "overlap", "weight", "basis_label", "n_top")
-choice = L.THRESHOLD_CHOICE[schwelle_bestimmen]
+colab.require(globals(), "7b", "threshold", "threshold_source", "threshold_label")
 # bei einem Abbruch bleiben frühere Urteile stehen: das soll die Meldung sagen
-kept = " Bis dahin gelten die Urteile aus dem letzten Lauf von Schritt 7." if globals().get("decisions") is not None else ""
-if min(kalibrierung_bis_position, rankt_gut_bis_position, sichtbar_bis_position) < 1:
-    colab.stop(f"Alle Positionen (Kalibrierung, rankt gut, sichtbar) müssen mindestens 1 sein.{kept}")
+kept = " Bis dahin gelten die Urteile aus dem letzten Lauf von Schritt 7c." if globals().get("decisions") is not None else ""
+if min(rankt_gut_bis_position, sichtbar_bis_position) < 1:
+    colab.stop(f"Die Positionen (rankt gut, sichtbar) müssen mindestens 1 sein.{kept}")
 if not 0 <= abstand_fast_gleich < 0.1:
     colab.stop(
         'Der Abstand für "fast gleich" muss mindestens 0 und kleiner als 0.1 sein. Er ist eine Differenz von '
         f"Cosinus-Scores (zum Beispiel 0.01), kein Prozentwert.{kept}"
     )
-if choice == "manuell" and not 0 < eigene_schwelle <= 1:
-    colab.stop(
-        f"Die eigene Schwelle muss größer als 0 und höchstens 1 sein. Trage sie bei eigene_schwelle ein, zum Beispiel 0.82.{kept}"
-    )
-calibrated = calibrated_threshold(result, lead, rankings, max_position=kalibrierung_bis_position)
-median = median_threshold(result, lead)
-if rankings is None:
-    no_calibration = "Es sind keine Rankings geladen (Schritt 5 oder 6)."
-else:
-    n_pairs = len(calibration_scores(result, lead, rankings, max_position=kalibrierung_bis_position))
-    no_calibration = f"Nur {n_pairs} Ranking-Paare bis Position {kalibrierung_bis_position}, für eine Kalibrierung sind {MIN_PAIRS} nötig."
-if choice == "rankings" and calibrated is None:
-    colab.stop(
-        f"Die Kalibrierung aus Rankings ist nicht verfügbar. {no_calibration} "
-        f"Wähle bei schwelle_bestimmen eine andere Option und führe die Zelle erneut aus.{kept}"
-    )
-colab.invalidate(globals(), *colab.VERDICT_STATE)
-
-calibrated_meaning = (
-    f"Diesen Score erreichen 75 % der {calibrated.n_pairs} Paare aus Query und eigener Seite, "
-    f"die heute bis Position {kalibrierung_bis_position} ranken."
-    if calibrated is not None
-    else ""
-)
-median_meaning = "Das ist der mittlere Score der besten Treffer je Query."
-median_warning = 'Dieser Wert ist kein Maßstab für "passend": Etwa die Hälfte deiner Queries liegt per Konstruktion darunter.'
-if choice is None:
-    print("Die Schwelle ist die Cosinus-Ähnlichkeit zwischen Query und Seite, ab der eine Seite als passend gilt.")
-    print()
-    if calibrated is None:
-        print(f"Aus Rankings kalibriert: nicht verfügbar. {no_calibration}")
-    else:
-        print(f"Aus Rankings kalibriert: {calibrated.value:.4f}. {calibrated_meaning}")
-        print("Paare knapp über und knapp unter diesem Wert:")
-        display(examples_around(result, lead, calibrated.value))
-    print()
-    print(f"Mittlerer bester Score (nicht kalibriert): {median.value:.4f}. {median_meaning}")
-    print(f"⚠️ {median_warning}")
-    print("Paare knapp über und knapp unter diesem Wert:")
-    display(examples_around(result, lead, median.value))
-    print()
-    available = ['"Aus Rankings kalibriert"'] if calibrated is not None else []
-    available.append('"Mittlerer bester Score (nicht kalibriert)"')
-    print(
-        f'ℹ️ Noch keine Urteile. Wähle oben bei schwelle_bestimmen {", ".join(available)} oder "Eigener Wert" '
-        "(Wert bei eigene_schwelle eintragen) und führe die Zelle erneut aus."
-    )
-    proposals_only = True
-else:
-    if choice == "rankings":
-        threshold = calibrated.value
-        print(f"Verwendete Schwelle {threshold:.4f}, aus Rankings kalibriert. {calibrated_meaning}")
-    elif choice == "median":
-        threshold = median.value
-        print(f"Verwendete Schwelle {threshold:.4f}, mittlerer bester Score (nicht kalibriert). {median_meaning}")
-        print(f"⚠️ {median_warning}")
-    else:
-        threshold = float(eigene_schwelle)
-        print(f"Verwendete Schwelle {threshold:.4f}, eigener Wert.")
-    print("Diese Paare liegen knapp über und knapp unter der Schwelle. Passt die Grenze?")
-    display(examples_around(result, lead, threshold))
-
-    new_decisions = build_decisions(result, lead, threshold, rankings, rankt_gut_bis_position, weight, abstand_fast_gleich)
-    new_cannibal = find_cannibalization(result, lead, threshold, new_decisions, rankings, abstand_fast_gleich, sichtbar_bis_position)
-    if serps is not None:
-        new_decisions = apply_serp(new_decisions, result, lead, serps, rankings, serp_ueberschneidung / 100, cluster_dichte / 100)
-    settings = {
-        "Datum": date.today().isoformat(),
-        "Modell": spec.model_id,
-        "Nur zum Vergleich (symmetrisches Modell)": "ja" if spec.comparison_only else "nein",
-        "Chunk-Größe (Wörter)": size,
-        "Overlap (Wörter)": overlap,
-        "Bewertungsgrundlage": basis_label,
-        "Kombi-Gewicht Chunk": weight,
-        "Treffer je Query (Top-N)": n_top,
-        "Schwelle": round(threshold, 4),
-        "Schwelle aus": schwelle_bestimmen,
-        "Kalibrierung bis Position": kalibrierung_bis_position,
-        "Rankt gut bis Position": rankt_gut_bis_position,
-        "Abstand fast gleich": abstand_fast_gleich,
-        "Sichtbar bis Position": sichtbar_bis_position,
-        "SERP-Überschneidung (%)": serp_ueberschneidung,
-        "Cluster-Dichte (%)": cluster_dichte,
-        "Eigene Rankings": {"Datei": "ja, aus Datei", "SERPs": "ja, aus den SERPs abgeleitet"}.get(rankings_source, "nein"),
-        "Top-10-SERPs": "ja" if serps is not None else "nein",
-    }
-    decisions, cannibal = new_decisions, new_cannibal
-    threshold_source = choice
-    counts = decisions[L.C_VERDICT].value_counts()
-    for verdict, count in counts.items():
-        print(f"   {count:>5} × {verdict}")
-    print(f"   {cannibal[L.C_QUERY].nunique():>5} Queries mit Kannibalisierungs-Hinweis")
-    uncalibrated = " (Schwelle nicht kalibriert)" if threshold_source == "median" else ""
-    print(f"   {count_new_pages(decisions):>5} neue Seiten aus den Content-Lücken{uncalibrated}")
-    print()
-    print("Was die Urteile bedeuten:")
-    for verdict in counts.index:
-        print(f"   {verdict}: {export.VERDICT_HELP[verdict]}")
-    print("Die Empfehlung je Query und alle Werte stehen im Export (Schritt 8), die Lesehilfe erklärt jede Spalte.")
-    print("✅ Schritt 7 fertig. Weiter mit Schritt 8 (Export).")
+colab.invalidate(globals(), *colab.DECISION_STATE)
+print(f"Schwelle aus Schritt 7b: {threshold:.4f} ({threshold_label}).")
+new_decisions = build_decisions(result, lead, threshold, rankings, rankt_gut_bis_position, weight, abstand_fast_gleich)
+new_cannibal = find_cannibalization(result, lead, threshold, new_decisions, rankings, abstand_fast_gleich, sichtbar_bis_position)
+if serps is not None:
+    new_decisions = apply_serp(new_decisions, result, lead, serps, rankings, serp_ueberschneidung / 100, cluster_dichte / 100)
+settings = {
+    "Datum": date.today().isoformat(),
+    "Modell": spec.model_id,
+    "Nur zum Vergleich (symmetrisches Modell)": "ja" if spec.comparison_only else "nein",
+    "Chunk-Größe (Wörter)": size,
+    "Overlap (Wörter)": overlap,
+    "Bewertungsgrundlage": basis_label,
+    "Kombi-Gewicht Chunk": weight,
+    "Treffer je Query (Top-N)": n_top,
+    "Schwelle": round(threshold, 4),
+    "Schwelle aus": threshold_label,
+    "Kalibrierung bis Position": calibration_position,
+    "Rankt gut bis Position": rankt_gut_bis_position,
+    "Abstand fast gleich": abstand_fast_gleich,
+    "Sichtbar bis Position": sichtbar_bis_position,
+    "SERP-Überschneidung (%)": serp_ueberschneidung,
+    "Cluster-Dichte (%)": cluster_dichte,
+    "Eigene Rankings": {"Datei": "ja, aus Datei", "SERPs": "ja, aus den SERPs abgeleitet"}.get(rankings_source, "nein"),
+    "Top-10-SERPs": "ja" if serps is not None else "nein",
+}
+decisions, cannibal = new_decisions, new_cannibal
+counts = decisions[L.C_VERDICT].value_counts()
+for verdict, count in counts.items():
+    print(f"   {count:>5} × {verdict}")
+print(f"   {cannibal[L.C_QUERY].nunique():>5} Queries mit Kannibalisierungs-Hinweis")
+uncalibrated = " (Schwelle nicht kalibriert)" if threshold_source == "median" else ""
+print(f"   {count_new_pages(decisions):>5} neue Seiten aus den Content-Lücken{uncalibrated}")
+print()
+print("Was die Urteile bedeuten:")
+for verdict in counts.index:
+    print(f"   {verdict}: {export.VERDICT_HELP[verdict]}")
+print("Die Empfehlung je Query und alle Werte stehen im Export (Schritt 8), die Lesehilfe erklärt jede Spalte.")
+print("✅ Schritt 7c fertig. Weiter mit Schritt 8 (Export).")
 '''
 
 STEP8 = '''#@title Schritt 8: Export { display-mode: "form" }
@@ -459,7 +491,7 @@ csv_trennzeichen = "Semikolon (für deutsches Excel)" #@param ["Semikolon (für 
 
 from qum import colab, export
 
-colab.require_verdicts(globals())
+colab.require(globals(), "7c", "decisions", "top", "cannibal", "settings", "threshold_source")
 sheets = export.build_sheets(decisions, top, cannibal, settings, threshold_source=threshold_source)
 export.write_excel("query_url_matcher.xlsx", sheets)
 colab.download("query_url_matcher.xlsx")
@@ -472,8 +504,10 @@ print(f"✅ Schritt 8 fertig: {len(sheets)} Blätter exportiert. Schritt 9 ist o
 
 STEP9 = '''#@title Schritt 9 (nachgelagert): Vorhandene Keyword-URL-Paare bewerten { display-mode: "form" }
 #@markdown **▶ Klicke links auf das Play-Symbol. Unter der Zelle erscheint dann der Knopf „Dateien auswählen".**
-#@markdown Lade einen Export mit Keyword und URL hoch (zum Beispiel Ahrefs Organic Keywords). Je Paar siehst du, wie gut die
-#@markdown rankende URL passt und welche deiner Seiten am besten passen würde. Die URLs müssen im Frog-Export aus Schritt 3 stehen.
+#@markdown **Wofür?** Du hast schon eine Liste, welche URL heute für welches Keyword rankt (zum Beispiel aus Ahrefs oder der Search Console). Schritt 9 prüft für jedes dieser Paare, ob die rankende Seite inhaltlich wirklich die beste ist.
+#@markdown **Was du bekommst:** eine Excel-Datei mit dem zusätzlichen Blatt „Paare": je Paar aus Keyword und URL die Scores der rankenden URL, ihr Rang unter allen deinen Seiten (1 = passt am besten) und die Seite, die am besten passen würde.
+#@markdown **Wann sinnvoll?** Optional. Steht die rankende URL nicht auf Rang 1, passt laut Score eine andere deiner Seiten besser: ein Kandidat für Kannibalisierung oder für eine Weiterleitung beziehungsweise interne Verlinkung.
+#@markdown Die URLs müssen im Frog-Export aus Schritt 3 stehen.
 #@markdown **Die Felder unten bleiben normalerweise leer.** Nur wenn die Zelle mit ❌ „…-Spalte nicht erkannt" abbricht, trägst du den Namen aus der Meldung ein und startest die Zelle erneut.
 paare_keyword_spalte = "" #@param {type:"string"}
 paare_url_spalte = "" #@param {type:"string"}
@@ -485,7 +519,7 @@ from qum.pairs import score_pairs, stale_columns
 colab.require(globals(), 2, "spec", "embedder")
 colab.require(globals(), 3, "content")
 colab.require(globals(), 4, "result", "size", "overlap", "basis", "weight")
-colab.require_verdicts(globals())
+colab.require(globals(), "7c", "decisions", "top", "cannibal", "settings", "threshold_source")
 with colab.guard():
     name, data = colab.upload("Keyword-URL-Paare (Keyword, URL)")
     pair_table = colab.read_table(data, name)
@@ -521,7 +555,9 @@ CELLS = [
     ("code", STEP4),
     ("code", STEP5),
     ("code", STEP6),
-    ("code", STEP7),
+    ("code", STEP7A),
+    ("code", STEP7B),
+    ("code", STEP7C),
     ("code", STEP8),
     ("code", STEP9),
 ]

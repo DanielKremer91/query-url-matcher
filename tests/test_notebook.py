@@ -40,9 +40,10 @@ def test_model_dropdown_lists_exactly_the_registry_labels():
     assert options == [spec.label for spec in MODELS.values()]
 
 
-def test_notebook_has_nine_steps_in_order():
+def test_notebook_has_its_steps_in_order():
     titles = [re.match(r"#@title (.*?)( \{|$)", s.splitlines()[0]).group(1) for s in _code_cells()]
-    assert [t.split(":")[0].split(" (")[0] for t in titles] == [f"Schritt {n}" for n in range(2, 10)]
+    expected = ["2", "3", "4", "5", "6", "7a", "7b", "7c", "8", "9"]
+    assert [t.split(":")[0].split(" (")[0] for t in titles] == [f"Schritt {n}" for n in expected]
     assert any(kind == "markdown" and "Schritt 1" in source for kind, source in CELLS)
 
 
@@ -76,6 +77,13 @@ def test_require_stops_with_german_hint_for_missing_or_none(capsys):
         with pytest.raises(colab.NotebookStop):
             colab.require(namespace, 4, "result")
     assert "❌ Bitte zuerst Schritt 4 (Matching) ausführen." in capsys.readouterr().out
+
+
+def test_require_accepts_sub_steps(capsys):
+    for step, text in (("7a", "Vorschläge ansehen"), ("7b", "Schwelle festlegen"), ("7c", "Urteile bilden")):
+        with pytest.raises(colab.NotebookStop):
+            colab.require({}, step, "x")
+        assert f"❌ Bitte zuerst Schritt {step} ({text}) ausführen." in capsys.readouterr().out
 
 
 def test_invalidate_sets_names_to_none():
@@ -147,18 +155,25 @@ def test_read_table_passes_ingest_errors_through():
 # --- Rauchtest: die Zellen der Schritte 3 bis 9 laufen in einem gemeinsamen Namensraum ---
 
 EXAMPLES = ROOT / "examples"
-CHOICES = ["Erst Vorschläge ansehen", "Aus Rankings kalibriert", "Mittlerer bester Score (nicht kalibriert)", "Eigener Wert"]
-SHOW, CALIBRATED, MEDIAN, OWN = CHOICES
-NO_VERDICTS_YET = (
-    '❌ Schritt 7 hat noch keine Urteile gebildet. Wähle bei "schwelle_bestimmen" eine der Optionen '
-    "und führe Schritt 7 erneut aus."
-)
-KEPT = "Bis dahin gelten die Urteile aus dem letzten Lauf von Schritt 7."
+CHOICES = ["Aus Rankings kalibriert", "Mittlerer bester Score (nicht kalibriert)", "Eigener Wert"]
+CALIBRATED, MEDIAN, OWN = CHOICES
+NEED_7A = "❌ Bitte zuerst Schritt 7a (Vorschläge ansehen) ausführen."
+NEED_7B = "❌ Bitte zuerst Schritt 7b (Schwelle festlegen) ausführen."
+NEED_7C = "❌ Bitte zuerst Schritt 7c (Urteile bilden) ausführen."
+KEPT = "Bis dahin gelten die Urteile aus dem letzten Lauf von Schritt 7c."
 
 
-def _cell_code(step: int) -> str:
-    source = next(s for s in _code_cells() if s.startswith(f"#@title Schritt {step}"))
-    return "\n".join(line for line in source.splitlines() if not line.lstrip().startswith(("!", "%")))
+def _source(step) -> str:
+    """Quelltext der Zelle zu Schritt 2 bis 9 oder "7a", "7b", "7c"."""
+    return next(s for s in _code_cells() if re.match(rf"#@title Schritt {step}[: ]", s))
+
+
+def _cell_code(step) -> str:
+    return "\n".join(line for line in _source(step).splitlines() if not line.lstrip().startswith(("!", "%")))
+
+
+def _form_names(step) -> set:
+    return set(re.findall(r"^(\w+) = .*? #@param", _cell_code(step), flags=re.M))
 
 
 class Notebook:
@@ -192,11 +207,31 @@ def _load(nb):
     nb.run(4)
 
 
+def _step_7(nb, steps, choice, form):
+    """Führt die Zellen aus steps aus; jedes Formularfeld geht an die Zelle, in der es steht."""
+    form = {"schwelle_waehlen": choice, **form}
+    for step in steps:
+        names = _form_names(step)
+        nb.run(step, **{name: value for name, value in form.items() if name in names})
+    unused = set(form) - set().union(*(_form_names(step) for step in steps))
+    assert not unused, unused
+
+
+def _threshold(nb, choice=MEDIAN, **form):
+    """Schritt 7a und 7b."""
+    _step_7(nb, ("7a", "7b"), choice, form)
+
+
+def _verdicts(nb, choice=MEDIAN, **form):
+    """Schritt 7a, 7b und 7c."""
+    _step_7(nb, ("7a", "7b", "7c"), choice, form)
+
+
 def test_smoke_full_flow(nb, tmp_path, capsys):
     _load(nb)
     nb.run(5, "rankings.csv")
     nb.run(6, "serps.csv")
-    nb.run(7, schwelle_bestimmen=MEDIAN)
+    _verdicts(nb)
     nb.run(8)
     nb.run(9, "rankings.csv")
     out = capsys.readouterr().out
@@ -211,9 +246,10 @@ def test_smoke_full_flow(nb, tmp_path, capsys):
 
 def test_smoke_minimal_flow_without_rankings_and_serps(nb, capsys):
     _load(nb)
-    nb.run(7)
+    nb.run("7a")
     assert "Aus Rankings kalibriert: nicht verfügbar. Es sind keine Rankings geladen (Schritt 5 oder 6)." in capsys.readouterr().out
-    nb.run(7, schwelle_bestimmen=MEDIAN)
+    nb.run("7b", schwelle_waehlen=MEDIAN)
+    nb.run("7c")
     nb.run(8)
     out = capsys.readouterr().out
     assert "per Konstruktion darunter" in out
@@ -239,11 +275,15 @@ def test_smoke_serps_alone_derive_own_rankings_and_refresh(nb, capsys):
     assert nb.ns["rankings_source"] == "Datei"
 
 
-def test_smoke_step_8_before_step_7_points_to_step_7(nb, capsys):
+def test_smoke_step_8_before_step_7c_points_to_step_7c(nb, capsys):
     _load(nb)
     with pytest.raises(colab.NotebookStop):
         nb.run(8)
-    assert "❌ Bitte zuerst Schritt 7 (Schwelle und Urteile) ausführen." in capsys.readouterr().out
+    assert NEED_7C in capsys.readouterr().out
+    _threshold(nb)
+    with pytest.raises(colab.NotebookStop):
+        nb.run(8)
+    assert NEED_7C in capsys.readouterr().out
 
 
 def test_smoke_step_9_checks_prerequisites_before_asking_for_upload(nb, capsys):
@@ -252,7 +292,7 @@ def test_smoke_step_9_checks_prerequisites_before_asking_for_upload(nb, capsys):
     with pytest.raises(colab.NotebookStop):
         nb.run(9)
     assert len(nb.uploads) == 1  # nichts wurde abgefragt
-    assert "Bitte zuerst Schritt 7" in capsys.readouterr().out
+    assert NEED_7C in capsys.readouterr().out
 
 
 def test_smoke_step_before_model_or_files_points_back(nb, capsys):
@@ -269,27 +309,34 @@ def test_smoke_step_before_model_or_files_points_back(nb, capsys):
 
 def test_smoke_rerunning_step_4_invalidates_verdicts(nb, capsys):
     _load(nb)
-    nb.run(7, schwelle_bestimmen=MEDIAN)
+    _verdicts(nb)
     assert nb.ns["decisions"] is not None
     nb.run(4, top_n=3)
-    assert nb.ns["decisions"] is None and nb.ns["settings"] is None
+    for name in ("decisions", "settings", "threshold", "threshold_source", "threshold_label"):
+        assert nb.ns[name] is None, name
     with pytest.raises(colab.NotebookStop):
         nb.run(8)
-    assert "Bitte zuerst Schritt 7" in capsys.readouterr().out
+    assert NEED_7C in capsys.readouterr().out
+    for step, hint in (("7c", NEED_7B), ("7b", NEED_7A)):
+        with pytest.raises(colab.NotebookStop):
+            nb.run(step)
+        assert hint in capsys.readouterr().out
 
 
 def test_smoke_new_files_reset_rankings_and_serps_with_note(nb, capsys):
     _load(nb)
     nb.run(5, "rankings.csv")
     nb.run(6, "serps.csv")
-    nb.run(7, schwelle_bestimmen=MEDIAN)
+    _verdicts(nb)
     capsys.readouterr()
     nb.run(3, "queries.csv", "frog_export.csv")
     out = capsys.readouterr().out
     assert "ℹ️ Rankings und SERPs wurden zurückgesetzt. Führe Schritt 5 und 6 bei Bedarf erneut aus." in out
     assert nb.ns["rankings"] is None and nb.ns["serps"] is None and nb.ns["result"] is None
-    with pytest.raises(colab.NotebookStop):
-        nb.run(7)
+    for step in ("7a", "7b", "7c"):
+        with pytest.raises(colab.NotebookStop):
+            nb.run(step)
+        assert "Bitte zuerst Schritt 4 (Matching) ausführen." in capsys.readouterr().out
 
 
 def test_smoke_ranking_file_of_another_project_keeps_plain_matching(nb, capsys):
@@ -300,7 +347,7 @@ def test_smoke_ranking_file_of_another_project_keeps_plain_matching(nb, capsys):
     out = capsys.readouterr().out
     assert "⚠️ Keine der Ranking-Zeilen passt zu deinen Queries. Prüfe, ob die Datei zu diesem Projekt gehört." in out
     assert nb.ns["rankings"] is None
-    nb.run(7, schwelle_bestimmen=MEDIAN)
+    _verdicts(nb)
     assert nb.ns["settings"]["Eigene Rankings"] == "nein"
 
 
@@ -333,14 +380,19 @@ def test_smoke_numeric_inputs_are_validated(nb, capsys):
         assert hint in capsys.readouterr().out
     nb.run(4, chunk_groesse=0, chunk_overlap=0, top_n=5)
     with pytest.raises(colab.NotebookStop):
-        nb.run(7, rankt_gut_bis_position=0)
+        nb.run("7a", kalibrierung_bis_position=0)
     assert "mindestens 1" in capsys.readouterr().out
+    _threshold(nb)
+    for form in ({"rankt_gut_bis_position": 0}, {"sichtbar_bis_position": 0}):
+        with pytest.raises(colab.NotebookStop):
+            nb.run("7c", **form)
+        assert "mindestens 1" in capsys.readouterr().out
 
 
 def test_smoke_proposals_explain_why_calibration_is_missing(nb, capsys):
     _load(nb)
     nb.run(5, "rankings.csv")
-    nb.run(7)
+    nb.run("7a")
     out = capsys.readouterr().out
     assert "Aus Rankings kalibriert: nicht verfügbar. Nur 4 Ranking-Paare bis Position 5, für eine Kalibrierung sind 20 nötig." in out
     assert "per Konstruktion darunter" in out
@@ -368,7 +420,7 @@ def test_smoke_uncalibrated_threshold_is_flagged_in_counts_and_export(nb, tmp_pa
     from qum import export
 
     _load(nb)
-    nb.run(7, schwelle_bestimmen=MEDIAN)
+    _verdicts(nb)
     assert "neue Seiten aus den Content-Lücken (Schwelle nicht kalibriert)" in capsys.readouterr().out
     nb.run(8)
     assert export.CAVEAT_THRESHOLD["median"] in _readme_notes(tmp_path / "query_url_matcher.xlsx")
@@ -383,7 +435,7 @@ def _zip_header(path):
 
 def test_smoke_step_8_csv_zip_uses_semicolon_by_default_and_comma_on_request(nb, tmp_path):
     _load(nb)
-    nb.run(7, schwelle_bestimmen=MEDIAN)
+    _verdicts(nb)
     nb.run(8, zusaetzlich_csv_zip=True)
     assert ";" in _zip_header(tmp_path / "query_url_matcher_csv.zip")
     nb.run(8, zusaetzlich_csv_zip=True, csv_trennzeichen="Komma")
@@ -402,7 +454,7 @@ def test_smoke_threshold_typed_by_hand_is_named_in_export(nb, tmp_path, capsys):
     from qum import export
 
     _load(nb)
-    nb.run(7, schwelle_bestimmen=OWN, eigene_schwelle=0.5)
+    _verdicts(nb, OWN, eigene_schwelle=0.5)
     out = capsys.readouterr().out
     assert "neue Seiten aus den Content-Lücken" in out and "(Schwelle nicht kalibriert)" not in out
     nb.run(8)
@@ -514,7 +566,7 @@ def test_smoke_serps_with_few_urls_per_keyword_warn(nb, capsys):
 
 def test_smoke_step_9_accepts_an_earlier_pairs_export(nb, capsys):
     _load(nb)
-    nb.run(7, schwelle_bestimmen=MEDIAN)
+    _verdicts(nb)
     lines = (EXAMPLES / "rankings.csv").read_text(encoding="utf-8").splitlines()
     earlier = "\n".join([lines[0] + ";Hinweis;Score Chunk"] + [line + ";alt;0.1" for line in lines[1:]]) + "\n"
     nb.uploads.append(("paare.csv", earlier.encode()))
@@ -525,9 +577,12 @@ def test_smoke_step_9_accepts_an_earlier_pairs_export(nb, capsys):
     assert list(nb.ns["pairs"].columns).count("Hinweis") == 1
 
 
-def test_step_7_margin_defaults_to_one_hundredth():
-    source = next(s for s in _code_cells() if s.startswith("#@title Schritt 7"))
-    assert re.search(r"^abstand_fast_gleich = 0\.01 #@param", source, flags=re.M)
+def test_step_7c_fine_settings_keep_their_defaults():
+    source = _source("7c")
+    for line in ("rankt_gut_bis_position = 10", "abstand_fast_gleich = 0.01", "sichtbar_bis_position = 20",
+                 "serp_ueberschneidung = 50", "cluster_dichte = 50"):
+        assert re.search(rf"^{re.escape(line)} #@param", source, flags=re.M), line
+    assert re.search(r"^kalibrierung_bis_position = 5 #@param", _source("7a"), flags=re.M)
 
 
 def test_smoke_step_7_margin_reaches_the_verdicts(nb):
@@ -538,20 +593,38 @@ def test_smoke_step_7_margin_reaches_the_verdicts(nb):
     weak = "Keyword;URL;Position\ngetreidefreies trockenfutter hund;https://www.tierbedarf.example/katzenzubehoer/kratzbaum;3\n"
     nb.uploads.append(("rankings.csv", weak.encode()))
     nb.run(5)
-    nb.run(7, schwelle_bestimmen=OWN, eigene_schwelle=0.2)
+    _verdicts(nb, OWN, eigene_schwelle=0.2)
     assert nb.ns["decisions"][L.C_VERDICT].tolist().count(L.V_RISK) == 1
-    nb.run(7, schwelle_bestimmen=OWN, eigene_schwelle=0.2, abstand_fast_gleich=0.05)
+    _verdicts(nb, OWN, eigene_schwelle=0.2, abstand_fast_gleich=0.05)
     assert L.V_RISK not in nb.ns["decisions"][L.C_VERDICT].tolist()
 
 
-def test_step_7_threshold_dropdown_offers_the_four_choices():
+def test_smoke_rerunning_only_step_7c_with_another_margin_changes_the_verdicts(nb, capsys):
     from qum import labels as L
 
-    source = next(s for s in _code_cells() if s.startswith("#@title Schritt 7"))
-    match = re.search(r'^schwelle_bestimmen = (".*?") #@param (\[.*\])$', source, flags=re.M)
-    assert json.loads(match.group(1)) == SHOW
+    _load(nb)
+    weak = "Keyword;URL;Position\ngetreidefreies trockenfutter hund;https://www.tierbedarf.example/katzenzubehoer/kratzbaum;3\n"
+    nb.uploads.append(("rankings.csv", weak.encode()))
+    nb.run(5)
+    _verdicts(nb, OWN, eigene_schwelle=0.2)
+    assert nb.ns["decisions"][L.C_VERDICT].tolist().count(L.V_RISK) == 1
+    capsys.readouterr()
+    nb.run("7c", abstand_fast_gleich=0.05)
+    assert L.V_RISK not in nb.ns["decisions"][L.C_VERDICT].tolist()
+    assert nb.ns["threshold"] == 0.2 and nb.ns["settings"]["Abstand fast gleich"] == 0.05
+    assert "✅ Schritt 7c fertig. Weiter mit Schritt 8 (Export)." in capsys.readouterr().out
+    nb.run(8)
+
+
+def test_step_7b_threshold_dropdown_offers_the_three_choices():
+    from qum import labels as L
+
+    match = re.search(r'^schwelle_waehlen = (".*?") #@param (\[.*\])$', _source("7b"), flags=re.M)
+    assert json.loads(match.group(1)) == CALIBRATED
     assert json.loads(match.group(2)) == CHOICES == list(L.THRESHOLD_CHOICE)
-    assert [L.THRESHOLD_CHOICE[c] for c in CHOICES] == [None, "rankings", "median", "manuell"]
+    assert [L.THRESHOLD_CHOICE[c] for c in CHOICES] == ["rankings", "median", "manuell"]
+    assert _form_names("7a") == {"kalibrierung_bis_position"}
+    assert _form_names("7b") == {"schwelle_waehlen", "eigene_schwelle"}
 
 
 def _many_rankings():
@@ -562,29 +635,28 @@ def _many_rankings():
     return ("rankings.csv", ("\n".join(lines) + "\n").encode())
 
 
-def test_smoke_step_7_default_shows_proposals_and_builds_no_verdicts(nb, capsys):
+def test_smoke_step_7a_shows_proposals_and_builds_no_verdicts(nb, capsys):
     shown = []
     nb.ns["display"] = shown.append
     _load(nb)
     nb.uploads.append(_many_rankings())
     nb.run(5)
-    nb.run(7, schwelle_bestimmen=MEDIAN)
+    _verdicts(nb)
     shown.clear()
     capsys.readouterr()
-    nb.run(7)
+    nb.run("7a")
     out = capsys.readouterr().out
     assert "Die Schwelle ist die Cosinus-Ähnlichkeit zwischen Query und Seite, ab der eine Seite als passend gilt." in out
     assert re.search(r"Aus Rankings kalibriert: 0\.\d{4}\. Diesen Score erreichen 75 % der 24 Paare", out)
     assert re.search(r"Mittlerer bester Score \(nicht kalibriert\): 0\.\d{4}\.", out)
     assert "per Konstruktion darunter" in out
-    assert "führe die Zelle erneut aus" in out
-    assert "✅ Schritt 7 fertig" not in out
+    assert out.rstrip().endswith("✅ Schritt 7a fertig. Weiter mit Schritt 7b: Schwelle festlegen.")
     assert len(shown) == 2  # Beispielpaare um beide Vorschläge
-    for name in ("decisions", "cannibal", "settings", "threshold_source"):
+    for name in ("decisions", "cannibal", "settings", "pairs", "threshold", "threshold_source", "threshold_label"):
         assert nb.ns[name] is None, name
     with pytest.raises(colab.NotebookStop):
         nb.run(8)
-    assert NO_VERDICTS_YET in capsys.readouterr().out
+    assert NEED_7C in capsys.readouterr().out
 
 
 @pytest.mark.parametrize(
@@ -597,7 +669,7 @@ def test_smoke_step_7_each_choice_builds_verdicts(nb, capsys, choice, source, fo
     _load(nb)
     nb.uploads.append(_many_rankings())
     nb.run(5)
-    nb.run(7, schwelle_bestimmen=choice, **form)
+    _verdicts(nb, choice, **form)
     out = capsys.readouterr().out
     expected = {
         "rankings": lambda: calibrated_threshold(nb.ns["result"], nb.ns["lead"], nb.ns["rankings"]).value,
@@ -605,40 +677,47 @@ def test_smoke_step_7_each_choice_builds_verdicts(nb, capsys, choice, source, fo
         "manuell": lambda: 0.42,
     }[source]()
     assert nb.ns["decisions"] is not None and nb.ns["cannibal"] is not None
-    assert nb.ns["threshold_source"] == source
+    assert nb.ns["threshold_source"] == source and nb.ns["threshold_label"] == choice
+    assert nb.ns["threshold"] == expected
     assert nb.ns["settings"]["Schwelle aus"] == choice
     assert nb.ns["settings"]["Schwelle"] == expected
     assert f"Verwendete Schwelle {expected:.4f}" in out
-    assert "✅ Schritt 7 fertig" in out
+    assert f"✅ Schritt 7b fertig: Schwelle {expected:.4f}. Weiter mit Schritt 7c: Urteile bilden." in out
+    assert out.rstrip().endswith("✅ Schritt 7c fertig. Weiter mit Schritt 8 (Export).")
 
 
 def test_smoke_calibration_with_too_few_pairs_stops(nb, capsys):
     _load(nb)
+    nb.run("7a")
+    capsys.readouterr()
     with pytest.raises(colab.NotebookStop):
-        nb.run(7, schwelle_bestimmen=CALIBRATED)
+        nb.run("7b")  # Vorgabe: Aus Rankings kalibriert
     assert "Es sind keine Rankings geladen (Schritt 5 oder 6)." in capsys.readouterr().out
     nb.run(5, "rankings.csv")
+    nb.run("7a")
+    capsys.readouterr()
     with pytest.raises(colab.NotebookStop):
-        nb.run(7, schwelle_bestimmen=CALIBRATED)
+        nb.run("7b", schwelle_waehlen=CALIBRATED)
     out = capsys.readouterr().out
     assert "❌ Die Kalibrierung aus Rankings ist nicht verfügbar" in out
     assert "Nur 4 Ranking-Paare bis Position 5, für eine Kalibrierung sind 20 nötig." in out
-    assert "Wähle bei schwelle_bestimmen eine andere Option" in out
-    assert nb.ns["decisions"] is None
+    assert "Wähle bei schwelle_waehlen eine andere Option und starte die Zelle erneut." in out
+    assert nb.ns["threshold"] is None and nb.ns["decisions"] is None
 
 
 @pytest.mark.parametrize("value", [0, -0.2, 1.5])
 def test_smoke_invalid_own_threshold_stops(nb, capsys, value):
     _load(nb)
+    nb.run("7a")
     with pytest.raises(colab.NotebookStop):
-        nb.run(7, schwelle_bestimmen=OWN, eigene_schwelle=value)
+        nb.run("7b", schwelle_waehlen=OWN, eigene_schwelle=value)
     assert "❌ Die eigene Schwelle muss größer als 0 und höchstens 1 sein." in capsys.readouterr().out
-    assert nb.ns.get("decisions") is None
+    assert nb.ns.get("threshold") is None and nb.ns.get("decisions") is None
 
 
 def test_smoke_own_threshold_of_one_is_accepted(nb):
     _load(nb)
-    nb.run(7, schwelle_bestimmen=OWN, eigene_schwelle=1.0)
+    _verdicts(nb, OWN, eigene_schwelle=1.0)
     assert nb.ns["settings"]["Schwelle"] == 1.0
 
 
@@ -664,8 +743,9 @@ def test_install_line_pins_the_package_version():
 @pytest.mark.parametrize("value", [-0.01, 0.1, 2])
 def test_smoke_margin_outside_its_range_stops(nb, capsys, value):
     _load(nb)
+    _threshold(nb)
     with pytest.raises(colab.NotebookStop):
-        nb.run(7, schwelle_bestimmen=MEDIAN, abstand_fast_gleich=value)
+        nb.run("7c", abstand_fast_gleich=value)
     out = capsys.readouterr().out
     assert "Differenz von Cosinus-Scores (zum Beispiel 0.01), kein Prozentwert" in out
     assert KEPT not in out
@@ -673,7 +753,7 @@ def test_smoke_margin_outside_its_range_stops(nb, capsys, value):
 
 def test_smoke_margin_zero_is_accepted(nb):
     _load(nb)
-    nb.run(7, schwelle_bestimmen=MEDIAN, abstand_fast_gleich=0)
+    _verdicts(nb, abstand_fast_gleich=0)
     assert nb.ns["settings"]["Abstand fast gleich"] == 0
 
 
@@ -683,56 +763,115 @@ def _closing_line(out):
 
 def test_smoke_proposals_closing_line_lists_only_available_options(nb, capsys):
     _load(nb)
-    nb.run(7)
+    nb.run("7a")
     line = _closing_line(capsys.readouterr().out)
-    assert "Aus Rankings kalibriert" not in line
+    assert "Aus Rankings kalibriert" not in line and "Schritt 7b" in line
     assert '"Mittlerer bester Score (nicht kalibriert)"' in line and '"Eigener Wert"' in line
     nb.uploads.append(_many_rankings())
     nb.run(5)
-    nb.run(7)
+    nb.run("7a")
     assert '"Aus Rankings kalibriert"' in _closing_line(capsys.readouterr().out)
 
 
-def test_smoke_steps_8_and_9_after_proposals_only_say_so(nb, capsys):
+def test_smoke_steps_8_and_9_before_step_7c_point_to_step_7c(nb, capsys):
     _load(nb)
-    nb.run(7)
+    nb.run("7a")
     capsys.readouterr()
     for step in (8, 9):
         with pytest.raises(colab.NotebookStop):
             nb.run(step)
-        out = capsys.readouterr().out
-        assert NO_VERDICTS_YET in out and "Bitte zuerst Schritt 7" not in out
+        assert NEED_7C in capsys.readouterr().out
+    nb.run("7b", schwelle_waehlen=MEDIAN)
+    capsys.readouterr()
+    for step in (8, 9):
+        with pytest.raises(colab.NotebookStop):
+            nb.run(step)
+        assert NEED_7C in capsys.readouterr().out
     nb.run(4)  # ein früherer Schritt setzt den Zustand zurück
     with pytest.raises(colab.NotebookStop):
         nb.run(8)
-    assert "❌ Bitte zuerst Schritt 7 (Schwelle und Urteile) ausführen." in capsys.readouterr().out
-    nb.run(7, schwelle_bestimmen=MEDIAN)
+    assert NEED_7C in capsys.readouterr().out
+    _verdicts(nb)
     nb.run(8)
     assert "✅ Schritt 8 fertig" in capsys.readouterr().out
 
 
-@pytest.mark.parametrize(
-    "form",
-    [
-        {"schwelle_bestimmen": OWN, "eigene_schwelle": 0},
-        {"schwelle_bestimmen": CALIBRATED},
-        {"schwelle_bestimmen": MEDIAN, "abstand_fast_gleich": 0.5},
-        {"schwelle_bestimmen": MEDIAN, "rankt_gut_bis_position": 0},
-    ],
-)
-def test_smoke_rejected_step_7_says_the_last_verdicts_still_apply(nb, capsys, form):
+def test_smoke_step_7b_before_step_7a_stops(nb, capsys):
     _load(nb)
     with pytest.raises(colab.NotebookStop):
-        nb.run(7, **form)
-    assert KEPT not in capsys.readouterr().out
-    nb.run(7, schwelle_bestimmen=MEDIAN, eigene_schwelle=0, abstand_fast_gleich=0.01, rankt_gut_bis_position=10)
-    before = nb.ns["decisions"]
+        nb.run("7b", schwelle_waehlen=MEDIAN)
+    assert NEED_7A in capsys.readouterr().out
+    assert nb.ns.get("threshold") is None
+
+
+def test_smoke_step_7c_before_step_7b_stops(nb, capsys):
+    _load(nb)
+    with pytest.raises(colab.NotebookStop):
+        nb.run("7c")
+    assert NEED_7B in capsys.readouterr().out
+    nb.run("7a")
+    with pytest.raises(colab.NotebookStop):
+        nb.run("7c")
+    assert NEED_7B in capsys.readouterr().out
+    assert nb.ns.get("decisions") is None
+
+
+def test_smoke_rerunning_step_7b_invalidates_the_verdicts(nb, capsys):
+    _load(nb)
+    _verdicts(nb)
+    nb.run("7b", schwelle_waehlen=OWN, eigene_schwelle=0.3)
+    assert nb.ns["threshold"] == 0.3 and nb.ns["threshold_source"] == "manuell"
+    for name in ("decisions", "cannibal", "settings", "pairs"):
+        assert nb.ns[name] is None, name
     capsys.readouterr()
     with pytest.raises(colab.NotebookStop):
-        nb.run(7, **form)
+        nb.run(8)
+    assert NEED_7C in capsys.readouterr().out
+    nb.run("7c")
+    assert nb.ns["settings"]["Schwelle"] == 0.3 and nb.ns["settings"]["Schwelle aus"] == OWN
+    nb.run(8)
+
+
+@pytest.mark.parametrize("step", [5, 6])
+def test_smoke_new_rankings_or_serps_invalidate_the_threshold(nb, capsys, step):
+    _load(nb)
+    _verdicts(nb)
+    nb.run(step, {5: "rankings.csv", 6: "serps.csv"}[step])
+    for name in ("calibration_position", "threshold", "threshold_source", "threshold_label", "decisions"):
+        assert nb.ns[name] is None, name
+    capsys.readouterr()
+    for later, hint in (("7c", NEED_7B), ("7b", NEED_7A)):
+        with pytest.raises(colab.NotebookStop):
+            nb.run(later)
+        assert hint in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "step, form",
+    [
+        ("7a", {"kalibrierung_bis_position": 0}),
+        ("7b", {"schwelle_waehlen": OWN, "eigene_schwelle": 0}),
+        ("7b", {"schwelle_waehlen": CALIBRATED}),
+        ("7c", {"abstand_fast_gleich": 0.5}),
+        ("7c", {"rankt_gut_bis_position": 0}),
+    ],
+)
+def test_smoke_rejected_step_7_says_the_last_verdicts_still_apply(nb, capsys, step, form):
+    _load(nb)
+    for earlier in ("7a", "7b", "7c")[: ("7a", "7b", "7c").index(step)]:
+        nb.run(earlier, **({"schwelle_waehlen": MEDIAN} if earlier == "7b" else {}))
+    capsys.readouterr()
+    with pytest.raises(colab.NotebookStop):
+        nb.run(step, **form)
+    assert KEPT not in capsys.readouterr().out
+    _verdicts(nb)
+    before = {name: nb.ns[name] for name in ("decisions", "threshold", "calibration_position")}
+    capsys.readouterr()
+    with pytest.raises(colab.NotebookStop):
+        nb.run(step, **form)
     out = capsys.readouterr().out
     assert out.startswith("❌ ") and out.rstrip().endswith(KEPT)
-    assert nb.ns["decisions"] is before
+    assert all(nb.ns[name] is value for name, value in before.items())
 
 
 def test_notebook_requests_a_gpu_runtime():
@@ -794,23 +933,56 @@ def test_smoke_steps_5_and_6_name_the_detected_columns(nb, capsys):
 
 
 def test_step_7_explains_every_field():
-    source = next(s for s in _code_cells() if s.startswith("#@title Schritt 7"))
-    for name in ("kalibrierung_bis_position", "rankt_gut_bis_position", "abstand_fast_gleich", "sichtbar_bis_position",
-                 "serp_ueberschneidung", "cluster_dichte"):
-        assert f"**{name}" in source, name
-    assert "75 %" in source
+    for step in ("7a", "7b", "7c"):
+        source = _source(step)
+        for name in _form_names(step):
+            assert f"**{name}" in source, name
+    assert "75 %" in _source("7a")
+
+
+def _first_hint(step):
+    return next(line for line in _source(step).splitlines() if line.startswith("#@markdown"))
+
+
+def test_step_7_cells_say_how_to_start():
+    assert _first_hint("7a") == "#@markdown **▶ Einfach starten, hier ist nichts einzutragen.**"
+    assert _first_hint("7c") == (
+        "#@markdown **▶ Starten. Die Werte darunter kannst du für den ersten Lauf auf den Voreinstellungen lassen.**"
+    )
 
 
 def test_smoke_step_7_explains_the_verdicts_it_shows(nb, capsys):
     _load(nb)
-    nb.run(7, schwelle_bestimmen=MEDIAN)
+    _verdicts(nb)
     out = capsys.readouterr().out
     assert "Was die Urteile bedeuten:" in out
     assert "Content-Lücke: Keine Seite erreicht die Schwelle." in out
 
 
-def test_step_7_explains_the_procedure_and_every_option():
-    source = next(s for s in _code_cells() if s.startswith("#@title Schritt 7"))
-    for text in ("**Was passiert hier?**", "**So gehst du vor:**", '"Erst Vorschläge ansehen" zeigt', '"Aus Rankings kalibriert" leitet',
-                 '"Mittlerer bester Score" ist nur ein Behelf', '"Eigener Wert" nimmt', "### Feineinstellungen"):
+def test_step_7_explains_the_threshold_and_every_option():
+    assert "bildet noch keine Urteile" in _source("7a")
+    source = _source("7b")
+    for text in ("**Aus Rankings kalibriert**", "am verlässlichsten", "Schritt 5 oder 6",
+                 "**Mittlerer bester Score (nicht kalibriert):**", "per Konstruktion darunter",
+                 "**Eigener Wert:**", "Beispielen aus Schritt 7a"):
         assert text in source, text
+
+
+def test_notebook_and_readme_name_the_sub_steps_of_step_7():
+    texts = {"notebook": "\n".join(source for _, source in CELLS), "README": (ROOT / "README.md").read_text(encoding="utf-8")}
+    for name, text in texts.items():
+        assert not re.search(r"Schritt 7(?![abc])", text), name
+        assert "schwelle_bestimmen" not in text, name
+    intro = next(source for kind, source in CELLS if kind == "markdown")
+    readme_start = texts["README"].split("## So startest du")[1].split("\n## ")[0]
+    for text in (intro, readme_start):
+        assert all(f"7{x}" in text for x in "abc")
+
+
+def test_step_9_explains_what_it_is_for_in_plain_words():
+    hints = [line.removeprefix("#@markdown ") for line in _source(9).splitlines() if line.startswith("#@markdown")]
+    assert "Play-Symbol" in hints[0] and "Dateien auswählen" in hints[0]
+    order = ["**Wofür?**", "**Was du bekommst:**", "**Wann sinnvoll?**", "Die URLs müssen im Frog-Export aus Schritt 3 stehen.",
+             "Die Felder unten bleiben normalerweise leer."]
+    positions = [next(i for i, hint in enumerate(hints) if text in hint) for text in order]
+    assert positions == sorted(positions) and positions[0] == 1

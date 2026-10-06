@@ -13,11 +13,17 @@ STEP_NAMES = {
     2: "Modellwahl",
     3: "Dateien hochladen",
     4: "Matching",
-    7: "Schwelle und Urteile",
+    "7a": "Vorschläge ansehen",
+    "7b": "Schwelle festlegen",
+    "7c": "Urteile bilden",
 }
 # Was ungültig wird, wenn sich der Stand davor ändert
-# proposals_only: Schritt 7 hat nur Vorschläge gezeigt und keine Urteile gebildet
-VERDICT_STATE = ("decisions", "cannibal", "settings", "threshold_source", "pairs", "proposals_only")
+DECISION_STATE = ("decisions", "cannibal", "settings", "pairs")  # aus Schritt 7c und 9; Schritt 7b setzt sie zurück
+VERDICT_STATE = (
+    ("calibrated", "median", "no_calibration", "calibration_position")  # Schritt 7a
+    + ("threshold", "threshold_source", "threshold_label")  # Schritt 7b
+    + DECISION_STATE
+)
 MATCH_STATE = ("result", "lead", "top") + VERDICT_STATE
 
 
@@ -42,20 +48,10 @@ def stop(message: str):
     raise NotebookStop()
 
 
-def require(namespace, step: int, *names):
+def require(namespace, step: int | str, *names):
     """Stoppt mit einem deutschen Hinweis, wenn ein Name aus einem früheren Schritt fehlt oder ungültig ist."""
     if any(namespace.get(name) is None for name in names):
         stop(f"Bitte zuerst Schritt {step} ({STEP_NAMES[step]}) ausführen.")
-
-
-def require_verdicts(namespace):
-    """Wie require für Schritt 7, aber mit eigenem Hinweis, wenn Schritt 7 nur Vorschläge gezeigt hat."""
-    if namespace.get("proposals_only"):
-        stop(
-            'Schritt 7 hat noch keine Urteile gebildet. Wähle bei "schwelle_bestimmen" eine der Optionen '
-            "und führe Schritt 7 erneut aus."
-        )
-    require(namespace, 7, "decisions", "top", "cannibal", "settings", "threshold_source")
 
 
 def invalidate(namespace, *names):

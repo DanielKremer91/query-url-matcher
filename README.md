@@ -7,7 +7,7 @@
 ## Was es beantwortet
 
 - Gibt es für eine Query schon eine passende Seite oder Textstelle?
-- Passt eine andere Seite deutlich besser als die, die gerade rankt (Kannibalisierungs-Risiko)? Liegt die rankende Seite höchstens 0,01 hinter der besten (einstellbar in Schritt 7), gilt sie als bester Treffer.
+- Passt eine andere Seite deutlich besser als die, die gerade rankt (Kannibalisierungs-Risiko)? Liegt die rankende Seite höchstens 0,01 hinter der besten (einstellbar in Schritt 7c), gilt sie als bester Treffer.
 - Für welche Queries fehlt Content, und wie viele neue Seiten sind das wirklich?
 
 Das Notebook sortiert vor und begründet. Die Entscheidung trifft ein Mensch.
@@ -18,7 +18,7 @@ Das Notebook sortiert vor und begründet. Die Entscheidung trifft ein Mensch.
 2. Für die Modelle mit API-Key (Gemini, OpenAI): Lege im Secrets-Panel (Schlüssel-Symbol links) das Secret `GEMINI_API_KEY` bzw. `OPENAI_API_KEY` an und aktiviere dort den Schalter "Notebook-Zugriff". Ohne diesen Schalter kann das Notebook den Key nicht lesen. Die lokalen Modelle brauchen kein Secret.
 3. Führe die Zellen einzeln von oben nach unten aus, nicht mit "Alle ausführen": Die Zellen fragen nach Datei-Uploads.
 4. Die Schritte 5 (eigene Rankings), 6 (Top-10-SERPs) und 9 (Keyword-URL-Paare) sind optional.
-5. In Schritt 7 zeigt die Zelle beim ersten Lauf nur Vorschläge für die Schwelle „passend" mit Beispielen. Du wählst, wie die Schwelle bestimmt wird (aus Rankings kalibriert, mittlerer bester Score oder eigener Wert), und führst die Zelle erneut aus. Erst dann entstehen Urteile und Export.
+5. Schwelle und Urteile entstehen in drei Zellen: Schritt 7a zeigt Vorschläge für die Schwelle „passend" mit Beispielen und bildet noch keine Urteile. In Schritt 7b legst du die Schwelle fest (aus Rankings kalibriert, mittlerer bester Score oder eigener Wert). Schritt 7c bildet die Urteile. Erst danach gibt es den Export (Schritt 8). Willst du nur die Feineinstellungen der Urteile ändern, starte nur Schritt 7c erneut.
 6. Für einen ersten Versuch liegen kleine Beispieldateien unter `examples/` (Queries, Frog-Export, Rankings, SERPs).
 
 Führst du einen früheren Schritt erneut aus, setzt das Notebook alles zurück, was darauf aufbaut, und sagt dir, welchen Schritt du wiederholen musst.
@@ -76,8 +76,8 @@ Alle Domains enden auf `.example`, eine für Beispiele reservierte Endung (der S
 
 Was du beim Ausprobieren erwarten kannst:
 
-- Das Beispiel ist zu klein, um die Schwelle zu kalibrieren: Es hat weniger als 20 Ranking-Paare. In Schritt 7 stehen deshalb nur der mittlere beste Score (nicht kalibriert) und ein eigener Wert zur Wahl. Mit dem mittleren besten Score liegt etwa die Hälfte der Queries per Konstruktion unter der Schwelle und wird als Lücke oder schwacher Match markiert.
-- Kurze Ein-Wort-Queries (zum Beispiel „kratzbaum") können auch gegen die richtige Seite niedrig scoren. Schau dir in Schritt 7 die Beispiele um die Schwelle an und setze bei Bedarf einen eigenen Wert.
+- Das Beispiel ist zu klein, um die Schwelle zu kalibrieren: Es hat weniger als 20 Ranking-Paare. In Schritt 7b bleiben deshalb nur der mittlere beste Score (nicht kalibriert) und ein eigener Wert; die Vorgabe „Aus Rankings kalibriert" bricht mit einem Hinweis ab. Mit dem mittleren besten Score liegt etwa die Hälfte der Queries per Konstruktion unter der Schwelle und wird als Lücke oder schwacher Match markiert.
+- Kurze Ein-Wort-Queries (zum Beispiel „kratzbaum") können auch gegen die richtige Seite niedrig scoren. Schau dir in Schritt 7a die Beispiele um die Schwelle an und setze in Schritt 7b bei Bedarf einen eigenen Wert.
 
 ## Entwicklung
 

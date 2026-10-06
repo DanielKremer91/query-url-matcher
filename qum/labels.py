@@ -38,7 +38,7 @@ C_COMPETING = "Konkurrierende URLs"
 
 C_PAIR_RANK = "Rang der URL"
 
-# Prüfbeispiele um die Schwelle (Schritt 7, nicht im Export)
+# Prüfbeispiele um die Schwelle (Schritt 7a und 7b, nicht im Export)
 C_SIDE = "Lage"
 C_SCORE = "Score"
 SIDE_ABOVE = "knapp über der Schwelle"
@@ -76,9 +76,8 @@ NO_CLUSTER = "ohne Cluster"
 
 # Auswahl im Formular -> interner Schlüssel
 BASIS = {"Chunk": "chunk", "Gesamt-URL": "full", "Kombi": "combined"}
-# Wahl der Schwelle in Schritt 7 -> Herkunft der Schwelle (None: nur die Vorschläge zeigen, keine Urteile)
+# Wahl der Schwelle in Schritt 7b -> Herkunft der Schwelle
 THRESHOLD_CHOICE = {
-    "Erst Vorschläge ansehen": None,
     "Aus Rankings kalibriert": "rankings",
     "Mittlerer bester Score (nicht kalibriert)": "median",
     "Eigener Wert": "manuell",
