@@ -751,3 +751,10 @@ def test_smoke_step_2_hides_hugging_face_token_notice(nb, monkeypatch, capsys):
     captured = capsys.readouterr()
     assert "unauthenticated" not in captured.out + captured.err
     assert http_logger.getEffectiveLevel() >= logging.ERROR
+
+
+def test_upload_steps_explain_where_the_upload_button_appears():
+    for source in _code_cells():
+        if "colab.upload(" in source:
+            first_hint = next(line for line in source.splitlines() if line.startswith("#@markdown"))
+            assert "Play-Symbol" in first_hint and "Dateien auswählen" in first_hint, source.splitlines()[0]

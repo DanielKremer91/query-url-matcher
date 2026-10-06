@@ -94,7 +94,8 @@ print(f"✅ Schritt 2 fertig: Modell {spec.model_id} ist bereit. Weiter mit Schr
 '''.replace("__VERSION__", __version__)  # installiert genau den Git-Tag der Paketversion
 
 STEP3 = '''#@title Schritt 3: Queries und Frog-Export hochladen { display-mode: "form" }
-#@markdown Die Spalten werden automatisch erkannt. Nur wenn die Zelle eine Spalte nicht findet, trägst du den Namen hier ein.
+#@markdown **▶ Klicke links auf das Play-Symbol. Unter der Zelle erscheint dann nacheinander der Knopf „Dateien auswählen": zuerst für die Queries, danach für den Frog-Export.**
+#@markdown Die Spalten werden automatisch erkannt. Die Felder unten nur ausfüllen, wenn die Zelle eine Spalte nicht findet, sonst leer lassen.
 query_spalte = "" #@param {type:"string"}
 url_spalte = "" #@param {type:"string"}
 content_spalte = "" #@param {type:"string"}
@@ -192,6 +193,7 @@ print(f"✅ Schritt 4 fertig: {len(top)} Treffer berechnet. Optional weiter mit 
 '''
 
 STEP5 = '''#@title Schritt 5 (optional): Eigene Rankings hochladen { display-mode: "form" }
+#@markdown **▶ Klicke links auf das Play-Symbol. Unter der Zelle erscheint dann der Knopf „Dateien auswählen".**
 #@markdown Export mit Keyword, URL und Position, zum Beispiel aus GSC, Ahrefs (Organic Keywords) oder SISTRIX.
 #@markdown Ergänzt die Urteile, die sich auf Rankings stützen, und ermöglicht eine Kalibrierung der Schwelle für "passend"
 #@markdown (ab 20 gut rankenden Paaren, Wahl in Schritt 7).
@@ -230,8 +232,9 @@ if rankings is None:
 '''
 
 STEP6 = '''#@title Schritt 6 (optional): Top-10-SERPs hochladen { display-mode: "form" }
+#@markdown **▶ Klicke links auf das Play-Symbol. Unter der Zelle erscheint dann der Knopf „Dateien auswählen".**
 #@markdown Ahrefs-Export mit Keyword, URL, Position und Type (die kompletten Top 10 je Keyword, inklusive Wettbewerber).
-#@markdown Schaltet die Bündelung der Content-Lücken zu Themen frei. Die Spaltennamen trägst du nur ein, wenn sie nicht erkannt werden.
+#@markdown Schaltet die Bündelung der Content-Lücken zu Themen frei. Die Felder unten nur ausfüllen, wenn eine Spalte nicht erkannt wird, sonst leer lassen.
 serp_keyword_spalte = "" #@param {type:"string"}
 serp_url_spalte = "" #@param {type:"string"}
 serp_position_spalte = "" #@param {type:"string"}
@@ -436,9 +439,10 @@ print(f"✅ Schritt 8 fertig: {len(sheets)} Blätter exportiert. Schritt 9 ist o
 '''
 
 STEP9 = '''#@title Schritt 9 (nachgelagert): Vorhandene Keyword-URL-Paare bewerten { display-mode: "form" }
+#@markdown **▶ Klicke links auf das Play-Symbol. Unter der Zelle erscheint dann der Knopf „Dateien auswählen".**
 #@markdown Lade einen Export mit Keyword und URL hoch (zum Beispiel Ahrefs Organic Keywords). Je Paar siehst du, wie gut die
 #@markdown rankende URL passt und welche deiner Seiten am besten passen würde. Die URLs müssen im Frog-Export aus Schritt 3 stehen.
-#@markdown Die Spaltennamen trägst du nur ein, wenn sie nicht erkannt werden.
+#@markdown Die Felder unten nur ausfüllen, wenn eine Spalte nicht erkannt wird, sonst leer lassen.
 paare_keyword_spalte = "" #@param {type:"string"}
 paare_url_spalte = "" #@param {type:"string"}
 
