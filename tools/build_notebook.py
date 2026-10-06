@@ -28,7 +28,7 @@ Schon ohne Ranking-Dateien bekommst du das Matching mit Urteilen zu passender Se
 
 Führe die Zellen einzeln von oben nach unten aus (Play-Symbol links), nicht mit "Alle ausführen": Die Zellen fragen nach Uploads. Jede Zelle endet mit einer Zeile, die sagt, wie es weitergeht. Die Schritte 5, 6 und 9 sind optional. Wenn du einen früheren Schritt erneut ausführst, setzt das Notebook alles zurück, was darauf aufbaut, und sagt dir, welchen Schritt du danach wiederholen musst.
 
-Für die kostenlosen lokalen Modelle: Laufzeit → Laufzeittyp ändern → T4 GPU, sonst dauert das Einbetten sehr lange.
+Das Notebook fordert beim Start automatisch eine kostenlose T4-GPU an. Teilt Colab gerade keine zu, läuft es auf der CPU: Bei einigen hundert Seiten reicht das, bei mehreren tausend Seiten dauert das Einbetten deutlich länger.
 
 Für die Modelle mit API-Key legst du im Secrets-Panel (Schlüssel-Symbol links) das Secret an und aktivierst dort den Schalter "Notebook-Zugriff".
 
@@ -76,8 +76,8 @@ if spec.provider == "local":
 
         if not torch.cuda.is_available():
             print(
-                "⚠️ Keine GPU gefunden. Mit einem lokalen Modell dauert das Einbetten so sehr lange. "
-                "Stelle unter Laufzeit → Laufzeittyp ändern → T4 GPU um und führe die Zellen ab Schritt 2 erneut aus."
+                "⚠️ Colab hat keine GPU zugeteilt. Einige hundert Seiten laufen trotzdem, mehrere tausend dauern deutlich länger. "
+                "Für eine GPU: Laufzeit → Laufzeittyp ändern → T4 GPU, dann ab Schritt 2 erneut ausführen."
             )
     except ImportError:
         pass
@@ -503,7 +503,8 @@ def build() -> dict:
         "nbformat": 4,
         "nbformat_minor": 0,
         "metadata": {
-            "colab": {"provenance": []},
+            "accelerator": "GPU",  # Colab startet die Laufzeit damit direkt mit GPU
+            "colab": {"provenance": [], "gpuType": "T4"},
             "kernelspec": {"name": "python3", "display_name": "Python 3"},
             "language_info": {"name": "python"},
         },

@@ -461,24 +461,24 @@ def test_smoke_step_2_warns_without_gpu_for_local_models(nb, monkeypatch, capsys
     cuda = _run_step_2(nb, monkeypatch, MODELS["e5-large"].label, gpu=False)
     out = capsys.readouterr().out
     assert cuda.calls == 1
-    assert "⚠️ Keine GPU" in out and "T4 GPU" in out
+    assert "⚠️ Colab hat keine GPU zugeteilt" in out and "T4 GPU" in out
     assert "✅ Schritt 2 fertig" in out
 
 
 def test_smoke_step_2_stays_quiet_with_gpu(nb, monkeypatch, capsys):
     _run_step_2(nb, monkeypatch, MODELS["e5-large"].label, gpu=True)
-    assert "Keine GPU" not in capsys.readouterr().out
+    assert "keine GPU zugeteilt" not in capsys.readouterr().out
 
 
 def test_smoke_step_2_does_not_check_gpu_for_api_models(nb, monkeypatch, capsys):
     cuda = _run_step_2(nb, monkeypatch, MODELS["openai"].label, gpu=False)
     assert cuda.calls == 0
-    assert "Keine GPU" not in capsys.readouterr().out
+    assert "keine GPU zugeteilt" not in capsys.readouterr().out
 
 
-def test_intro_recommends_gpu_runtime_for_local_models():
+def test_intro_says_the_gpu_is_requested_automatically():
     intro = next(source for kind, source in CELLS if kind == "markdown")
-    assert "Laufzeit → Laufzeittyp ändern → T4 GPU" in intro
+    assert "automatisch eine kostenlose T4-GPU" in intro
 
 
 def test_smoke_rejected_rerun_of_step_4_keeps_previous_settings(nb, capsys):
@@ -733,3 +733,9 @@ def test_smoke_rejected_step_7_says_the_last_verdicts_still_apply(nb, capsys, fo
     out = capsys.readouterr().out
     assert out.startswith("❌ ") and out.rstrip().endswith(KEPT)
     assert nb.ns["decisions"] is before
+
+
+def test_notebook_requests_a_gpu_runtime():
+    meta = build()["metadata"]
+    assert meta["accelerator"] == "GPU"
+    assert meta["colab"]["gpuType"] == "T4"
