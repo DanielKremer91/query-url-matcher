@@ -95,7 +95,7 @@ print(f"✅ Schritt 2 fertig: Modell {spec.model_id} ist bereit. Weiter mit Schr
 
 STEP3 = '''#@title Schritt 3: Queries und Frog-Export hochladen { display-mode: "form" }
 #@markdown **▶ Klicke links auf das Play-Symbol. Unter der Zelle erscheint dann nacheinander der Knopf „Dateien auswählen": zuerst für die Queries, danach für den Frog-Export.**
-#@markdown Die Spalten werden automatisch erkannt. Die Felder unten nur ausfüllen, wenn die Zelle eine Spalte nicht findet, sonst leer lassen.
+#@markdown **Die Felder unten bleiben normalerweise leer.** Nur wenn die Zelle mit ❌ „…-Spalte nicht erkannt" abbricht, trägst du den Namen aus der Meldung ein und startest die Zelle erneut.
 query_spalte = "" #@param {type:"string"}
 url_spalte = "" #@param {type:"string"}
 content_spalte = "" #@param {type:"string"}
@@ -203,6 +203,7 @@ STEP5 = '''#@title Schritt 5 (optional): Eigene Rankings hochladen { display-mod
 #@markdown Ergänzt die Urteile, die sich auf Rankings stützen, und ermöglicht eine Kalibrierung der Schwelle für "passend"
 #@markdown (ab 20 gut rankenden Paaren, Wahl in Schritt 7).
 #@markdown Kannibalisierung und Content-Lücken gibt es auch ohne Rankings.
+#@markdown **Die Felder unten bleiben normalerweise leer.** Nur wenn die Zelle mit ❌ „…-Spalte nicht erkannt" abbricht, trägst du den Namen aus der Meldung ein und startest die Zelle erneut.
 keyword_spalte = "" #@param {type:"string"}
 url_spalte_ranking = "" #@param {type:"string"}
 position_spalte = "" #@param {type:"string"}
@@ -213,12 +214,19 @@ from qum.normalize import normalize_url
 colab.require(globals(), 3, "queries", "content")
 with colab.guard():
     name, data = colab.upload("Eigene Rankings (Keyword, URL, Position)")
+    ranking_table = colab.read_table(data, name)
     loaded = ingest.load_rankings(
-        colab.read_table(data, name),
+        ranking_table,
         keyword_col=keyword_spalte or None,
         url_col=url_spalte_ranking or None,
         position_col=position_spalte or None,
     )
+print(
+    "Erkannte Spalten: "
+    f"Keyword = {keyword_spalte or ingest.find_column(ranking_table, ingest.KEYWORD_ALIASES)}, "
+    f"URL = {url_spalte_ranking or ingest.find_column(ranking_table, ingest.URL_ALIASES)}, "
+    f"Position = {position_spalte or ingest.find_column(ranking_table, ingest.POSITION_ALIASES)}"
+)
 known_queries = {ingest.normalize_query(q) for q in queries}
 known_urls = {normalize_url(u) for u in content.urls}
 covered = int(loaded["query_norm"].isin(known_queries).sum())
@@ -239,7 +247,8 @@ if rankings is None:
 STEP6 = '''#@title Schritt 6 (optional): Top-10-SERPs hochladen { display-mode: "form" }
 #@markdown **▶ Klicke links auf das Play-Symbol. Unter der Zelle erscheint dann der Knopf „Dateien auswählen".**
 #@markdown Ahrefs-Export mit Keyword, URL, Position und Type (die kompletten Top 10 je Keyword, inklusive Wettbewerber).
-#@markdown Schaltet die Bündelung der Content-Lücken zu Themen frei. Die Felder unten nur ausfüllen, wenn eine Spalte nicht erkannt wird, sonst leer lassen.
+#@markdown Schaltet die Bündelung der Content-Lücken zu Themen frei.
+#@markdown **Die Felder unten bleiben normalerweise leer.** Nur wenn die Zelle mit ❌ „…-Spalte nicht erkannt" abbricht, trägst du den Namen aus der Meldung ein und startest die Zelle erneut.
 serp_keyword_spalte = "" #@param {type:"string"}
 serp_url_spalte = "" #@param {type:"string"}
 serp_position_spalte = "" #@param {type:"string"}
@@ -251,13 +260,22 @@ from qum.normalize import host_of
 colab.require(globals(), 3, "queries", "content")
 with colab.guard():
     name, data = colab.upload("Top-10-SERPs (Keyword, URL, Position, Type)")
+    serp_table = colab.read_table(data, name)
     loaded = ingest.load_serps(
-        colab.read_table(data, name),
+        serp_table,
         keyword_col=serp_keyword_spalte or None,
         url_col=serp_url_spalte or None,
         position_col=serp_position_spalte or None,
         type_col=serp_type_spalte or None,
     )
+serp_type_found = serp_type_spalte or ingest.find_column(serp_table, ingest.TYPE_ALIASES)
+print(
+    "Erkannte Spalten: "
+    f"Keyword = {serp_keyword_spalte or ingest.find_column(serp_table, ingest.KEYWORD_ALIASES)}, "
+    f"URL = {serp_url_spalte or ingest.find_column(serp_table, ingest.URL_ALIASES)}, "
+    f"Position = {serp_position_spalte or ingest.find_column(serp_table, ingest.POSITION_ALIASES)}, "
+    f"Type = {serp_type_found or '(keine Spalte, alle Zeilen gelten als organisch)'}"
+)
 known_queries = {ingest.normalize_query(q) for q in queries}
 colab.invalidate(globals(), *colab.VERDICT_STATE)
 if not loaded["query_norm"].isin(known_queries).any():
@@ -447,7 +465,7 @@ STEP9 = '''#@title Schritt 9 (nachgelagert): Vorhandene Keyword-URL-Paare bewert
 #@markdown **▶ Klicke links auf das Play-Symbol. Unter der Zelle erscheint dann der Knopf „Dateien auswählen".**
 #@markdown Lade einen Export mit Keyword und URL hoch (zum Beispiel Ahrefs Organic Keywords). Je Paar siehst du, wie gut die
 #@markdown rankende URL passt und welche deiner Seiten am besten passen würde. Die URLs müssen im Frog-Export aus Schritt 3 stehen.
-#@markdown Die Felder unten nur ausfüllen, wenn eine Spalte nicht erkannt wird, sonst leer lassen.
+#@markdown **Die Felder unten bleiben normalerweise leer.** Nur wenn die Zelle mit ❌ „…-Spalte nicht erkannt" abbricht, trägst du den Namen aus der Meldung ein und startest die Zelle erneut.
 paare_keyword_spalte = "" #@param {type:"string"}
 paare_url_spalte = "" #@param {type:"string"}
 

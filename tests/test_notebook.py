@@ -776,3 +776,18 @@ def test_step_4_explains_basis_options_and_top_n():
     source = next(s for s in _code_cells() if s.startswith("#@title Schritt 4"))
     for text in ("**Chunk** (Empfehlung)", "**Gesamt-URL:**", "**Kombi:**", "**top_n:**", "Top-Treffer"):
         assert text in source, text
+
+
+def test_upload_steps_say_the_column_fields_normally_stay_empty():
+    for source in _code_cells():
+        if "colab.upload(" in source:
+            assert "Die Felder unten bleiben normalerweise leer." in source, source.splitlines()[0]
+
+
+def test_smoke_steps_5_and_6_name_the_detected_columns(nb, capsys):
+    _load(nb)
+    nb.run(5, "rankings.csv")
+    nb.run(6, "serps.csv")
+    out = capsys.readouterr().out
+    assert "Erkannte Spalten: Keyword = Keyword, URL = URL, Position = Position" in out
+    assert "Erkannte Spalten: Keyword = Keyword, URL = URL, Position = Position, Type = Type" in out
