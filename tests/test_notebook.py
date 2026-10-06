@@ -770,3 +770,9 @@ def test_smoke_step_3_names_the_columns_actually_used(nb, capsys):
 def test_step_4_says_chunking_is_always_on():
     source = next(s for s in _code_cells() if s.startswith("#@title Schritt 4"))
     assert "Chunking ist immer aktiv" in source and "0 heißt: empfohlene Größe" in source
+
+
+def test_step_4_explains_basis_options_and_top_n():
+    source = next(s for s in _code_cells() if s.startswith("#@title Schritt 4"))
+    for text in ("**Chunk** (Empfehlung)", "**Gesamt-URL:**", "**Kombi:**", "**top_n:**", "Top-Treffer"):
+        assert text in source, text

@@ -142,10 +142,13 @@ STEP4 = '''#@title Schritt 4: Matching { display-mode: "form" }
 #@markdown **0 heißt: empfohlene Größe für das gewählte Modell** (bei e5: 250 Wörter, Overlap 40). Nur ändern, wenn du bewusst andere Werte willst.
 chunk_groesse = 0 #@param {type:"integer"}
 chunk_overlap = 0 #@param {type:"integer"}
-#@markdown Welcher Score entscheidet über "passend" und die Sortierung? Im Export stehen immer alle drei.
+#@markdown **bewertungsgrundlage:** Je Query und Seite gibt es drei Cosinus-Werte. Der gewählte entscheidet, ob eine Seite als "passend" gilt (mit der Schwelle aus Schritt 7), welche Seite die beste ist und wie sortiert wird. Im Export stehen immer alle drei.
+#@markdown **Chunk** (Empfehlung): Query gegen den besten Textabschnitt der Seite. Findet Seiten, die die Query in einem Abschnitt beantworten, auch wenn die Seite breiter ist.
+#@markdown **Gesamt-URL:** Query gegen die Seite als Ganzes. Bevorzugt Seiten, die sich komplett um das Thema drehen.
+#@markdown **Kombi:** Mischung aus beiden, der Anteil des Chunk-Werts steht im Regler darunter (0.7 = 70 % Chunk, 30 % Gesamt-URL).
 bewertungsgrundlage = "Chunk" #@param ["Chunk", "Gesamt-URL", "Kombi"]
-#@markdown Anteil des Chunk-Scores im Kombi-Score (der Rest ist der Gesamt-URL-Score).
 kombi_gewicht_chunk = 0.7 #@param {type:"slider", min:0, max:1, step:0.05}
+#@markdown **top_n:** So viele der am besten passenden URLs je Query erscheinen im Excel-Blatt "Top-Treffer". Auf die Urteile hat der Wert keinen Einfluss.
 top_n = 5 #@param {type:"integer"}
 
 from qum import colab
