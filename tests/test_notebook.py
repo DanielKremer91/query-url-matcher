@@ -739,3 +739,15 @@ def test_notebook_requests_a_gpu_runtime():
     meta = build()["metadata"]
     assert meta["accelerator"] == "GPU"
     assert meta["colab"]["gpuType"] == "T4"
+
+
+def test_smoke_step_2_hides_hugging_face_token_notice(nb, monkeypatch, capsys):
+    import logging
+
+    http_logger = logging.getLogger("huggingface_hub.utils._http")
+    monkeypatch.setattr(http_logger, "level", logging.NOTSET)
+    _run_step_2(nb, monkeypatch, MODELS["e5-large"].label, gpu=True)
+    http_logger.warning("Warning: You are sending unauthenticated requests to the HF Hub.")
+    captured = capsys.readouterr()
+    assert "unauthenticated" not in captured.out + captured.err
+    assert http_logger.getEffectiveLevel() >= logging.ERROR
