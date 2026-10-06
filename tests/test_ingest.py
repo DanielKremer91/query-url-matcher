@@ -398,3 +398,22 @@ def test_ordinary_missing_column_has_no_extra_sentence():
     with pytest.raises(ingest.IngestError) as error:
         ingest.load_rankings(df)
     assert ALL_IN_ONE_CELL not in str(error.value)
+
+
+def test_load_content_detects_custom_extraction_column():
+    # Screaming Frog benennt Custom-Extraction-Spalten "<Name> 1"
+    df = pd.DataFrame(
+        {
+            "Address": ["https://a.de/1"],
+            "Status Code": ["200"],
+            "Toom Main Content Extracotr 1": ["Text eins"],
+        }
+    )
+    table = ingest.load_content(df)
+    assert table.contents == ["Text eins"]
+
+
+def test_load_content_custom_extraction_ambiguous_raises():
+    df = pd.DataFrame({"Address": ["https://a.de/1"], "Content Teaser 1": ["a"], "Main Content Extractor 1": ["b"]})
+    with pytest.raises(ingest.IngestError, match="Content"):
+        ingest.load_content(df)

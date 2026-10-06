@@ -191,8 +191,16 @@ def load_queries(df: pd.DataFrame, column: str | None = None) -> list:
     return out
 
 
+def _custom_content_column(df: pd.DataFrame) -> str | None:
+    """Screaming-Frog-Custom-Extraction: genau eine Spalte, deren Name "content" enthält."""
+    matches = [c for c in df.columns if "content" in str(c).lower()]
+    return matches[0] if len(matches) == 1 else None
+
+
 def load_content(df: pd.DataFrame, url_col=None, content_col=None) -> ContentTable:
     ucol = _require(df, url_col, URL_ALIASES, "URL")
+    if not content_col and find_column(df, CONTENT_ALIASES) is None:
+        content_col = _custom_content_column(df)
     ccol = _require(df, content_col, CONTENT_ALIASES, "Content")
     urls, contents, seen = [], [], set()
     skipped_empty = skipped_duplicate = 0
