@@ -81,14 +81,15 @@ Berechnete Vektoren werden in der Sitzung und auf der Colab-Platte zwischengespe
 
 ## 6. Schwelle „passend"
 
-Die Schwelle ist die Cosinus-Ähnlichkeit (Leit-Score) zwischen Query und Seite, ab der eine Seite als passend gilt. Der Nutzer wählt in Schritt 7 ausdrücklich, wie sie bestimmt wird. Nichts wird stillschweigend übernommen, auch nicht eine verfügbare Kalibrierung.
+Die Schwelle ist die Cosinus-Ähnlichkeit (Leit-Score) zwischen Query und Seite, ab der eine Seite als passend gilt. Schritt 7 ist in drei Zellen geteilt: 7a zeigt die Vorschläge, 7b legt die Schwelle fest, 7c bildet die Urteile. Der Nutzer wählt in 7b ausdrücklich, wie die Schwelle bestimmt wird; nichts wird stillschweigend übernommen.
 
-- **Erst Vorschläge ansehen** (Vorgabe): Das Notebook erklärt die Schwelle in einem Satz und zeigt die verfügbaren Vorschläge, je mit Wert, Bedeutung und Beispielpaaren, und bittet um eine Wahl. Es bildet keine Urteile; Schritt 8 verweist zurück auf Schritt 7.
+- **Schritt 7a (Vorschläge ansehen):** erklärt die Schwelle und zeigt die verfügbaren Vorschläge, je mit Wert, Bedeutung und Beispielpaaren. Bildet keine Urteile.
+- **Schritt 7b (Schwelle festlegen):** Auswahl aus den drei folgenden Optionen, „Aus Rankings kalibriert" ist vorgewählt.
 - **Aus Rankings kalibriert:** alle Paare aus Query und eigener URL mit Position ≤ 5 (einstellbar), bei denen die Query in der Query-Liste und die URL im Frog-Export steht, jedes Paar einmal. Wert ist das 25. Perzentil ihrer Leit-Scores, also der Wert, den 75 % dieser Paare erreichen. Angeboten nur ab 20 Paaren. Sonst nennt das Notebook den Grund (keine Rankings geladen oder nur n Paare bis Position k) und stoppt, wenn diese Option gewählt ist.
 - **Mittlerer bester Score (nicht kalibriert):** Median der besten Leit-Scores aller Queries. Etwa die Hälfte der Queries liegt per Konstruktion darunter; das sagt das Notebook, die Zahl der neuen Seiten ist als „Schwelle nicht kalibriert" markiert.
 - **Eigener Wert:** größer als 0 und höchstens 1.
 - Der Abstand „fast gleich" (Abschnitt 7 und 8) muss mindestens 0 und kleiner als 0,1 sein; die Meldung sagt, dass er eine Differenz von Cosinus-Scores ist, kein Prozentwert.
-- Nach „Erst Vorschläge ansehen" nennt die Schlusszeile nur die verfügbaren Optionen, und Schritt 8 und 9 sagen ausdrücklich, dass Schritt 7 noch keine Urteile gebildet hat. Bricht Schritt 7 wegen einer ungültigen Eingabe ab, bleiben Urteile aus einem früheren Lauf stehen, und die Meldung sagt das.
+- **Schritt 7c (Urteile bilden):** Feineinstellungen und Urteile; lässt sich allein neu starten, ohne die Schwelle neu zu wählen. Schritt 8 und 9 verlangen 7c. Wer eine Zelle überspringt, bekommt eine Meldung mit dem fehlenden Teilschritt. Bricht eine Zelle wegen einer ungültigen Eingabe ab, bleiben Urteile aus einem früheren Lauf stehen, und die Meldung sagt das.
 - **Prüfschritt:** Zu jedem Vorschlag und zur verwendeten Schwelle zeigt das Notebook fünf Paare knapp über und fünf knapp unter dem Wert mit Query, URL und Passage.
 
 Vorschläge werden einmal auf 4 Nachkommastellen gerundet. Die Wahl steht in den Einstellungen der Lesehilfe, dazu ein fester Hinweis je Herkunft (Rankings, Median, von Hand).
@@ -156,7 +157,7 @@ Schritt-Zellen mit Colab-Formularen (`#@param`), Code eingeklappt. Jede Zelle ha
 4. Matching (Chunk-Einstellungen, Bewertungsgrundlage, Kombi-Gewicht)
 5. Optional: eigene Rankings
 6. Optional: Top-10-SERPs
-7. Schwelle prüfen und Urteile bilden
+7. Schwelle und Urteile: 7a Vorschläge ansehen, 7b Schwelle festlegen, 7c Urteile bilden
 8. Export
 9. Nachgelagert: Paare bewerten
 
