@@ -49,3 +49,7 @@ def test_api_fulltext_limits_stay_below_the_token_limits():
     # OpenAI: 8.191 Tokens; 4.000 deutsche Wörter können darüber liegen
     assert get_model("openai").fulltext_max_words == 3000
     assert get_model("gemini").fulltext_max_words == 1000
+
+
+def test_only_bge_m3_caps_whole_page_embedding():
+    assert {k: s.fulltext_max_tokens for k, s in MODELS.items() if s.fulltext_max_tokens} == {"bge-m3": 2048}

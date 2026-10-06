@@ -1,6 +1,24 @@
 import numpy as np
 
-from .base import Embedder, EmbeddingError, l2_normalize, prepare
+from .base import CONSOLE, Embedder, EmbeddingError, l2_normalize, prepare
+
+_START_BATCH_SIZE = 32
+
+
+def _is_out_of_memory(exc: Exception) -> bool:
+    """CUDA-Speicherfehler erkennen, ohne torch zu importieren."""
+    if type(exc).__name__ == "OutOfMemoryError":
+        return True
+    return isinstance(exc, RuntimeError) and "out of memory" in str(exc).lower()
+
+
+def _free_gpu_cache() -> None:
+    try:
+        import torch
+    except ImportError:
+        return
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 
 class LocalEmbedder(Embedder):
@@ -17,14 +35,30 @@ class LocalEmbedder(Embedder):
         if spec.max_seq_length:
             model.max_seq_length = spec.max_seq_length
         self.model = model
+        self.batch_size = _START_BATCH_SIZE
 
     def embed(self, texts, role):
-        vectors = self.model.encode(
-            prepare(self.spec, texts, role),
-            batch_size=32,
-            normalize_embeddings=True,
-            show_progress_bar=False,  # den Gesamtfortschritt meldet CachedEmbedder
-        )
+        prepared = prepare(self.spec, texts, role)
+        while True:
+            try:
+                vectors = self.model.encode(
+                    prepared,
+                    batch_size=self.batch_size,
+                    normalize_embeddings=True,
+                    show_progress_bar=False,  # den Gesamtfortschritt meldet CachedEmbedder
+                )
+                break
+            except Exception as exc:
+                if not _is_out_of_memory(exc):
+                    raise
+                _free_gpu_cache()
+                if self.batch_size == 1:
+                    raise EmbeddingError(
+                        "Die Grafikkarte hat nicht genug Speicher für diese Texte. "
+                        "Verkleinere die Chunk-Größe in Schritt 4 oder wähle ein kleineres Modell."
+                    ) from exc
+                self.batch_size //= 2
+                CONSOLE.say(f"⚠️ GPU-Speicher knapp, Stapelgröße auf {self.batch_size} reduziert.")
         return l2_normalize(np.asarray(vectors))
 
     def _tokens(self, text: str) -> int:
@@ -33,6 +67,8 @@ class LocalEmbedder(Embedder):
 
     def fits_context(self, text):
         limit = self.model.max_seq_length
+        if self.spec.fulltext_max_tokens:
+            limit = min(limit, self.spec.fulltext_max_tokens)
         # ein Wort ist mindestens ein Token: lange Texte ohne Tokenizer ausschließen
         if len(text.split()) > limit:
             return False

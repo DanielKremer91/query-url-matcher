@@ -15,6 +15,8 @@ class ModelSpec:
     passage_task: str | None = None
     # API-Modelle: Volltext-Embedding bis zu dieser Wortzahl. Lokale Modelle prüfen per Tokenizer.
     fulltext_max_words: int | None = None
+    # Lokale Modelle mit langem Kontext: Ganzseiten-Embedding nur bis zu dieser Tokenzahl (Zeit und GPU-Speicher).
+    fulltext_max_tokens: int | None = None
     max_seq_length: int | None = None
     comparison_only: bool = False
 
@@ -40,7 +42,15 @@ _SPECS = [
         query_prefix="query: ",
         passage_prefix="passage: ",
     ),
-    ModelSpec("bge-m3", "bge-m3 · Deutsch, kostenlos, lange Texte", "local", "BAAI/bge-m3", 1000, 150),
+    ModelSpec(
+        "bge-m3",
+        "bge-m3 · Deutsch, kostenlos, lange Texte",
+        "local",
+        "BAAI/bge-m3",
+        1000,
+        150,
+        fulltext_max_tokens=2048,
+    ),
     ModelSpec(
         "msmarco",
         "msmarco-distilbert-base-v4 · nur englische Projekte",

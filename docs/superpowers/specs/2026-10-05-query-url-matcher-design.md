@@ -61,6 +61,7 @@ Regeln:
 - Das Gegenbeispiel-Modell ist im Formular als „nur zum Vergleich, nicht für die Auswertung" beschriftet. Seine maximale Sequenzlänge wird auf 512 Tokens gesetzt, damit es dieselben Chunks wie e5 sieht.
 - Lokale Modelle laufen über `sentence-transformers` (Extra `qum[local]`), die API-Modelle über `httpx` ohne SDK. Keys kommen aus den Colab-Secrets `OPENAI_API_KEY` und `GEMINI_API_KEY`.
 - Bei lokalen Modellen prüft das Paket mit dem Tokenizer, wie viele Chunks die Sequenzlänge überschreiten, und meldet den Anteil.
+- Lokale Modelle beginnen mit Stapelgröße 32. Meldet die Grafikkarte zu wenig Speicher, halbiert das Paket die Stapelgröße, meldet das in einer Zeile und wiederholt den Aufruf; die kleinere Größe bleibt für den Rest der Sitzung. Reicht auch Stapelgröße 1 nicht, bricht der Lauf mit einer deutschen Meldung ab (Chunk-Größe verkleinern oder kleineres Modell wählen).
 - API-Aufrufe laufen gebündelt. Wiederholt wird nur bei 408, 429, 5xx und Verbindungsfehlern (bis zu sechs Versuche mit Pausen von 2 bis 32 Sekunden, bei 429 und 503 nach dem Header Retry-After, höchstens 60 Sekunden); andere Fehler brechen sofort mit Meldung ab. Ab 5 Sekunden Pause erscheint eine deutsche Meldung mit Grund und Versuch, immer auf einer eigenen Zeile.
 - Fehlende Texte gehen in Scheiben von 256 an das Modell. Der Zwischenspeicher auf der Platte wird höchstens alle 60 Sekunden geschrieben, dazu am Ende und bei Fehler oder Abbruch, damit fertige Scheiben erhalten bleiben. Der Fortschritt steht in einer einzigen Zeile für den ganzen Lauf („⏳ 512 von 1.000 Texten eingebettet …", fertig „✅ 1.000 von 1.000 Texten eingebettet").
 
@@ -69,7 +70,7 @@ Regeln:
 Je Query und URL entstehen immer drei Scores:
 
 1. **Chunk-Score:** Der Content wird in überlappende Wort-Chunks zerlegt. Der Score ist der höchste Cosinus-Wert eines Chunks. Der beste Chunk steht im Export.
-2. **Gesamt-URL-Score:** Passt der Main Content ins Kontextfenster, wird er als Ganzes eingebettet (Methode „Volltext"). Sonst gilt der normalisierte Mittelwert der Chunk-Vektoren (Methode „Mittelwert der Chunks"). Die Methode steht je URL im Export. Die Passung wird bei lokalen Modellen mit dem Tokenizer geprüft, bei OpenAI gilt die Grenze 3.000 Wörter, bei Gemini 1.000 Wörter.
+2. **Gesamt-URL-Score:** Passt der Main Content ins Kontextfenster, wird er als Ganzes eingebettet (Methode „Volltext"). Sonst gilt der normalisierte Mittelwert der Chunk-Vektoren (Methode „Mittelwert der Chunks"). Die Methode steht je URL im Export. Die Passung wird bei lokalen Modellen mit dem Tokenizer geprüft; bei bge-m3 zählt eine Seite nur bis 2.048 Tokens als passend, weil das Einbetten ganzer langer Seiten mehrere Sekunden je Seite und viel GPU-Speicher kostet (längere Seiten nehmen den Mittelwert der Chunks). Bei OpenAI gilt die Grenze 3.000 Wörter, bei Gemini 1.000 Wörter.
 3. **Kombi-Score:** `w × Chunk + (1 − w) × Gesamt-URL`, `w` per Schieberegler, Default 0,7.
 
 Ein Formularfeld „Bewertungsgrundlage" (Chunk als Default, Gesamt-URL, Kombi) legt den **Leit-Score** fest. Er entscheidet über „passend" und die Sortierung. Alle drei Scores und Ränge stehen immer im Export.
