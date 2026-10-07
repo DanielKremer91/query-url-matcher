@@ -154,7 +154,7 @@ def test_help_texts_describe_the_rules():
     assert "keine Rankings geladen" in export.VERDICT_HELP[L.V_MATCH]
     assert not hasattr(L, "V_USE")
     comparison = export._COLUMN_HELP[L.C_RANK_IS_BEST]
-    for value in (L.YES, L.CMP_CLOSE, L.NO, L.CMP_NOT_RANKING, L.CMP_NOT_IN_EXPORT):
+    for value in (L.YES, L.NO, L.CMP_NOT_RANKING, L.CMP_NOT_IN_EXPORT):
         assert f"'{value}'" in comparison, value
     assert "weitere" in export._COLUMN_HELP[L.C_URL_1]
     assert "Schritt 6" in export._COLUMN_HELP[L.C_TOPIC]

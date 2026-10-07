@@ -244,7 +244,7 @@ def test_one_word_for_cannibalisation():
     assert L.V_CANNIBAL == "Kannibalisierungsgefahr"
     assert export.SHEET_CANNIBAL == "Kannibalisierungsgefahr"
     assert L.C_CANNIBAL == "Kannibalisierungsgefahr"
-    assert [L.STAGE_DANGER, L.STAGE_POSSIBLE, L.STAGE_VISIBLE] == ["Gefahr", "Möglich", "Bereits sichtbar"]
+    assert [L.STAGE_DANGER, L.STAGE_POSSIBLE, L.STAGE_VISIBLE] == ["Gefahr", "Möglich", "Kannibalisierung bereits sichtbar"]
 
 
 # --- Stufe Möglich: weitere passende Seiten, deutlich hinter der besten -----------------------------------------

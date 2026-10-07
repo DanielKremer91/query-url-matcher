@@ -58,7 +58,7 @@ def find_cannibalization(
 ) -> pd.DataFrame:
     """Stufe Gefahr: jedes Urteil Kannibalisierungsgefahr und bei gutem Ranking jede andere passende Seite, die besser
     oder fast gleich gut ist als die rankende. Stufe Möglich: sonst weitere Seiten, die die Schwelle erreichen.
-    Stufe Bereits sichtbar: mehrere eigene URLs ranken bis visible_position."""
+    Stufe Kannibalisierung bereits sichtbar: mehrere eigene URLs ranken bis visible_position."""
     assessments = assess(result, lead, threshold, rankings, good_position, margin)
     u_index = {normalize_url(u): j for j, u in enumerate(result.urls)}
     by_query = _own_rankings(rankings)
@@ -90,7 +90,7 @@ def find_cannibalization(
 
 
 def annotate(decisions: pd.DataFrame, cannibal: pd.DataFrame) -> pd.DataFrame:
-    """Kopie der Übersicht mit der Spalte Kannibalisierungsgefahr: "ja" bei Stufe Gefahr oder Bereits sichtbar,
+    """Kopie der Übersicht mit der Spalte Kannibalisierungsgefahr: "ja" bei Stufe Gefahr oder Kannibalisierung bereits sichtbar,
     "möglich" nur bei Stufe Möglich, sonst "nein"."""
     possible = cannibal[L.C_STAGE] == L.STAGE_POSSIBLE
     flagged = set(cannibal.loc[~possible, L.C_QUERY])

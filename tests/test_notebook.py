@@ -588,11 +588,12 @@ def _verdict_of(nb, query):
     return decisions.loc[decisions[L.C_QUERY] == query, L.C_VERDICT].item()
 
 
-def _compare_of(nb, query):
+def _reason_of(nb, query):
     from qum import labels as L
 
-    decisions = nb.ns["decisions"]
-    return decisions.loc[decisions[L.C_QUERY] == query, L.C_RANK_IS_BEST].item()
+    cannibal = nb.ns["cannibal"]
+    reason = cannibal.loc[(cannibal[L.C_QUERY] == query) & (cannibal[L.C_STAGE] == L.STAGE_DANGER), L.C_REASON].item()
+    return reason.split(" … und ")[0]  # ohne die Zahl weiterer URLs
 
 
 def test_smoke_step_7_margin_reaches_the_verdicts(nb):
@@ -604,9 +605,9 @@ def test_smoke_step_7_margin_reaches_the_verdicts(nb):
     nb.uploads.append(("rankings.csv", weak.encode()))
     nb.run(5)
     _verdicts(nb, OWN, eigene_schwelle=0.2)
-    assert _compare_of(nb, WEAK_QUERY) == L.NO
+    assert _reason_of(nb, WEAK_QUERY) == L.REASON_BETTER
     _verdicts(nb, OWN, eigene_schwelle=0.2, abstand_fast_gleich=0.05)
-    assert _compare_of(nb, WEAK_QUERY) == L.CMP_CLOSE
+    assert _reason_of(nb, WEAK_QUERY) == L.REASON_OK_CLOSE
 
 
 def test_smoke_rerunning_only_step_7c_with_another_margin_changes_the_verdicts(nb, capsys):
@@ -617,10 +618,10 @@ def test_smoke_rerunning_only_step_7c_with_another_margin_changes_the_verdicts(n
     nb.uploads.append(("rankings.csv", weak.encode()))
     nb.run(5)
     _verdicts(nb, OWN, eigene_schwelle=0.2)
-    assert _compare_of(nb, WEAK_QUERY) == L.NO
+    assert _reason_of(nb, WEAK_QUERY) == L.REASON_BETTER
     capsys.readouterr()
     nb.run("7c", abstand_fast_gleich=0.05)
-    assert _compare_of(nb, WEAK_QUERY) == L.CMP_CLOSE
+    assert _reason_of(nb, WEAK_QUERY) == L.REASON_OK_CLOSE
     assert nb.ns["threshold"] == 0.2 and nb.ns["settings"]["Abstand fast gleich"] == 0.05
     assert "✅ Schritt 7c fertig. Weiter mit Schritt 8 (Export)." in capsys.readouterr().out
     nb.run(8)

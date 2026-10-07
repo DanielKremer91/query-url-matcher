@@ -31,7 +31,7 @@ Nicht im Umfang: eigener Crawler, Verarbeitung von Millionen Seiten, Ollama, ein
 |---|---|---|---|
 | Queries | ja | eine Query oder ein Prompt je Zeile | Matching |
 | Frog-Export | ja | URL, Main Content | Matching |
-| Eigene Rankings | optional | Keyword, URL, Position | Urteile mit Ranking, Stufe „Bereits sichtbar“, Rankingposition in den Blättern, Kalibrierung der Schwelle |
+| Eigene Rankings | optional | Keyword, URL, Position | Urteile mit Ranking, Stufe „Kannibalisierung bereits sichtbar“, Rankingposition in den Blättern, Kalibrierung der Schwelle |
 | Top-10-SERPs | optional | Keyword, URL, Position, Type (Ahrefs) | Thema der potentiellen Content-Lücken und Zahl neuer Seiten (Clustering) |
 
 Regeln:
@@ -113,9 +113,9 @@ Eigenes Blatt mit drei Stufen:
 
 - **Gefahr:** jede Query mit dem Urteil „Kannibalisierungsgefahr" und jede gut rankende Query, bei der eine andere passende Seite besser oder fast gleich gut ist als die rankende (Urteil „in Ordnung" oder „rankt trotz schwachem Match"). Gründe: „deutlich besser" (die beste Seite liegt mehr als einen positiven Abstand vor der rankenden), „besser" (Abstand 0 oder die rankende Seite erreicht die Schwelle nicht), „nicht verglichen" (rankende URL fehlt im Frog-Export), „Rankende Seite passt, eine weitere passt fast gleich gut" (in Ordnung) und „Mehrere Seiten passen fast gleich gut" (schwaches, fehlendes oder kein Ranking). Funktioniert auch ohne Rankings.
 - **Möglich:** keine Gefahr, aber zwei oder mehr Seiten erreichen die Schwelle; die weiteren liegen mehr als den Abstand „fast gleich" hinter der besten. Grund „Weitere Seiten erreichen die Schwelle, liegen aber deutlich hinter der besten". URLs nach Leit-Score sortiert.
-- **Bereits sichtbar:** zwei oder mehr eigene URLs ranken für die Query mit Position ≤ 20 (einstellbar).
+- **Kannibalisierung bereits sichtbar:** zwei oder mehr eigene URLs ranken für die Query mit Position ≤ 20 (einstellbar).
 
-Eine Zeile je Query und Stufe mit bis zu drei URLs in eigenen Spalten (URL, Score, Position). Stufe Gefahr: nach Leit-Score sortiert, die rankende URL zuerst, wenn der Grund sie betrifft. Bereits sichtbar: nach Position sortiert. Score ist der Leit-Score (leer, wenn die URL nicht im Frog-Export steht), Position die eigene Position für die Query (leer, wenn sie dafür nicht rankt). Konkurrieren mehr als drei URLs, endet der Grund mit „… und n weitere".
+Eine Zeile je Query und Stufe mit bis zu drei URLs in eigenen Spalten (URL, Score, Position). Stufe Gefahr: nach Leit-Score sortiert, die rankende URL zuerst, wenn der Grund sie betrifft. Kannibalisierung bereits sichtbar: nach Position sortiert. Score ist der Leit-Score (leer, wenn die URL nicht im Frog-Export steht), Position die eigene Position für die Query (leer, wenn sie dafür nicht rankt). Konkurrieren mehr als drei URLs, endet der Grund mit „… und n weitere".
 
 ## 9. SERP-Clustering und potentielle Content-Lücken
 
@@ -168,8 +168,8 @@ Vier Blätter in dieser Reihenfolge:
 - Beste, zweitbeste und drittbeste URL nach Leit-Score; „Relevanter Chunk" ist der beste Chunk der besten URL. Gibt es weniger als zwei oder drei URLs, bleiben die Zellen leer.
 - „Vorsprung vor zweitbester URL": Leit-Score der besten minus Leit-Score der zweitbesten URL, vier Nachkommastellen, leer bei nur einer URL. Er zeigt, wie klar die beste Seite vorn liegt, weil kurze Queries absolut niedrig scoren, und ändert kein Urteil.
 - „Rankingposition" und „Rankende URL": bestes eigenes Ranking für die Query, auf jeder Position, leer ohne Ranking.
-- „Rankende URL = beste URL?": „ja", „fast gleich gut" (die rankende URL passt und liegt im Abstand „fast gleich"), „nein", „rankt nicht" (Rankings geladen, aber keines für die Query), „nicht im Frog-Export", leer ohne Rankings.
-- „Kannibalisierungsgefahr": „ja" bei Stufe Gefahr oder Bereits sichtbar, „möglich", wenn die Query nur mit Stufe Möglich im Blatt steht, sonst „nein".
+- „Rankende URL = beste URL?": „ja", „nein" (eine andere Seite hat einen höheren Leit-Score, auch knapp; Entscheidung Daniel, 2026-10-07: Ja-Nein-Frage, die Nähe zeigen Scores und Grund), „rankt nicht" (Rankings geladen, aber keines für die Query), „nicht im Frog-Export", leer ohne Rankings.
+- „Kannibalisierungsgefahr": „ja" bei Stufe Gefahr oder Kannibalisierung bereits sichtbar, „möglich", wenn die Query nur mit Stufe Möglich im Blatt steht, sonst „nein".
 
 Die Query steht in den ersten drei Blättern in der ersten Spalte. Urteile sind farbig hinterlegt.
 

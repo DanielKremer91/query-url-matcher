@@ -102,7 +102,7 @@ def _compare(a: Assessment, best_j, rankings_loaded) -> str:
         return L.CMP_NOT_IN_EXPORT
     if a.ranking_j == best_j:
         return L.YES
-    return L.CMP_CLOSE if a.ranking_j in a.close else L.NO
+    return L.NO
 
 
 def build_decisions(result, lead, threshold, rankings=None, good_position=10, weight=0.7, margin=0.01) -> pd.DataFrame:

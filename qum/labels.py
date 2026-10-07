@@ -63,7 +63,7 @@ V_WATCH = "Rankt trotz schwachem Match"
 
 STAGE_DANGER = "Gefahr"
 STAGE_POSSIBLE = "Möglich"
-STAGE_VISIBLE = "Bereits sichtbar"
+STAGE_VISIBLE = "Kannibalisierung bereits sichtbar"
 
 REASON_BETTER = "Eine andere Seite passt deutlich besser als die rankende"
 REASON_BETTER_PLAIN = "Eine andere Seite passt besser als die rankende"
@@ -77,7 +77,6 @@ REASON_RANKING = "Mehrere eigene Seiten ranken für die Query"
 YES = "ja"
 NO = "nein"
 MAYBE = "möglich"
-CMP_CLOSE = "fast gleich gut"
 CMP_NOT_RANKING = "rankt nicht"
 CMP_NOT_IN_EXPORT = "nicht im Frog-Export"
 

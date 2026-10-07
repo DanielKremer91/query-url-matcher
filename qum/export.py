@@ -64,14 +64,14 @@ _COLUMN_HELP = {
     L.C_POSITION: "Beste eigene Position für die Query laut Rankings. Leer, wenn die Query nicht rankt oder keine Rankings geladen sind.",
     L.C_RANK_URL: "Die eigene URL, die laut Rankings am besten für die Query rankt, egal auf welcher Position.",
     L.C_RANK_IS_BEST: (
-        f"'{L.YES}': die rankende URL ist die beste URL. '{L.CMP_CLOSE}': sie erreicht die Schwelle und liegt höchstens "
-        f"um den Abstand 'fast gleich' hinter der besten. '{L.NO}': eine andere Seite passt besser. "
+        f"'{L.YES}': die rankende URL ist die beste URL. '{L.NO}': eine andere Seite hat einen höheren Score, auch wenn "
+        "sie nur knapp vorn liegt; wie knapp, zeigen die Scores und der Grund im Blatt Kannibalisierungsgefahr. "
         f"'{L.CMP_NOT_RANKING}': keine eigene URL rankt für die Query. '{L.CMP_NOT_IN_EXPORT}': die rankende URL "
         "steht nicht im Frog-Export und wurde nicht verglichen. Leer ohne Rankings."
     ),
     L.C_VERDICT: "Einordnung der Query, siehe die Urteile weiter oben in dieser Lesehilfe.",
     L.C_CANNIBAL: (
-        f"'{L.YES}': die Query steht im Blatt Kannibalisierungsgefahr mit der Stufe Gefahr oder Bereits sichtbar. "
+        f"'{L.YES}': die Query steht im Blatt Kannibalisierungsgefahr mit der Stufe Gefahr oder Kannibalisierung bereits sichtbar. "
         f"'{L.MAYBE}': nur mit der Stufe Möglich, weitere Seiten passen, liegen aber deutlich dahinter. "
         f"'{L.NO}': keine weitere Seite erreicht die Schwelle. Unabhängig vom Urteil."
     ),
@@ -80,7 +80,7 @@ _COLUMN_HELP = {
     L.C_REASON: "Warum die Query hier steht. Konkurrieren mehr als drei URLs, steht die Zahl der weiteren am Ende.",
     L.C_URL_1: (
         "Erste konkurrierende eigene URL. Stufe Gefahr: nach Score sortiert, die rankende URL zuerst, wenn der Grund sie "
-        "betrifft. Stufe Bereits sichtbar: nach Position sortiert. Mehr als drei URLs zählt die Spalte Grund als weitere."
+        "betrifft. Stufe Kannibalisierung bereits sichtbar: nach Position sortiert. Mehr als drei URLs zählt die Spalte Grund als weitere."
     ),
     L.C_SCORE_1: "Score der URL 1 nach der gewählten Bewertungsgrundlage. Leer, wenn sie nicht im Frog-Export steht.",
     L.C_POS_1: "Eigene Position der URL 1 für die Query. Leer, wenn sie dafür nicht rankt.",

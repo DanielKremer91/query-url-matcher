@@ -41,7 +41,7 @@ Für die Modelle mit API-Key legst du im Secrets-Panel (Schlüssel-Symbol links)
 Schritt 8 lädt eine Excel-Datei mit vier Blättern herunter, auf Wunsch zusätzlich ein ZIP mit einer CSV je Blatt:
 
 - **Übersicht:** eine Zeile je Query mit den drei am besten passenden URLs und ihren Scores, der eigenen Rankingposition, dem Urteil und der Spalte Kannibalisierungsgefahr (ja, möglich oder nein).
-- **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen, mit Stufe (Gefahr, Möglich, Bereits sichtbar), Grund und bis zu drei URLs samt Score und Position.
+- **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen, mit Stufe (Gefahr, Möglich, Kannibalisierung bereits sichtbar), Grund und bis zu drei URLs samt Score und Position.
 - **Potentielle Content-Lücken:** Queries ohne ausreichend passende Seite, mit SERPs nach Thema gebündelt.
 - **Lesehilfe:** erklärt jedes Blatt, jede Spalte, jedes Urteil und nennt die Einstellungen des Laufs.
 
@@ -424,7 +424,7 @@ STEP7C = '''#@title Schritt 7c: Urteile bilden { display-mode: "form" }
 rankt_gut_bis_position = 10 #@param {type:"integer"}
 #@markdown **abstand_fast_gleich:** Score-Unterschied, bis zu dem zwei Seiten als gleich gut gelten (0.01 = ein Hundertstel). Liegen mehrere passende Seiten so nah beieinander, gibt es Kannibalisierungsgefahr.
 abstand_fast_gleich = 0.01 #@param {type:"number"}
-#@markdown **sichtbar_bis_position:** Ranken zwei eigene URLs für dieselbe Query bis zu dieser Position, steht die Query im Blatt Kannibalisierungsgefahr mit der Stufe "Bereits sichtbar".
+#@markdown **sichtbar_bis_position:** Ranken zwei eigene URLs für dieselbe Query bis zu dieser Position, steht die Query im Blatt Kannibalisierungsgefahr mit der Stufe "Kannibalisierung bereits sichtbar".
 sichtbar_bis_position = 20 #@param {type:"integer"}
 #@markdown **Potentielle Content-Lücken:** Das Blatt „Potentielle Content-Lücken“ hat eigene Einstellungen. Seine Zahl kann deshalb von der Zahl der Urteile „Content-Lücke“ abweichen.
 #@markdown **luecke_unter_score:** Eine Query gilt als potentielle Lücke, wenn der Score ihrer besten Seite unter diesem Wert liegt. 0 = Schwelle aus Schritt 7b. Sonst ein Wert zwischen 0 und 1, zum Beispiel 0.8 für eine strengere oder 0.75 für eine mildere Auswahl.
@@ -529,7 +529,7 @@ print("✅ Schritt 7c fertig. Weiter mit Schritt 8 (Export).")
 STEP8 = '''#@title Schritt 8: Export { display-mode: "form" }
 #@markdown Die Excel-Datei hat vier Blätter:
 #@markdown **Übersicht:** eine Zeile je Query mit den drei besten URLs, ihren Scores, der Rankingposition, dem Urteil und Kannibalisierungsgefahr ja, möglich oder nein.
-#@markdown **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen, mit Stufe (Gefahr, Möglich, Bereits sichtbar), Grund und bis zu drei URLs samt Score und Position.
+#@markdown **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen, mit Stufe (Gefahr, Möglich, Kannibalisierung bereits sichtbar), Grund und bis zu drei URLs samt Score und Position.
 #@markdown **Potentielle Content-Lücken:** Queries, deren beste Seite unter der Lücken-Schwelle aus Schritt 7c liegt, mit SERPs nach Thema gebündelt.
 #@markdown **Lesehilfe:** erklärt Blätter, Spalten, Urteile und Stufen und nennt die Einstellungen des Laufs.
 #@markdown Das Trennzeichen gilt nur für die zusätzliche CSV-ZIP (eine CSV je Blatt).
@@ -576,7 +576,7 @@ Ohne Rankings weiß das Tool nicht, ob eine Seite schon funktioniert. „In Ordn
 
 In der Übersicht steht neben jedem Urteil, ob weitere eigene Seiten um die Query konkurrieren:
 
-- **ja**: Eine andere passende Seite ist besser oder fast gleich gut. Bei gutem Ranking auch dann, wenn heute die richtige Seite rankt, denn Google kann wechseln. Ebenso, wenn mehrere eigene URLs schon für die Query ranken (Stufe „Bereits sichtbar“).
+- **ja**: Eine andere passende Seite ist besser oder fast gleich gut. Bei gutem Ranking auch dann, wenn heute die richtige Seite rankt, denn Google kann wechseln. Ebenso, wenn mehrere eigene URLs schon für die Query ranken (Stufe „Kannibalisierung bereits sichtbar“).
 - **möglich**: Weitere Seiten passen, liegen aber deutlich hinter der besten (Stufe „Möglich“).
 - **nein**: Keine weitere Seite passt.
 

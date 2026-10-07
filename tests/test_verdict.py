@@ -42,7 +42,7 @@ def test_ranks_well_with_several_close_pages_and_the_ranking_page_best_is_ok():
 def test_ranks_well_with_several_close_pages_and_the_ranking_page_within_the_margin_is_ok():
     row = _row([0.842, 0.848, 0.1], ranking=[(U1, 3)])
     assert row[L.C_VERDICT] == L.V_OK
-    assert row[L.C_RANK_IS_BEST] == L.CMP_CLOSE
+    assert row[L.C_RANK_IS_BEST] == L.NO  # knapp dahinter ist trotzdem nicht die beste
     assert row[L.C_BEST_URL] == U2  # immer die wirklich beste URL, keine Ersetzung durch die rankende
 
 
@@ -123,20 +123,18 @@ def test_close_means_fitting_and_at_most_the_margin_below_the_top():
 def test_the_margin_is_adjustable():
     assert _row([0.85, 0.80, 0.1], margin=0.05)[L.C_VERDICT] == L.V_CANNIBAL
     assert _row([0.80, 0.80, 0.1], margin=0)[L.C_VERDICT] == L.V_CANNIBAL
-    assert _row([0.842, 0.843, 0.1], ranking=[(U1, 3)], margin=0)[L.C_RANK_IS_BEST] == L.NO
-    assert _row([0.81, 0.86, 0.1], ranking=[(U1, 3)], margin=0.1)[L.C_RANK_IS_BEST] == L.CMP_CLOSE
+    assert _row([0.842, 0.843, 0.1], ranking=[(U1, 3)], margin=0)[L.C_VERDICT] == L.V_OK
 
 
 def test_ranking_url_exactly_at_the_margin_is_almost_as_good():
-    assert _row([0.80, 0.81, 0.1], ranking=[(U1, 3)])[L.C_RANK_IS_BEST] == L.CMP_CLOSE
-    assert _row([0.80, 0.8101, 0.1], ranking=[(U1, 3)])[L.C_RANK_IS_BEST] == L.NO
+    assert _row([0.80, 0.81, 0.1], ranking=[(U1, 3)])[L.C_VERDICT] == L.V_OK
 
 
-def test_exact_tie_between_ranking_and_best_url_is_ok_and_almost_as_good():
+def test_exact_tie_between_ranking_and_best_url_is_ok_but_not_the_best():
     row = _row([0.8, 0.8, 0.1], ranking=[(U2, 3)])
     assert row[L.C_VERDICT] == L.V_OK
     assert row[L.C_BEST_URL] == U1
-    assert row[L.C_RANK_IS_BEST] == L.CMP_CLOSE
+    assert row[L.C_RANK_IS_BEST] == L.NO
 
 
 def test_good_position_is_adjustable():
@@ -200,12 +198,11 @@ def test_ranking_columns_are_empty_without_ranking():
 
 
 def test_comparison_values():
-    assert [L.YES, L.CMP_CLOSE, L.NO, L.CMP_NOT_RANKING, L.CMP_NOT_IN_EXPORT] == [
-        "ja", "fast gleich gut", "nein", "rankt nicht", "nicht im Frog-Export",
-    ]
-    # "fast gleich gut" verlangt, dass die rankende URL passt; die Position spielt keine Rolle
+    assert [L.YES, L.NO, L.CMP_NOT_RANKING, L.CMP_NOT_IN_EXPORT] == ["ja", "nein", "rankt nicht", "nicht im Frog-Export"]
+    assert not hasattr(L, "CMP_CLOSE")  # Ja-Nein-Frage: knapp hinter der besten heißt "nein"
+    # die Position spielt keine Rolle
     assert _row([0.795, 0.803, 0.1], ranking=[(U1, 40)])[L.C_RANK_IS_BEST] == L.NO
-    assert _row([0.842, 0.848, 0.1], ranking=[(U1, 40)])[L.C_RANK_IS_BEST] == L.CMP_CLOSE
+    assert _row([0.842, 0.848, 0.1], ranking=[(U1, 40)])[L.C_RANK_IS_BEST] == L.NO
     assert _row([0.9, 0.1, 0.1], ranking=[(U1, 40)])[L.C_RANK_IS_BEST] == L.YES
 
 
