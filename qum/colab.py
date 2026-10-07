@@ -18,7 +18,7 @@ STEP_NAMES = {
     "7c": "Urteile bilden",
 }
 # Was ungültig wird, wenn sich der Stand davor ändert
-DECISION_STATE = ("decisions", "cannibal", "settings", "pairs")  # aus Schritt 7c und 9; Schritt 7b setzt sie zurück
+DECISION_STATE = ("decisions", "cannibal", "settings")  # aus Schritt 7c; Schritt 7b setzt sie zurück
 VERDICT_STATE = (
     ("calibrated", "median", "no_calibration", "calibration_position")  # Schritt 7a
     + ("threshold", "threshold_source", "threshold_label")  # Schritt 7b

@@ -89,7 +89,7 @@ Die Schwelle ist die Cosinus-Ähnlichkeit (Leit-Score) zwischen Query und Seite,
 - **Mittlerer bester Score (nicht kalibriert):** Median der besten Leit-Scores aller Queries. Etwa die Hälfte der Queries liegt per Konstruktion darunter; das sagt das Notebook, die Zahl der neuen Seiten ist als „Schwelle nicht kalibriert" markiert.
 - **Eigener Wert:** größer als 0 und höchstens 1.
 - Der Abstand „fast gleich" (Abschnitt 7 und 8) muss mindestens 0 und kleiner als 0,1 sein; die Meldung sagt, dass er eine Differenz von Cosinus-Scores ist, kein Prozentwert.
-- **Schritt 7c (Urteile bilden):** Feineinstellungen und Urteile; lässt sich allein neu starten, ohne die Schwelle neu zu wählen. Schritt 8 und 9 verlangen 7c. Wer eine Zelle überspringt, bekommt eine Meldung mit dem fehlenden Teilschritt. Bricht eine Zelle wegen einer ungültigen Eingabe ab, bleiben Urteile aus einem früheren Lauf stehen, und die Meldung sagt das.
+- **Schritt 7c (Urteile bilden):** Feineinstellungen und Urteile; lässt sich allein neu starten, ohne die Schwelle neu zu wählen. Schritt 8 verlangt 7c. Wer eine Zelle überspringt, bekommt eine Meldung mit dem fehlenden Teilschritt. Bricht eine Zelle wegen einer ungültigen Eingabe ab, bleiben Urteile aus einem früheren Lauf stehen, und die Meldung sagt das.
 - **Prüfschritt:** Zu jedem Vorschlag und zur verwendeten Schwelle zeigt das Notebook fünf Paare knapp über und fünf knapp unter dem Wert mit Query, URL und Passage.
 
 Vorschläge werden einmal auf 4 Nachkommastellen gerundet. Die Wahl steht in den Einstellungen der Lesehilfe, dazu ein fester Hinweis je Herkunft (Rankings, Median, von Hand).
@@ -143,11 +143,7 @@ Verwendung:
 - **Nachbar-Hinweis** bei Lücken-Queries: Hat ein direkter Nachbar (Kante, nicht bloß gleiches Cluster) eine passende Seite, erscheint sie als Kandidat mit Nachbar-Keyword, Überschneidung, eigenem Leit-Score der Lücken-Query gegen diese Seite, bester Passage und, falls vorhanden, Position. Bei mehreren Nachbarn mit verschiedenen Seiten werden alle gelistet, höchste Überschneidung zuerst. Das Urteil lautet dann „vor Neuerstellung prüfen".
 - **Zusammenfassung** „Lücken je Cluster": Anzahl Lücken-Queries und daraus die Zahl der tatsächlich neuen Seiten (ein Cluster zählt als eine Seite, Queries ohne Cluster einzeln).
 
-## 10. Nachgelagert: Paare bewerten
-
-Letzter, optionaler Schritt. Eingabe ist ein Export mit Keyword und URL (weitere Spalten bleiben erhalten). Je Paar: die drei Scores, der Rang dieser URL unter allen URLs für das Keyword und die beste URL zum Vergleich. URLs müssen im Frog-Export stehen, fehlende werden gemeldet. Keywords außerhalb der Query-Liste werden nachträglich eingebettet.
-
-## 11. Nutzerführung im Notebook
+## 10. Nutzerführung im Notebook
 
 Schritt-Zellen mit Colab-Formularen (`#@param`), Code eingeklappt. Jede Zelle hat Überschrift und Kurzerklärung, prüft ihre Eingaben, meldet Fehler in klarem Deutsch mit Lösungshinweis und endet mit einer Statuszeile samt Verweis auf den nächsten Schritt.
 
@@ -159,11 +155,10 @@ Schritt-Zellen mit Colab-Formularen (`#@param`), Code eingeklappt. Jede Zelle ha
 6. Optional: Top-10-SERPs
 7. Schwelle und Urteile: 7a Vorschläge ansehen, 7b Schwelle festlegen, 7c Urteile bilden
 8. Export
-9. Nachgelagert: Paare bewerten
 
 Ohne die Schritte 5 und 6 arbeitet das Notebook wie das alte Skript, nur mit den Korrekturen.
 
-## 12. Export
+## 11. Export
 
 Standard ist eine Excel-Datei, per Häkchen zusätzlich ein ZIP mit einer CSV je Blatt (UTF-8 mit BOM). Das Trennzeichen ist wählbar: Semikolon (Vorgabe, für deutsches Excel) schreibt Zahlen mit Dezimalkomma, Komma schreibt sie mit Dezimalpunkt. Beim Semikolon gilt das Dezimalkomma auch für Zahlen, die als Text vorliegen: Positionen, Zahlen-Einstellungen in der Lesehilfe und „Score …"/„Position …" (auch negativ) in den konkurrierenden URLs und der Empfehlung. Die Excel-Datei bleibt unverändert.
 
@@ -175,11 +170,10 @@ Standard ist eine Excel-Datei, per Häkchen zusätzlich ein ZIP mit einer CSV je
 | Kannibalisierung | Abschnitt 8 | immer (Stufe „bereits sichtbar" nur mit Rankings) |
 | Content-Lücken | Lücken-Queries, mit SERPs zusätzlich Cluster und Nachbar-Kandidat | immer |
 | Lücken je Cluster | Zusammenfassung: Lücken je Cluster und Zahl der neuen Seiten | nur mit SERPs |
-| Paare | Abschnitt 10 | nur wenn der Schritt lief |
 
 Die Query steht in jedem Blatt in der ersten Spalte. Urteile sind farbig hinterlegt. Zwei Spalten zeigen, wie klar die beste Seite vorn liegt, weil kurze Queries absolut niedrig scoren: „Vorsprung vor zweitbester URL" (Entscheidung, Score der gezeigten Seite minus bester Score aller anderen URLs, negativ wenn eine andere Seite knapp vorn liegt, leer bei nur einer URL) und „Abstand zur besten URL" (Top-Treffer, bester Score der Query minus Score der Zeile). Beide beruhen auf dem Score der gewählten Bewertungsgrundlage, sind auf vier Nachkommastellen gerundet und ändern kein Urteil.
 
-## 13. Paketaufbau
+## 12. Paketaufbau
 
 | Modul | Aufgabe |
 |---|---|
@@ -193,24 +187,23 @@ Die Query steht in jedem Blatt in der ersten Spalte. Urteile sind farbig hinterl
 | `qum/verdict.py` | Urteile, Textbausteine |
 | `qum/cannibal.py` | Kannibalisierungs-Stufen |
 | `qum/serp.py` | Clustering, Nachbarn, Lücken-Zusammenfassung |
-| `qum/pairs.py` | Paare bewerten |
 | `qum/export.py` | Excel und CSV-ZIP |
-| `qum/compare.py` | Modellvergleich für die Messung (Abschnitt 15) |
+| `qum/compare.py` | Modellvergleich für die Messung (Abschnitt 14) |
 
 Jedes Modul ist ohne Notebook und ohne echtes Modell testbar.
 
-## 14. Tests
+## 13. Tests
 
 `pytest`, ohne Netzwerk und ohne Modell-Download (ein Test-Embedder liefert feste Vektoren). Abgedeckt: verrutschte Zeilen, Encodings, Spaltenerkennung, Chunk-Grenzen, Ansteuerung je Modell (Prefix nur bei e5), Methode der Gesamt-URL, Kombi-Gewicht, jede Zeile der Urteilstabellen, beide Kannibalisierungs-Stufen, Ketteneffekt und Dichte beim Clustering, Nachbar-Regel, Export-Blätter. Ein Test prüft, dass die Code-Zellen des Notebooks gültiges Python sind.
 
 Vor der Übergabe: ein echter Durchlauf in Colab mit `multilingual-e5-large` und einem kleinen Datensatz.
 
-## 15. Messung und Slide
+## 14. Messung und Slide
 
 **Messung:** `qum/compare.py` nimmt eine Wahrheitsliste (Query, erwartete URL) und den Frog-Export und gibt je Konfiguration Treffer auf Rang 1, Treffer in den Top 3 und den mittleren reziproken Rang aus. Konfigurationen: Paraphrasen-Modell, e5 mit Prefix, OpenAI ohne Prefix, OpenAI mit `query: `/`passage: `. Die Prefix-Variante für OpenAI gibt es nur hier, nicht im Notebook. Die Wahrheitsliste kommt von Daniel (30 bis 50 Queries) oder als Näherung aus einem Ranking-Export. Der Lauf braucht Daniels OpenAI-Key.
 
 **Slide:** eine PowerPoint-Folie für Daniels bestehendes Deck, gebaut nach der Messung. Inhalt: symmetrisch gegen asymmetrisch an einem Beispiel, drei Warnungen (Modell passend zur Aufgabe wählen, so ansteuern wie trainiert, keine absoluten Scores zwischen Modellen vergleichen), das Messergebnis. Dafür wird Daniels Deck oder eine Beispielfolie als Vorlage gebraucht.
 
-## 16. Reihenfolge
+## 15. Reihenfolge
 
 Plan, Paket mit Tests, Notebook, Colab-Durchlauf, Messung, Slide.

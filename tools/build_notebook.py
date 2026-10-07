@@ -26,7 +26,7 @@ Schon ohne Ranking-Dateien bekommst du das Matching mit Urteilen zu passender Se
 
 ## So gehst du vor
 
-Führe die Zellen einzeln von oben nach unten aus (Play-Symbol links), nicht mit "Alle ausführen": Die Zellen fragen nach Uploads. Jede Zelle endet mit einer Zeile, die sagt, wie es weitergeht. Die Schritte 5, 6 und 9 sind optional.
+Führe die Zellen einzeln von oben nach unten aus (Play-Symbol links), nicht mit "Alle ausführen": Die Zellen fragen nach Uploads. Jede Zelle endet mit einer Zeile, die sagt, wie es weitergeht. Die Schritte 5 und 6 sind optional.
 
 Schwelle und Urteile entstehen in drei Zellen mit je einer Aufgabe: **Schritt 7a** zeigt Vorschläge für die Schwelle "passend" mit Beispielen, **Schritt 7b** legt die Schwelle fest, **Schritt 7c** bildet die Urteile. Willst du nur die Feineinstellungen der Urteile ändern, reicht es, Schritt 7c erneut zu starten.
 
@@ -505,53 +505,7 @@ if zusaetzlich_csv_zip:
     separator = "," if csv_trennzeichen == "Komma" else ";"
     export.write_csv_zip("query_url_matcher_csv.zip", sheets, sep=separator)
     colab.download("query_url_matcher_csv.zip")
-print(f"✅ Schritt 8 fertig: {len(sheets)} Blätter exportiert. Schritt 9 ist optional.")
-'''
-
-STEP9 = '''#@title Schritt 9 (nachgelagert): Vorhandene Keyword-URL-Paare bewerten { display-mode: "form" }
-#@markdown **▶ Klicke links auf das Play-Symbol. Unter der Zelle erscheint dann der Knopf „Dateien auswählen".**
-#@markdown **Wofür?** Du hast schon eine Liste, welche URL heute für welches Keyword rankt (zum Beispiel aus Ahrefs oder der Search Console). Schritt 9 prüft für jedes dieser Paare, ob die rankende Seite inhaltlich wirklich die beste ist.
-#@markdown **Was du bekommst:** eine Excel-Datei mit dem zusätzlichen Blatt „Paare": je Paar aus Keyword und URL die Scores der rankenden URL, ihr Rang unter allen deinen Seiten (1 = passt am besten) und die Seite, die am besten passen würde.
-#@markdown **Wann sinnvoll?** Optional. Steht die rankende URL nicht auf Rang 1, passt laut Score eine andere deiner Seiten besser: ein Kandidat für Kannibalisierung oder für eine Weiterleitung beziehungsweise interne Verlinkung.
-#@markdown Die URLs müssen im Frog-Export aus Schritt 3 stehen.
-#@markdown **Die Felder unten bleiben normalerweise leer.** Nur wenn die Zelle mit ❌ „…-Spalte nicht erkannt" abbricht, trägst du den Namen aus der Meldung ein und startest die Zelle erneut.
-paare_keyword_spalte = "" #@param {type:"string"}
-paare_url_spalte = "" #@param {type:"string"}
-
-from qum import colab, export
-from qum import labels as L
-from qum.pairs import score_pairs, stale_columns
-
-colab.require(globals(), 2, "spec", "embedder")
-colab.require(globals(), 3, "content")
-colab.require(globals(), 4, "result", "size", "overlap", "basis", "weight")
-colab.require(globals(), "7c", "decisions", "top", "cannibal", "settings", "threshold_source")
-with colab.guard():
-    name, data = colab.upload("Keyword-URL-Paare (Keyword, URL)")
-    pair_table = colab.read_table(data, name)
-    stale = stale_columns(pair_table, keep=(paare_keyword_spalte, paare_url_spalte))
-    pairs = score_pairs(
-        pair_table,
-        content.urls,
-        content.contents,
-        embedder,
-        size,
-        overlap,
-        basis,
-        weight,
-        keyword_col=paare_keyword_spalte or None,
-        url_col=paare_url_spalte or None,
-    )
-if stale:
-    print(f"ℹ️ Die Datei enthält schon Ergebnisspalten ({', '.join(stale)}). Sie werden ignoriert und neu berechnet.")
-missing = (pairs[L.C_NOTE] != "").sum()
-if missing:
-    print(f"ℹ️ {missing} Paare haben eine URL, die nicht im Frog-Export steht.")
-display(pairs.head(10))
-sheets = export.build_sheets(decisions, top, cannibal, settings, pairs=pairs, threshold_source=threshold_source)
-export.write_excel("query_url_matcher_mit_paaren.xlsx", sheets)
-colab.download("query_url_matcher_mit_paaren.xlsx")
-print(f"✅ Schritt 9 fertig: {len(pairs)} Paare bewertet, Export mit Blatt 'Paare' als query_url_matcher_mit_paaren.xlsx heruntergeladen.")
+print(f"✅ Schritt 8 fertig: {len(sheets)} Blätter exportiert.")
 '''
 
 VERDICT_GUIDE = '''## So entstehen die Urteile (Schritt 7a bis 7c)
@@ -583,7 +537,6 @@ CELLS = [
     ("code", STEP7B),
     ("code", STEP7C),
     ("code", STEP8),
-    ("code", STEP9),
 ]
 
 

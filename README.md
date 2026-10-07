@@ -17,7 +17,7 @@ Das Notebook sortiert vor und begründet. Die Entscheidung trifft ein Mensch.
 1. Öffne das Notebook mit dem Colab-Button oben.
 2. Für die Modelle mit API-Key (Gemini, OpenAI): Lege im Secrets-Panel (Schlüssel-Symbol links) das Secret `GEMINI_API_KEY` bzw. `OPENAI_API_KEY` an und aktiviere dort den Schalter "Notebook-Zugriff". Ohne diesen Schalter kann das Notebook den Key nicht lesen. Die lokalen Modelle brauchen kein Secret.
 3. Führe die Zellen einzeln von oben nach unten aus, nicht mit "Alle ausführen": Die Zellen fragen nach Datei-Uploads.
-4. Die Schritte 5 (eigene Rankings), 6 (Top-10-SERPs) und 9 (Keyword-URL-Paare) sind optional.
+4. Die Schritte 5 (eigene Rankings) und 6 (Top-10-SERPs) sind optional.
 5. Schwelle und Urteile entstehen in drei Zellen: Schritt 7a zeigt Vorschläge für die Schwelle „passend" mit Beispielen und bildet noch keine Urteile. In Schritt 7b legst du die Schwelle fest (aus Rankings kalibriert, mittlerer bester Score oder eigener Wert). Schritt 7c bildet die Urteile. Erst danach gibt es den Export (Schritt 8). Willst du nur die Feineinstellungen der Urteile ändern, starte nur Schritt 7c erneut.
 6. Für einen ersten Versuch liegen kleine Beispieldateien unter `examples/` (Queries, Frog-Export, Rankings, SERPs).
 
@@ -56,7 +56,7 @@ Eine kurze Query gegen einen langen Text zu matchen ist eine asymmetrische Aufga
 
 ## Ergebnis
 
-Eine Excel-Datei mit den Blättern Lesehilfe, Entscheidung, Top-Treffer, Kannibalisierung, Content-Lücken, mit SERPs zusätzlich Lücken je Cluster, optional Paare. Auf Wunsch zusätzlich ein ZIP mit einer CSV je Blatt: mit Semikolon und Dezimalkomma für deutsches Excel oder mit Komma und Dezimalpunkt.
+Eine Excel-Datei mit den Blättern Lesehilfe, Entscheidung, Top-Treffer, Kannibalisierung, Content-Lücken, mit SERPs zusätzlich Lücken je Cluster. Auf Wunsch zusätzlich ein ZIP mit einer CSV je Blatt: mit Semikolon und Dezimalkomma für deutsches Excel oder mit Komma und Dezimalpunkt.
 
 ## Grenzen
 
@@ -69,7 +69,7 @@ Im Ordner `examples/` liegen vier kleine Dateien zu einem erfundenen Tierbedarf-
 
 - `queries.csv`: 12 Queries, je eine zu acht Themen, zwei Varianten zu getreidefreiem Hundefutter und zwei Queries ohne passende Seite.
 - `frog_export.csv`: Screaming-Frog-Export mit URL und Main Content von 9 Seiten, darunter der Ratgeber „Hundefutter Arten", der sich bewusst mit der Seite zu getreidefreiem Hundefutter überschneidet.
-- `rankings.csv`: eigene Rankings für 9 Keyword-URL-Paare, mit einer Query, für die zwei eigene Seiten ranken, und einer auf Position 35.
+- `rankings.csv`: eigene Rankings für 9 Kombinationen aus Keyword und URL, mit einer Query, für die zwei eigene Seiten ranken, und einer auf Position 35.
 - `serps.csv`: Top-10-Ergebnisse (Organic) mit erfundenen Wettbewerber-URLs, die drei Queries zu getreidefreiem Hundefutter teilen sich 7 von 10 URLs.
 
 Alle Domains enden auf `.example`, eine für Beispiele reservierte Endung (der Shop heißt `www.tierbedarf.example`).

@@ -7,7 +7,6 @@ from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 from . import labels as L
-from .ingest import KEYWORD_ALIASES, find_column
 from .serp import gap_summary
 
 SHEET_README = "Lesehilfe"
@@ -16,7 +15,6 @@ SHEET_TOP = "Top-Treffer"
 SHEET_CANNIBAL = "Kannibalisierung"
 SHEET_GAPS = "Content-Lücken"
 SHEET_GAP_CLUSTERS = "Lücken je Cluster"
-SHEET_PAIRS = "Paare"
 
 _CSV_NAMES = {
     SHEET_README: "lesehilfe.csv",
@@ -25,7 +23,6 @@ _CSV_NAMES = {
     SHEET_CANNIBAL: "kannibalisierung.csv",
     SHEET_GAPS: "content_luecken.csv",
     SHEET_GAP_CLUSTERS: "luecken_je_cluster.csv",
-    SHEET_PAIRS: "paare.csv",
 }
 
 _SHEET_HELP = {
@@ -34,7 +31,6 @@ _SHEET_HELP = {
     SHEET_CANNIBAL: "Queries, bei denen mehrere eigene Seiten konkurrieren, getrennt nach Stufe.",
     SHEET_GAPS: "Queries ohne passende Seite. 'Vor Neuerstellung prüfen' nennt eine Kandidaten-Seite.",
     SHEET_GAP_CLUSTERS: "Lücken gebündelt nach SERP-Cluster: ein Cluster entspricht einer neuen Seite.",
-    SHEET_PAIRS: "Bewertung vorhandener Keyword-URL-Paare aus dem Ranking-Export.",
 }
 
 _COLUMN_HELP = {
@@ -78,7 +74,6 @@ _COLUMN_HELP = {
     L.C_STAGE: "Stufe der Kannibalisierung, siehe die Stufen weiter unten in dieser Lesehilfe.",
     L.C_REASON: "Warum die Query als Kannibalisierung aufgeführt wird.",
     L.C_COMPETING: "Die konkurrierenden eigenen URLs mit Score oder Position.",
-    L.C_PAIR_RANK: "Rang der Seite des Paares unter allen URLs für das Keyword. 1 = beste URL für diese Query unter allen URLs.",
     L.C_GAP_COUNT: "Anzahl der Content-Lücken-Queries in diesem Cluster.",
     L.C_NEW_PAGES: "Anzahl neuer Seiten, die dafür nötig wären: ein Cluster eine Seite, Queries ohne Cluster je eine.",
     L.C_GAP_QUERIES: "Die Content-Lücken-Queries dieser Zeile, getrennt durch senkrechte Striche.",
@@ -158,7 +153,7 @@ def _readme(sheet_names, settings, present_columns, threshold_source=None) -> pd
     return pd.DataFrame(rows, columns=[L.R_AREA, L.R_ENTRY, L.R_TEXT])
 
 
-def build_sheets(decisions, top, cannibal, settings, pairs=None, threshold_source=None) -> dict:
+def build_sheets(decisions, top, cannibal, settings, threshold_source=None) -> dict:
     """threshold_source: "rankings", "median" oder "manuell" (Herkunft der Schwelle für die Lesehilfe)."""
     sheets = {
         SHEET_DECISION: decisions,
@@ -168,11 +163,6 @@ def build_sheets(decisions, top, cannibal, settings, pairs=None, threshold_sourc
     }
     if L.C_CLUSTER in decisions.columns:
         sheets[SHEET_GAP_CLUSTERS] = gap_summary(decisions)
-    if pairs is not None:
-        keyword = find_column(pairs, KEYWORD_ALIASES)
-        if keyword is not None:
-            pairs = pairs[[keyword] + [c for c in pairs.columns if c != keyword]]
-        sheets[SHEET_PAIRS] = pairs
     present = {column for df in sheets.values() for column in df.columns}
     return {SHEET_README: _readme(list(sheets), settings, present, threshold_source), **sheets}
 

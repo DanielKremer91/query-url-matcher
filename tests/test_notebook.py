@@ -42,7 +42,7 @@ def test_model_dropdown_lists_exactly_the_registry_labels():
 
 def test_notebook_has_its_steps_in_order():
     titles = [re.match(r"#@title (.*?)( \{|$)", s.splitlines()[0]).group(1) for s in _code_cells()]
-    expected = ["2", "3", "4", "5", "6", "7a", "7b", "7c", "8", "9"]
+    expected = ["2", "3", "4", "5", "6", "7a", "7b", "7c", "8"]
     assert [t.split(":")[0].split(" (")[0] for t in titles] == [f"Schritt {n}" for n in expected]
     assert any(kind == "markdown" and "Schritt 1" in source for kind, source in CELLS)
 
@@ -152,7 +152,7 @@ def test_read_table_passes_ingest_errors_through():
         colab.read_table(b"x", "bild.png")
 
 
-# --- Rauchtest: die Zellen der Schritte 3 bis 9 laufen in einem gemeinsamen Namensraum ---
+# --- Rauchtest: die Zellen der Schritte 3 bis 8 laufen in einem gemeinsamen Namensraum ---
 
 EXAMPLES = ROOT / "examples"
 CHOICES = ["Aus Rankings kalibriert", "Mittlerer bester Score (nicht kalibriert)", "Eigener Wert"]
@@ -164,7 +164,7 @@ KEPT = "Bis dahin gelten die Urteile aus dem letzten Lauf von Schritt 7c."
 
 
 def _source(step) -> str:
-    """Quelltext der Zelle zu Schritt 2 bis 9 oder "7a", "7b", "7c"."""
+    """Quelltext der Zelle zu Schritt 2 bis 8 oder "7a", "7b", "7c"."""
     return next(s for s in _code_cells() if re.match(rf"#@title Schritt {step}[: ]", s))
 
 
@@ -233,11 +233,10 @@ def test_smoke_full_flow(nb, tmp_path, capsys):
     nb.run(6, "serps.csv")
     _verdicts(nb)
     nb.run(8)
-    nb.run(9, "rankings.csv")
     out = capsys.readouterr().out
-    assert "✅ Schritt 9 fertig" in out
-    assert nb.downloads == ["query_url_matcher.xlsx", "query_url_matcher_mit_paaren.xlsx"]
-    assert (tmp_path / "query_url_matcher.xlsx").exists() and (tmp_path / "query_url_matcher_mit_paaren.xlsx").exists()
+    assert "✅ Schritt 8 fertig" in out
+    assert nb.downloads == ["query_url_matcher.xlsx"]
+    assert (tmp_path / "query_url_matcher.xlsx").exists()
     settings = nb.ns["settings"]
     assert settings["Eigene Rankings"] == "ja, aus Datei"
     for key in ("Kalibrierung bis Position", "SERP-Überschneidung (%)", "Cluster-Dichte (%)", "Treffer je Query (Top-N)"):
@@ -283,15 +282,6 @@ def test_smoke_step_8_before_step_7c_points_to_step_7c(nb, capsys):
     _threshold(nb)
     with pytest.raises(colab.NotebookStop):
         nb.run(8)
-    assert NEED_7C in capsys.readouterr().out
-
-
-def test_smoke_step_9_checks_prerequisites_before_asking_for_upload(nb, capsys):
-    _load(nb)
-    nb.uploads.append(("rankings.csv", b"x"))
-    with pytest.raises(colab.NotebookStop):
-        nb.run(9)
-    assert len(nb.uploads) == 1  # nichts wurde abgefragt
     assert NEED_7C in capsys.readouterr().out
 
 
@@ -564,19 +554,6 @@ def test_smoke_serps_with_few_urls_per_keyword_warn(nb, capsys):
     assert "Im Schnitt nur" not in capsys.readouterr().out
 
 
-def test_smoke_step_9_accepts_an_earlier_pairs_export(nb, capsys):
-    _load(nb)
-    _verdicts(nb)
-    lines = (EXAMPLES / "rankings.csv").read_text(encoding="utf-8").splitlines()
-    earlier = "\n".join([lines[0] + ";Hinweis;Score Chunk"] + [line + ";alt;0.1" for line in lines[1:]]) + "\n"
-    nb.uploads.append(("paare.csv", earlier.encode()))
-    nb.run(9)
-    out = capsys.readouterr().out
-    assert "ℹ️ Die Datei enthält schon Ergebnisspalten (Score Chunk, Hinweis)" in out
-    assert "✅ Schritt 9 fertig" in out
-    assert list(nb.ns["pairs"].columns).count("Hinweis") == 1
-
-
 def test_step_7c_fine_settings_keep_their_defaults():
     source = _source("7c")
     for line in ("rankt_gut_bis_position = 10", "abstand_fast_gleich = 0.01", "sichtbar_bis_position = 20",
@@ -652,7 +629,7 @@ def test_smoke_step_7a_shows_proposals_and_builds_no_verdicts(nb, capsys):
     assert "per Konstruktion darunter" in out
     assert out.rstrip().endswith("✅ Schritt 7a fertig. Weiter mit Schritt 7b: Schwelle festlegen.")
     assert len(shown) == 2  # Beispielpaare um beide Vorschläge
-    for name in ("decisions", "cannibal", "settings", "pairs", "threshold", "threshold_source", "threshold_label"):
+    for name in ("decisions", "cannibal", "settings", "threshold", "threshold_source", "threshold_label"):
         assert nb.ns[name] is None, name
     with pytest.raises(colab.NotebookStop):
         nb.run(8)
@@ -773,20 +750,18 @@ def test_smoke_proposals_closing_line_lists_only_available_options(nb, capsys):
     assert '"Aus Rankings kalibriert"' in _closing_line(capsys.readouterr().out)
 
 
-def test_smoke_steps_8_and_9_before_step_7c_point_to_step_7c(nb, capsys):
+def test_smoke_step_8_before_step_7c_points_to_step_7c_after_each_sub_step(nb, capsys):
     _load(nb)
     nb.run("7a")
     capsys.readouterr()
-    for step in (8, 9):
-        with pytest.raises(colab.NotebookStop):
-            nb.run(step)
-        assert NEED_7C in capsys.readouterr().out
+    with pytest.raises(colab.NotebookStop):
+        nb.run(8)
+    assert NEED_7C in capsys.readouterr().out
     nb.run("7b", schwelle_waehlen=MEDIAN)
     capsys.readouterr()
-    for step in (8, 9):
-        with pytest.raises(colab.NotebookStop):
-            nb.run(step)
-        assert NEED_7C in capsys.readouterr().out
+    with pytest.raises(colab.NotebookStop):
+        nb.run(8)
+    assert NEED_7C in capsys.readouterr().out
     nb.run(4)  # ein früherer Schritt setzt den Zustand zurück
     with pytest.raises(colab.NotebookStop):
         nb.run(8)
@@ -821,7 +796,7 @@ def test_smoke_rerunning_step_7b_invalidates_the_verdicts(nb, capsys):
     _verdicts(nb)
     nb.run("7b", schwelle_waehlen=OWN, eigene_schwelle=0.3)
     assert nb.ns["threshold"] == 0.3 and nb.ns["threshold_source"] == "manuell"
-    for name in ("decisions", "cannibal", "settings", "pairs"):
+    for name in ("decisions", "cannibal", "settings"):
         assert nb.ns[name] is None, name
     capsys.readouterr()
     with pytest.raises(colab.NotebookStop):
@@ -979,15 +954,6 @@ def test_notebook_and_readme_name_the_sub_steps_of_step_7():
         assert all(f"7{x}" in text for x in "abc")
 
 
-def test_step_9_explains_what_it_is_for_in_plain_words():
-    hints = [line.removeprefix("#@markdown ") for line in _source(9).splitlines() if line.startswith("#@markdown")]
-    assert "Play-Symbol" in hints[0] and "Dateien auswählen" in hints[0]
-    order = ["**Wofür?**", "**Was du bekommst:**", "**Wann sinnvoll?**", "Die URLs müssen im Frog-Export aus Schritt 3 stehen.",
-             "Die Felder unten bleiben normalerweise leer."]
-    positions = [next(i for i, hint in enumerate(hints) if text in hint) for text in order]
-    assert positions == sorted(positions) and positions[0] == 1
-
-
 def test_step_3_explains_both_input_files():
     source = next(s for s in _code_cells() if s.startswith("#@title Schritt 3"))
     for text in ("**Queries-Datei:**", "**Frog-Export:**", "Custom Extraction", "Configuration → Custom → Custom Extraction", "Address"):
@@ -1029,3 +995,14 @@ def test_smoke_decisions_carry_the_cannibalisation_column(nb, capsys):
 def test_verdict_guide_says_every_field_can_carry_a_cannibalisation_hint():
     guide = next(source for kind, source in CELLS if kind == "markdown" and "So entstehen die Urteile" in source)
     assert "In jedem Feld" in guide and "Spalte „Kannibalisierung\"" in guide
+
+
+def test_notebook_ends_with_step_8_and_nothing_mentions_step_9_or_pairs():
+    assert CELLS[-1][1].startswith("#@title Schritt 8")
+    texts = {
+        "notebook": "\n".join(source for _, source in CELLS),
+        "README": (ROOT / "README.md").read_text(encoding="utf-8"),
+        "spec": (ROOT / "docs/superpowers/specs/2026-10-05-query-url-matcher-design.md").read_text(encoding="utf-8"),
+    }
+    for name, text in texts.items():
+        assert "Schritt 9" not in text and "Paare bewerten" not in text and "Keyword-URL-Paare" not in text, name

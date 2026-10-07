@@ -37,8 +37,6 @@ C_REASON = "Grund"
 C_COMPETING = "Konkurrierende URLs"
 C_CANNIBAL = "Kannibalisierung"
 
-C_PAIR_RANK = "Rang der URL"
-
 # Prüfbeispiele um die Schwelle (Schritt 7a und 7b, nicht im Export)
 C_SIDE = "Lage"
 C_SCORE = "Score"
@@ -72,7 +70,6 @@ REASON_CLOSE = "Mehrere Seiten passen fast gleich gut"
 REASON_RANKING = "Mehrere eigene Seiten ranken für die Query"
 
 NOTE_NOT_IN_EXPORT = "Rankende URL steht nicht im Frog-Export"
-NOTE_URL_MISSING = "URL steht nicht im Frog-Export"
 NO_CLUSTER = "ohne Cluster"
 
 # Auswahl im Formular -> interner Schlüssel

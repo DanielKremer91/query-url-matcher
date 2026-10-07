@@ -31,17 +31,17 @@ def test_content_gaps_contains_gap_and_check():
     assert export.content_gaps(_decisions())[L.C_QUERY].tolist() == ["b", "c"]
 
 
-def test_sheets_without_serps_and_pairs():
+def test_sheets_without_serps():
     sheets = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS)
     assert list(sheets) == [
         export.SHEET_README, export.SHEET_DECISION, export.SHEET_TOP, export.SHEET_CANNIBAL, export.SHEET_GAPS,
     ]
 
 
-def test_sheets_with_serps_and_pairs():
-    pairs = pd.DataFrame({"Keyword": ["a"]})
-    sheets = export.build_sheets(_decisions(with_cluster=True), TOP, CANNIBAL, SETTINGS, pairs=pairs)
-    assert list(sheets)[-2:] == [export.SHEET_GAP_CLUSTERS, export.SHEET_PAIRS]
+def test_sheets_with_serps():
+    sheets = export.build_sheets(_decisions(with_cluster=True), TOP, CANNIBAL, SETTINGS)
+    assert list(sheets)[-1] == export.SHEET_GAP_CLUSTERS
+    assert not hasattr(export, "SHEET_PAIRS")
 
 
 def test_readme_lists_present_sheets_settings_and_disclaimer():
@@ -50,31 +50,16 @@ def test_readme_lists_present_sheets_settings_and_disclaimer():
     assert [L.R_AREA, L.R_ENTRY, L.R_TEXT] == ["Bereich", "Eintrag", "Erklärung"]
     entries = readme[L.R_ENTRY].tolist()
     assert export.SHEET_GAPS in entries
-    assert export.SHEET_PAIRS not in entries
     assert "Modell" in entries
     assert L.V_RISK in entries
     assert readme.iloc[0][L.R_TEXT].startswith("Das Notebook sortiert vor")
 
 
 def test_every_sheet_has_query_first_except_readme_and_summary():
-    pairs = pd.DataFrame({"Volume": [10], "Keyword": ["a"], "URL": ["u1"]})
-    sheets = export.build_sheets(_decisions(with_cluster=True), TOP, CANNIBAL, SETTINGS, pairs=pairs)
-    assert export.SHEET_PAIRS in sheets
+    sheets = export.build_sheets(_decisions(with_cluster=True), TOP, CANNIBAL, SETTINGS)
     for name, df in sheets.items():
         if name not in (export.SHEET_README, export.SHEET_GAP_CLUSTERS):
-            assert df.columns[0] in (L.C_QUERY, "Keyword"), name
-
-
-def test_pairs_keyword_column_moves_to_front_without_renaming():
-    pairs = pd.DataFrame({"Volume": [10], "Keyword": ["a"], "URL": ["u1"]})
-    sheet = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS, pairs=pairs)[export.SHEET_PAIRS]
-    assert list(sheet.columns) == ["Keyword", "Volume", "URL"]
-
-
-def test_pairs_without_keyword_column_stay_unchanged():
-    pairs = pd.DataFrame({"Volume": [10], "URL": ["u1"]})
-    sheet = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS, pairs=pairs)[export.SHEET_PAIRS]
-    assert list(sheet.columns) == ["Volume", "URL"]
+            assert df.columns[0] == L.C_QUERY, name
 
 
 def test_every_label_column_has_a_help_text():
@@ -95,12 +80,6 @@ def test_readme_explains_candidate_columns_only_when_present():
     plain = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS)[export.SHEET_README]
     assert L.C_CAND not in plain[L.R_ENTRY].tolist()
     assert L.C_CLUSTER not in plain[L.R_ENTRY].tolist()
-
-
-def test_readme_skips_columns_without_explanation():
-    pairs = pd.DataFrame({"Keyword": ["a"], "Volume": [10]})
-    readme = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS, pairs=pairs)[export.SHEET_README]
-    assert "Volume" not in readme[L.R_ENTRY].tolist()
 
 
 def test_write_excel_creates_sheets_and_colours_verdicts(tmp_path):
