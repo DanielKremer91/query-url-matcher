@@ -12,8 +12,9 @@ CASE_COLUMNS = [
 ]
 # Blatt Kannibalisierungsgefahr (Langformat): eine Zeile je Query und konkurrierender URL, die Query steht in jeder Zeile
 # Jede Zeile zeigt nur die Position ihrer eigenen URL; die rankende URL der Query steht immer als eigene Zeile darin
+# Die Einordnung (wie dringend) wird nicht ausgegeben, sie bestimmt nur die Reihenfolge der Queries
 COLUMNS = [
-    L.C_QUERY, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_GAP_TO_BEST, L.C_COMP_POS, L.C_COMP_CHUNK, L.C_PRIORITY,
+    L.C_QUERY, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_GAP_TO_BEST, L.C_COMP_POS, L.C_COMP_CHUNK,
 ]
 # dringendste zuerst; je Query gilt die dringendste Einordnung ihrer Fälle
 _URGENCY = [L.PRIO_VERY_HIGH, L.PRIO_HIGH, L.PRIO_MID, L.PRIO_LOW, L.PRIO_VERY_LOW, L.PRIO_OPEN]
@@ -179,7 +180,7 @@ def find_cannibalization(
         ordered = ordered.drop_duplicates("_key")  # www- und Frog-Schreibweise derselben Seite nur einmal
         group_rows = [
             {column: row.get(column) for column in COLUMNS}
-            | {L.C_NO: number, L.C_PRIORITY: urgency, L.C_COMP_CHUNK: chunk_of(query, row[L.C_COMP_URL])}
+            | {L.C_NO: number, L.C_COMP_CHUNK: chunk_of(query, row[L.C_COMP_URL])}
             for number, row in enumerate(ordered.to_dict("records"), start=1)
         ]
         gaps = [r[L.C_GAP_TO_BEST] for r in group_rows[1:] if r[L.C_GAP_TO_BEST] is not None and not pd.isna(r[L.C_GAP_TO_BEST])]

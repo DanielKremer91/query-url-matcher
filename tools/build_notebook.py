@@ -41,7 +41,7 @@ Für die Modelle mit API-Key legst du im Secrets-Panel (Schlüssel-Symbol links)
 Schritt 8 lädt eine Excel-Datei mit vier Blättern herunter, auf Wunsch zusätzlich ein ZIP mit einer CSV je Blatt:
 
 - **Übersicht:** eine Zeile je Query mit den drei am besten passenden URLs und ihren Scores, dem Abstand zur Schwelle (positiv = passt), der eigenen Rankingposition und dem Urteil.
-- **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen oder mehrere eigene URLs ranken, mit einer Zeile je konkurrierender URL samt Score, Abstand zur besten URL und eigener Position (die rankende URL immer dabei) und der Einordnung (wie dringend: sehr hoch, hoch, mittel, niedrig oder offen).
+- **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen oder mehrere eigene URLs ranken, mit einer Zeile je konkurrierender URL samt Score, Abstand zur besten URL und eigener Position (die rankende URL immer dabei), die dringendsten Fälle oben.
 - **Potentielle Content-Lücken:** genau die Queries mit dem Urteil Content-Lücke, die sichersten zuerst, mit SERPs nach Thema gebündelt.
 - **Chunk auf anderer Seite:** Queries, deren bester Textabschnitt auf einer anderen Seite steht als die Seite, die insgesamt am besten passt.
 - **Lesehilfe:** erklärt jedes Blatt, jede Spalte, jedes Urteil und nennt die Einstellungen des Laufs.
@@ -428,7 +428,7 @@ STEP7C = '''#@title Schritt 7c: Urteile bilden { display-mode: "form" }
 rankt_gut_bis_position = 10 #@param {type:"integer"}
 #@markdown **abstand_fast_gleich:** Score-Unterschied, bis zu dem zwei Seiten als gleich gut gelten (0.01 = ein Hundertstel). Liegen mehrere passende Seiten so nah beieinander, gibt es Kannibalisierungsgefahr.
 abstand_fast_gleich = 0.01 #@param {type:"number"}
-#@markdown **sichtbar_bis_position:** Ranken zwei eigene URLs für dieselbe Query bis zu dieser Position, steht die Query im Blatt Kannibalisierungsgefahr. Bis zu dieser Position gilt ein Ranking außerdem als „knapp dahinter“ (Einordnung „sehr hoch“).
+#@markdown **sichtbar_bis_position:** Ranken zwei eigene URLs für dieselbe Query bis zu dieser Position, steht die Query im Blatt Kannibalisierungsgefahr. Bis zu dieser Position gilt ein Ranking außerdem als „knapp dahinter“, solche Fälle stehen ganz oben.
 sichtbar_bis_position = 20 #@param {type:"integer"}
 #@markdown **luecke_nur_ohne_ranking_bis_position:** Voreinstellung 20: Eine Query ist keine Lücke, wenn eine eigene Seite bis Position 20 rankt, auch wenn keine Seite die Schwelle erreicht. Google hält die Seite dann für relevant, das Urteil lautet „Rankt trotz schwachem Match“ (ausbauen statt neu bauen). Gilt für das Urteil und für das Blatt „Potentielle Content-Lücken“. 0 = aus. Ohne Rankings wird der Wert ignoriert.
 luecke_nur_ohne_ranking_bis_position = 20 #@param {type:"integer"}
@@ -508,10 +508,7 @@ new_pages = None if serps is None else count_new_pages(gaps)
 counts = decisions[L.C_VERDICT].value_counts()
 for verdict, count in counts.items():
     print(f"   {count:>5} × {verdict}")
-urgency = cannibal.drop_duplicates(L.C_QUERY)[L.C_PRIORITY].value_counts()
-levels = ", ".join(f"{urgency[level]} {level}" for level in (L.PRIO_VERY_HIGH, L.PRIO_HIGH, L.PRIO_MID, L.PRIO_LOW,
-                   L.PRIO_VERY_LOW, L.PRIO_OPEN) if level in urgency)
-print(f"   {cannibal[L.C_QUERY].nunique():>5} Queries im Blatt Kannibalisierungsgefahr, über alle Urteile ({levels or 'keine'})")
+print(f"   {cannibal[L.C_QUERY].nunique():>5} Queries im Blatt Kannibalisierungsgefahr, über alle Urteile, die dringendsten oben")
 uncalibrated = " (Schwelle nicht kalibriert)" if threshold_source == "median" else ""
 pages = "" if new_pages is None else f", zusammen {new_pages} neue Seiten (eine je Thema, Lücken ohne Thema einzeln)"
 print(f"   {len(gaps):>5} potentielle Content-Lücken{uncalibrated}{pages}")
@@ -527,7 +524,7 @@ print("✅ Schritt 7c fertig. Weiter mit Schritt 8 (Export).")
 STEP8 = '''#@title Schritt 8: Export { display-mode: "form" }
 #@markdown Die Excel-Datei hat vier Blätter:
 #@markdown **Übersicht:** eine Zeile je Query mit den drei besten URLs, ihren Scores, der Rankingposition und dem Urteil.
-#@markdown **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen oder mehrere eigene URLs ranken, eine Zeile je konkurrierender URL mit Score, Abstand zur besten URL, Position und Einordnung (wie dringend).
+#@markdown **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen oder mehrere eigene URLs ranken, eine Zeile je konkurrierender URL mit Score, Abstand zur besten URL und Position, die dringendsten Fälle oben.
 #@markdown **Potentielle Content-Lücken:** genau die Queries mit dem Urteil Content-Lücke, sortiert nach Abstand zur Schwelle (die sichersten zuerst), mit SERPs nach Thema gebündelt.
 #@markdown **Chunk auf anderer Seite:** Queries, deren bester Textabschnitt auf einer anderen Seite steht als die Seite, die insgesamt am besten passt, unabhängig von der Schwelle.
 #@markdown **Lesehilfe:** erklärt Blätter, Spalten und Urteile und nennt die Einstellungen des Laufs.
@@ -577,15 +574,14 @@ Ohne Rankings weiß das Tool nicht, ob eine Seite schon funktioniert. „In Ordn
 
 ### Blatt „Kannibalisierungsgefahr“ (unabhängig vom Urteil)
 
-Hier steht jede Query, bei der mehrere eigene Seiten fast gleich gut passen (höchstens 0.01 auseinander), eine passende Seite besser ist als die rankende oder mehrere eigene URLs bis Position 20 ranken, auch wenn das Urteil „In Ordnung“ lautet. Liegen weitere Seiten deutlich hinter der besten, steht die Query nur drin, wenn eine dieser schwächeren Seiten rankt. Je konkurrierender URL eine Zeile, bei Chunk und Kombi mit ihrem passenden Textabschnitt. Die Spalte **Einordnung** sagt, wie dringend der Fall ist; das Blatt ist danach sortiert, die dringendsten Fälle oben:
+Hier steht jede Query, bei der mehrere eigene Seiten fast gleich gut passen (höchstens 0.01 auseinander), eine passende Seite besser ist als die rankende oder mehrere eigene URLs bis Position 20 ranken, auch wenn das Urteil „In Ordnung“ lautet. Liegen weitere Seiten deutlich hinter der besten, steht die Query nur drin, wenn eine dieser schwächeren Seiten rankt. Je konkurrierender URL eine Zeile, bei Chunk und Kombi mit ihrem passenden Textabschnitt. Die Reihenfolge zeigt, wie dringend der Fall ist, die dringendsten oben:
 
-| Einordnung | wann |
-|---|---|
-| **sehr hoch** | Seiten konkurrieren eng (höchstens 0.01 auseinander, oder eine andere ist besser als die rankende) oder ranken beide, und die Query rankt knapp hinter den Top 10, bis Position 20 |
-| **hoch** | wie oben, aber Ranking schlechter als 20 oder gar keins |
-| **mittel** | Top 10 mit einer anderen als der besten Seite, oder eine schwächere Seite rankt |
-| **niedrig** | Top 10 mit der besten Seite: beobachten, Google kann wechseln |
-| **offen** | keine Rankings geladen |
+1. Seiten konkurrieren, und die Query rankt knapp hinter den Top 10 (bis Position 20): fast oben, die Konkurrenz bremst vermutlich.
+2. Seiten konkurrieren, und die Query rankt schlechter oder gar nicht.
+3. Die Query rankt in den Top 10, aber mit einer anderen als der besten Seite, oder eine schwächere Seite rankt.
+4. Die Query rankt in den Top 10 mit der besten Seite: beobachten, Google kann wechseln.
+
+Bei Gleichstand steht die engste Konkurrenz oben (kleinster Abstand zur besten URL).
 
 Das Blatt „Potentielle Content-Lücken“ enthält genau die Queries mit dem Urteil „Content-Lücke“, die sichersten zuerst (Spalte „Abstand zur Schwelle“). Das Blatt „Chunk auf anderer Seite“ zeigt, wo der beste Textabschnitt auf einer anderen Seite steht als die insgesamt beste Seite.
 

@@ -97,7 +97,7 @@ def test_readme_explains_every_column_of_every_sheet_once_in_sheet_order():
 def test_every_column_label_is_explained():
     # C_URL, C_SIDE und C_SCORE gehören nur zu den Prüfbeispielen in Schritt 7a und 7b, C_SCORE_2 zur Vorschau in
     # Schritt 4, C_STAGE und C_REASON zu den internen Fällen der Kannibalisierung, nicht zum Export
-    internal = ("C_URL", "C_SIDE", "C_SCORE", "C_SCORE_2", "C_STAGE", "C_REASON")
+    internal = ("C_URL", "C_SIDE", "C_SCORE", "C_SCORE_2", "C_STAGE", "C_REASON", "C_PRIORITY")
     columns = [v for k, v in vars(L).items() if k.startswith("C_") and k not in internal]
     assert columns
     for column in columns:
@@ -153,8 +153,7 @@ def test_help_texts_describe_the_rules():
     assert "nicht im Frog-Export" in export.VERDICT_HELP[L.V_OK]
     for verdict in (L.V_OK, L.V_WATCH):
         assert "im Blatt Kannibalisierungsgefahr" in export.VERDICT_HELP[verdict]
-    for value in (L.PRIO_VERY_HIGH, L.PRIO_HIGH, L.PRIO_MID, L.PRIO_LOW, L.PRIO_OPEN):
-        assert f"'{value}'" in export._COLUMN_HELP[L.C_PRIORITY], value
+    assert "dringendsten" in export._SHEET_HELP[export.SHEET_CANNIBAL]
     assert "enau eine Seite passt klar" in export.VERDICT_HELP[L.V_MATCH]
     assert "keine Rankings geladen" in export.VERDICT_HELP[L.V_MATCH]
     assert not hasattr(L, "V_USE")
@@ -268,7 +267,7 @@ def _text_number_sheets():
     overview, _, gaps = _frames()
     overview[L.C_POSITION] = ["4.3", "12", ""]
     gaps[L.C_POSITION] = ["7.5"]
-    shared = {L.C_QUERY: "a", L.C_PRIORITY: L.PRIO_MID, L.C_COMP_CHUNK: "Text"}
+    shared = {L.C_QUERY: "a", L.C_COMP_CHUNK: "Text"}
     cannibal = pd.DataFrame([
         {**shared, L.C_NO: 1, L.C_COMP_URL: "https://a.de/x.html", L.C_COMP_SCORE: 0.842, L.C_COMP_POS: "4.3"},
         {**shared, L.C_NO: 2, L.C_COMP_URL: "https://a.de/y", L.C_COMP_SCORE: -0.0123, L.C_COMP_POS: ""},

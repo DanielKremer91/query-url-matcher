@@ -33,7 +33,10 @@ _SHEET_HELP = {
     ),
     SHEET_CANNIBAL: (
         "Queries, bei denen weitere eigene Seiten passen oder mehrere eigene URLs ranken, unabhängig vom Urteil, mit einer "
-        "Zeile je konkurrierender URL (die Query steht in jeder Zeile) und der Einordnung, wie dringend der Fall ist. "
+        "Zeile je konkurrierender URL (die Query steht in jeder Zeile). Sortiert nach Dringlichkeit, die dringendsten "
+        "Fälle zuerst: eng konkurrierende Seiten, deren Query knapp hinter den Top-Rankings rankt (bis "
+        "sichtbar_bis_position), dann ohne gutes Ranking, dann mit Top-Ranking einer anderen als der besten Seite, dann "
+        "mit Top-Ranking der besten Seite; bei Gleichstand die engste Konkurrenz zuerst. "
         f"Enthält jede Query mit dem Urteil '{L.V_CANNIBAL}'."
     ),
     SHEET_GAPS: (
@@ -99,19 +102,6 @@ _COLUMN_HELP = {
     ),
     L.C_VERDICT: "Einordnung der Query, siehe die Urteile weiter oben in dieser Lesehilfe.",
     # Kannibalisierungsgefahr
-    L.C_PRIORITY: (
-        f"Wie dringend der Fall ist, je Query (steht in jeder Zeile). Das Blatt ist danach sortiert, die dringendsten "
-        f"Fälle zuerst, bei gleicher Einordnung die engste Konkurrenz zuerst. Konkurrieren Seiten eng (höchstens der Abstand "
-        f"'fast gleich' hinter der besten, oder eine andere passende Seite ist besser als die rankende) oder ranken mehrere "
-        f"eigene URLs bis sichtbar_bis_position, zählt das beste eigene Ranking: '{L.PRIO_VERY_HIGH}' knapp hinter den "
-        f"Top-Rankings bis sichtbar_bis_position (Voreinstellung 20), fast oben, die Konkurrenz bremst vermutlich; "
-        f"'{L.PRIO_HIGH}' schlechter oder kein Ranking, abgrenzen, zusammenführen oder Hauptseite festlegen; "
-        f"'{L.PRIO_MID}' Top-Ranking (bis rankt_gut_bis_position) einer anderen als der besten Seite, prüfen, ob Google "
-        f"die richtige gewählt hat; '{L.PRIO_LOW}' Top-Ranking der besten Seite, beobachten. Liegen die weiteren Seiten "
-        f"deutlich dahinter (mehr als der Abstand 'fast gleich'), steht die Query nur im Blatt, wenn eine andere als "
-        f"die beste Seite rankt: dann '{L.PRIO_MID}'. "
-        f"'{L.PRIO_OPEN}': keine Rankings geladen, nur semantisch geprüft."
-    ),
     L.C_NO: "Laufende Nummer der URL innerhalb der Query. Jede konkurrierende URL hat eine eigene Zeile.",
     L.C_COMP_URL: (
         "Eine der konkurrierenden eigenen URLs: Seiten, die die Schwelle erreichen und nah an der besten liegen oder "

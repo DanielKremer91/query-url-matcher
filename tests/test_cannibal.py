@@ -371,7 +371,7 @@ def _sheet(queries, scores, rankings=None, threshold=0.6, urls=(U1, U2, U3), **k
 def test_sheet_columns_without_stage_and_reason():
     df = _sheet(["q"], [[0.8, 0.8, 0.1]])
     assert list(df.columns) == COLUMNS == [
-        L.C_QUERY, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_GAP_TO_BEST, L.C_COMP_POS, L.C_COMP_CHUNK, L.C_PRIORITY,
+        L.C_QUERY, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_GAP_TO_BEST, L.C_COMP_POS, L.C_COMP_CHUNK,
     ]
     # kein Ranking der Query in jeder Zeile: jede Zeile zeigt nur die Position ihrer eigenen URL
     assert L.C_POSITION not in COLUMNS and L.C_RANK_URL not in COLUMNS
@@ -385,9 +385,7 @@ def test_sheet_merges_the_cases_of_a_query_each_url_once_by_score():
     assert df[L.C_COMP_URL].tolist() == [U1, U2, U3]
     assert df[L.C_NO].tolist() == [1, 2, 3]
     assert df[L.C_COMP_POS].tolist() == ["3", "", "8"]
-    # die dringendste Einordnung gilt: bereits sichtbar mit Top-Ranking der besten Seite ist niedrig,
-    # Möglich mit der besten Seite rankend sehr niedrig
-    assert set(df[L.C_PRIORITY]) == {L.PRIO_LOW}
+    assert L.C_PRIORITY not in df.columns  # die Einordnung bestimmt nur die Reihenfolge
 
 
 def test_sheet_lists_the_same_page_in_www_and_frog_spelling_once():
@@ -423,7 +421,6 @@ def test_sheet_sorts_queries_by_urgency():
     df = _sheet(["niedrig-dringend", "mittel-dringend", "dringend", "sehr-dringend"],
                 [[0.9, 0.7, 0.1], [0.9, 0.7, 0.1], [0.8, 0.8, 0.1], [0.8, 0.8, 0.1]], rankings)
     assert list(dict.fromkeys(df[L.C_QUERY])) == ["sehr-dringend", "dringend", "mittel-dringend"]
-    assert list(dict.fromkeys(df[L.C_PRIORITY])) == [L.PRIO_VERY_HIGH, L.PRIO_HIGH, L.PRIO_MID]
 
 
 def test_within_the_same_urgency_the_closest_competition_comes_first():
@@ -488,10 +485,10 @@ def test_pages_clearly_behind_the_best_are_not_listed_when_the_best_ranks_or_not
 
 def test_pages_clearly_behind_the_best_stay_when_a_weaker_page_ranks():
     df = _sheet(["q"], [[0.9, 0.86, 0.1]], _rankings([("q", U2, U2, 9.0)]))
-    assert df[L.C_COMP_URL].tolist() == [U1, U2] and set(df[L.C_PRIORITY]) == {L.PRIO_MID}
+    assert df[L.C_COMP_URL].tolist() == [U1, U2]
 
 
-def test_very_low_never_appears_in_the_sheet():
+def test_the_sheet_has_no_einordnung_column():
     from qum import export
 
-    assert f"'{L.PRIO_VERY_LOW}'" not in export._COLUMN_HELP[L.C_PRIORITY]
+    assert L.C_PRIORITY not in COLUMNS and L.C_PRIORITY not in export._COLUMN_HELP
