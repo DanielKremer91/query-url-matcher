@@ -13,7 +13,7 @@ def _decisions(with_cluster=False):
     df = pd.DataFrame(
         {
             L.C_QUERY: ["a", "b", "c"],
-            L.C_VERDICT: [L.V_MATCH, L.V_GAP, L.V_CHECK],
+            L.C_VERDICT: [L.V_MATCH, L.V_GAP, L.V_USE],
             L.C_BEST_URL: ["u1", "u2", "u3"],
         }
     )
@@ -27,8 +27,8 @@ CANNIBAL = pd.DataFrame(columns=[L.C_QUERY, L.C_STAGE, L.C_REASON, L.C_COMPETING
 SETTINGS = {"Modell": "multilingual-e5-large", "Schwelle": "0.81"}
 
 
-def test_content_gaps_contains_gap_and_check():
-    assert export.content_gaps(_decisions())[L.C_QUERY].tolist() == ["b", "c"]
+def test_content_gaps_contains_the_gap_verdicts():
+    assert export.content_gaps(_decisions())[L.C_QUERY].tolist() == ["b"]
 
 
 def test_sheets_without_serps():
@@ -70,18 +70,6 @@ def test_every_label_column_has_a_help_text():
         assert column in export._COLUMN_HELP, column
 
 
-def test_readme_explains_candidate_columns_only_when_present():
-    decisions = _decisions(with_cluster=True)
-    decisions[L.C_CAND] = ["", "", "u1"]
-    readme = export.build_sheets(decisions, TOP, CANNIBAL, SETTINGS)[export.SHEET_README]
-    assert L.C_CAND in readme[L.R_ENTRY].tolist()
-    stages = readme[readme[L.R_AREA] == "Stufe"][L.R_ENTRY].tolist()
-    assert stages == [L.STAGE_DANGER, L.STAGE_VISIBLE]
-    plain = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS)[export.SHEET_README]
-    assert L.C_CAND not in plain[L.R_ENTRY].tolist()
-    assert L.C_CLUSTER not in plain[L.R_ENTRY].tolist()
-
-
 def test_write_excel_creates_sheets_and_colours_verdicts(tmp_path):
     path = tmp_path / "out.xlsx"
     export.write_excel(path, export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS))
@@ -91,6 +79,9 @@ def test_write_excel_creates_sheets_and_colours_verdicts(tmp_path):
     assert sheet["A1"].font.bold
     fills = [sheet.cell(row=r, column=2).fill.fgColor.rgb for r in (2, 3, 4)]
     assert [f[-6:] for f in fills] == ["C6EFCE", "FFC7CE", "FFEB9C"]
+    assert set(export._FILLS) == set(export.VERDICT_HELP) == {
+        L.V_MATCH, L.V_GAP, L.V_OK, L.V_CANNIBAL, L.V_WATCH, L.V_USE,
+    }
 
 
 def test_write_csv_zip_has_one_file_per_sheet(tmp_path):
@@ -135,18 +126,6 @@ def test_write_excel_strips_control_characters_without_mutating_input(tmp_path):
     values = [sheet.cell(row=r, column=4).value for r in (2, 3, 4)]
     assert values == ["ok", "tab vertical", "unit sep"]
     assert decisions[L.C_CHUNK].tolist() == ["ok", "tab\x0bvertical", "unit\x1fsep"]
-
-
-def test_candidate_position_help_refers_to_the_gap_query():
-    text = export._COLUMN_HELP[L.C_CAND_POS]
-    assert "Lücken-Query" in text
-    assert "Nachbar-Keyword" not in text
-
-
-def test_help_texts_do_not_overclaim_serp_similarity():
-    texts = list(export._COLUMN_HELP.values()) + list(export.VERDICT_HELP.values())
-    assert all("fast gleicher SERP" not in text for text in texts)
-    assert "stark überlappender SERP" in export.VERDICT_HELP[L.V_CHECK]
 
 
 def _notes(readme):
@@ -199,10 +178,6 @@ def test_help_texts_describe_the_margin_rule():
     assert "deutlich besser" in export._STAGE_HELP[L.STAGE_DANGER]
 
 
-def test_advice_column_help_calls_it_a_hint_to_check():
-    assert export._COLUMN_HELP[L.C_ADVICE] == "Fester Hinweis, was zu prüfen ist, kein generierter Text. Entscheiden muss ein Mensch."
-
-
 @pytest.mark.parametrize("sep, number", [(";", "0,8123"), (",", "0.8123")])
 def test_write_csv_zip_writes_decimal_comma_only_with_semicolon(tmp_path, sep, number):
     path = tmp_path / "out.zip"
@@ -224,8 +199,6 @@ def test_risk_help_covers_ranking_url_outside_the_export():
 def _text_number_sheets():
     decisions = _decisions()
     decisions[L.C_POSITION] = ["4.3", "12", ""]
-    decisions[L.C_CAND_POS] = ["", "7.5", ""]
-    decisions[L.C_ADVICE] = ["https://a.de/x.html rankt auf Position 4.3, semantisch passt https://a.de/y besser.", "", ""]
     cannibal = pd.DataFrame(
         {
             L.C_QUERY: ["a"],
@@ -252,8 +225,6 @@ def test_semicolon_csv_uses_decimal_comma_in_positions_settings_and_competing_ur
     frames = _csv_frames(tmp_path / "out.zip", ";")
     decisions = frames["entscheidung.csv"]
     assert decisions[L.C_POSITION].tolist() == ["4,3", "12", ""]
-    assert decisions[L.C_CAND_POS].tolist() == ["", "7,5", ""]
-    assert decisions[L.C_ADVICE].tolist()[0] == "https://a.de/x.html rankt auf Position 4,3, semantisch passt https://a.de/y besser."
     assert frames["kannibalisierungsgefahr.csv"].iloc[0][L.C_COMPETING] == (
         "https://a.de/x.html (Position 4,3, Score 0,842) | https://a.de/y (Score -0,0123)"
     )
@@ -270,7 +241,6 @@ def test_comma_csv_and_excel_keep_the_decimal_point_in_text(tmp_path):
     frames = _csv_frames(tmp_path / "out.zip", ",")
     assert frames["entscheidung.csv"][L.C_POSITION].tolist() == ["4.3", "12", ""]
     assert "Position 4.3, Score 0.842" in frames["kannibalisierungsgefahr.csv"].iloc[0][L.C_COMPETING]
-    assert "Position 4.3," in frames["entscheidung.csv"][L.C_ADVICE].tolist()[0]
     export.write_excel(tmp_path / "out.xlsx", sheets)
     book = load_workbook(tmp_path / "out.xlsx")
     position_col = list(sheets[export.SHEET_DECISION].columns).index(L.C_POSITION) + 1

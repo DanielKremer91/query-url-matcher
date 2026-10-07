@@ -14,7 +14,6 @@ from .verdict import (
     within_margin,
 )
 
-# gleiche Unterscheidung wie die Empfehlung im Blatt Entscheidung
 _RISK_REASON = {
     RISK_CLEAR: L.REASON_BETTER,
     RISK_PLAIN: L.REASON_BETTER_PLAIN,
@@ -66,7 +65,7 @@ def find_cannibalization(
             reason = _RISK_REASON[risk_kind(lead[i], u_index.get(normalize_url(rank_url)), margin)]
             rows.append((query, L.STAGE_DANGER, reason, " | ".join(competing)))
         elif decision[L.C_VERDICT] == L.V_OK:
-            # dieselbe Regel wie der Hinweis in der Empfehlung: weitere passende Seiten nah an der rankenden
+            # weitere passende Seiten nah an der rankenden
             ranking_j = u_index[normalize_url(decision[L.C_RANK_URL])]
             others = close_to_ranking(lead[i], ranking_j, threshold, margin)
             if others:

@@ -433,7 +433,7 @@ from datetime import date
 from qum import colab, export
 from qum import labels as L
 from qum.cannibal import annotate, find_cannibalization
-from qum.serp import apply_serp, count_new_pages
+from qum.serp import count_new_pages, topics
 from qum.verdict import build_decisions
 
 colab.require(globals(), 4, "result", "lead", "top", "size", "overlap", "weight", "basis_label", "n_top")
@@ -452,7 +452,7 @@ print(f"Schwelle aus Schritt 7b: {threshold:.4f} ({threshold_label}).")
 new_decisions = build_decisions(result, lead, threshold, rankings, rankt_gut_bis_position, weight, abstand_fast_gleich)
 new_cannibal = find_cannibalization(result, lead, threshold, new_decisions, rankings, abstand_fast_gleich, sichtbar_bis_position)
 if serps is not None:
-    new_decisions = apply_serp(new_decisions, result, lead, serps, rankings, serp_ueberschneidung / 100, cluster_dichte / 100)
+    new_decisions[L.C_CLUSTER] = topics(result.queries, serps, serp_ueberschneidung / 100, cluster_dichte / 100)
 new_decisions = annotate(new_decisions, new_cannibal)
 settings = {
     "Datum": date.today().isoformat(),
@@ -485,7 +485,7 @@ print()
 print("Was die Urteile bedeuten:")
 for verdict in counts.index:
     print(f"   {verdict}: {export.VERDICT_HELP[verdict]}")
-print("Die Empfehlung je Query und alle Werte stehen im Export (Schritt 8), die Lesehilfe erklärt jede Spalte.")
+print("Alle Werte stehen im Export (Schritt 8), die Lesehilfe erklärt jede Spalte.")
 print("✅ Schritt 7c fertig. Weiter mit Schritt 8 (Export).")
 '''
 
@@ -519,7 +519,6 @@ Für jede Query prüft das Tool zwei Dinge: Passt eine deiner Seiten semantisch,
 
 - **Ohne Rankings** gibt es nur zwei Urteile: **Passende Seite vorhanden** oder **Content-Lücke**.
 - **Kannibalisierungsgefahr** gibt es auch, wenn die rankende Seite selbst die Schwelle nicht erreicht, eine andere eigene Seite aber schon, oder wenn die rankende URL nicht im Frog-Export steht.
-- **Mit SERPs aus Schritt 6** wird aus einer Content-Lücke **Vor Neuerstellung prüfen**, wenn ein Keyword mit stark überlappender SERP schon eine passende Seite hat.
 - **In jedem Feld** kann zusätzlich ein Hinweis auf Kannibalisierungsgefahr stehen: wenn zwei eigene Seiten fast gleich gut passen oder mehrere eigene Seiten für dieselbe Query ranken. Er steht im Export in der Spalte „Kannibalisierungsgefahr" neben dem Urteil, Details im Blatt „Kannibalisierungsgefahr". Gerade bei „Bestehende Seite nutzen" zeigt er Konkurrenz zwischen eigenen Seiten, bevor sie in den Rankings sichtbar wird.
 
 Alle Urteile sind Hinweise zum Prüfen, keine Entscheidungen.

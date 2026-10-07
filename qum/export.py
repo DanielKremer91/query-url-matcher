@@ -26,10 +26,10 @@ _CSV_NAMES = {
 }
 
 _SHEET_HELP = {
-    SHEET_DECISION: "Eine Zeile je Query mit Urteil, bester URL, Passage, Scores und Empfehlung.",
+    SHEET_DECISION: "Eine Zeile je Query mit Urteil, bester URL, Passage und Scores.",
     SHEET_TOP: "Die besten URLs je Query mit Chunk-, Gesamt-URL- und Kombi-Score samt Rängen.",
     SHEET_CANNIBAL: "Queries, bei denen mehrere eigene Seiten konkurrieren, getrennt nach Stufe.",
-    SHEET_GAPS: "Queries ohne passende Seite. 'Vor Neuerstellung prüfen' nennt eine Kandidaten-Seite.",
+    SHEET_GAPS: "Queries ohne passende Seite.",
     SHEET_GAP_CLUSTERS: "Lücken gebündelt nach SERP-Cluster: ein Cluster entspricht einer neuen Seite.",
 }
 
@@ -58,19 +58,11 @@ _COLUMN_HELP = {
     L.C_RANK_URL: "Die URL, die laut Ranking-Export am besten für die Query rankt.",
     L.C_POSITION: "Beste Position der rankenden URL für die Query im Ranking-Export.",
     L.C_NOTE: "Ergänzender Hinweis, zum Beispiel wenn eine URL im Frog-Export fehlt.",
-    L.C_ADVICE: "Fester Hinweis, was zu prüfen ist, kein generierter Text. Entscheiden muss ein Mensch.",
     L.C_CANNIBAL: (
         "Hinweis auf Kannibalisierungsgefahr zu dieser Query, unabhängig vom Urteil: Stufe (Gefahr oder Bereits sichtbar) und die "
         "konkurrierenden eigenen URLs. Leer, wenn es keinen Hinweis gibt. Details im Blatt Kannibalisierungsgefahr."
     ),
     L.C_CLUSTER: "Keywords mit gleicher Nummer haben stark überlappende Google-Ergebnisse. 0 = kein Cluster.",
-    L.C_CAND: "Bestehende Seite, die ein Keyword mit stark überlappender SERP bereits bedient.",
-    L.C_CAND_KW: "Das Nachbar-Keyword mit stark überlappender SERP, bei dem die Kandidaten-Seite passt.",
-    L.C_CAND_OVERLAP: "Anteil gemeinsamer URLs in den Google-Ergebnissen von Query und Nachbar-Keyword.",
-    L.C_CAND_SCORE: "Score der Lücken-Query selbst gegen die Kandidaten-Seite.",
-    L.C_CAND_CHUNK: "Der Textblock der Kandidaten-Seite, der zur Lücken-Query am besten passt.",
-    L.C_CAND_POS: "Position der Kandidaten-Seite für diese Lücken-Query im Ranking-Export. Leer, wenn sie dafür nicht rankt.",
-    L.C_CAND_MORE: "Weitere Kandidaten-Seiten von anderen Nachbar-Keywords.",
     L.C_STAGE: "Stufe der Kannibalisierungsgefahr, siehe die Stufen weiter unten in dieser Lesehilfe.",
     L.C_REASON: "Warum die Query im Blatt Kannibalisierungsgefahr steht.",
     L.C_COMPETING: "Die konkurrierenden eigenen URLs mit Score oder Position.",
@@ -98,14 +90,12 @@ VERDICT_HELP = {
     ),
     L.V_WATCH: "Die Query rankt gut, obwohl keine Seite die Schwelle erreicht.",
     L.V_USE: "Kein gutes Ranking, aber eine passende Seite existiert.",
-    L.V_CHECK: "Lücke, aber ein Keyword mit stark überlappender SERP hat bereits eine passende Seite.",
 }
 
 _FILLS = {
     L.V_MATCH: "C6EFCE",
     L.V_OK: "C6EFCE",
     L.V_USE: "FFEB9C",
-    L.V_CHECK: "FFEB9C",
     L.V_CANNIBAL: "F8CBAD",
     L.V_GAP: "FFC7CE",
     L.V_WATCH: "D9D9D9",
@@ -138,7 +128,7 @@ CAVEAT_THRESHOLD = {
 
 
 def content_gaps(decisions: pd.DataFrame) -> pd.DataFrame:
-    return decisions[decisions[L.C_VERDICT].isin([L.V_GAP, L.V_CHECK])].reset_index(drop=True)
+    return decisions[decisions[L.C_VERDICT] == L.V_GAP].reset_index(drop=True)
 
 
 def _readme(sheet_names, settings, present_columns, threshold_source=None) -> pd.DataFrame:
@@ -214,10 +204,9 @@ def _comma_in_text(name, df: pd.DataFrame) -> pd.DataFrame:
     def swap(value):
         return value.replace(".", ",") if isinstance(value, str) else value
 
-    for column in (L.C_POSITION, L.C_CAND_POS):
-        if column in out.columns:
-            out[column] = out[column].map(swap)
-    for column in (L.C_COMPETING, L.C_ADVICE):
+    if L.C_POSITION in out.columns:
+        out[L.C_POSITION] = out[L.C_POSITION].map(swap)
+    for column in (L.C_COMPETING,):
         if column in out.columns:
             out[column] = out[column].map(lambda v: _NUMBER_IN_TEXT.sub(r"\1 \2,\3", v) if isinstance(v, str) else v)
     if name == SHEET_README:

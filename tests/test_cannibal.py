@@ -3,7 +3,7 @@ import pytest
 
 from qum import labels as L
 from qum.cannibal import find_cannibalization
-from qum.verdict import ADVICE, ADVICE_NOT_IN_EXPORT, ADVICE_OK_CLOSE, ADVICE_RISK_PLAIN, build_decisions
+from qum.verdict import build_decisions
 from tests.conftest import make_result
 
 U1, U2, U3 = "https://a.de/1", "https://a.de/2", "https://a.de/3"
@@ -153,26 +153,15 @@ def test_decision_and_cannibalisation_sheet_agree():
     lead = result.lead("chunk")
     decisions = build_decisions(result, lead, 0.8, rankings, margin=0.01)
     cannibal = find_cannibalization(result, lead, 0.8, decisions, rankings, margin=0.01)
-    by_query = {q: group for q, group in cannibal.groupby(L.C_QUERY)}
-    for _, row in decisions.iterrows():
-        entry = by_query.get(row[L.C_QUERY])
-        if row[L.C_VERDICT] == L.V_OK and row[L.C_ADVICE] == ADVICE[L.V_OK]:
-            assert entry is None, row[L.C_QUERY]  # "kein Hinweis" heißt: auch kein Eintrag im Blatt
-        if row[L.C_VERDICT] == L.V_OK and row[L.C_ADVICE] != ADVICE[L.V_OK]:
-            assert entry[L.C_REASON].tolist() == [L.REASON_OK_CLOSE]
-            other = entry.iloc[0][L.C_COMPETING].split(" | ")[1].split(" (")[0]
-            assert row[L.C_ADVICE] == ADVICE_OK_CLOSE.format(other=other)
-        if row[L.C_VERDICT] == L.V_CANNIBAL:
-            values = {"best": row[L.C_BEST_URL], "rank_url": row[L.C_RANK_URL], "position": row[L.C_POSITION]}
-            expected = {
-                ADVICE[L.V_CANNIBAL].format(**values): L.REASON_BETTER,
-                ADVICE_RISK_PLAIN.format(**values): L.REASON_BETTER_PLAIN,
-                ADVICE_NOT_IN_EXPORT.format(**values): L.REASON_NOT_IN_EXPORT,
-            }[row[L.C_ADVICE]]
-            assert entry[L.C_REASON].tolist() == [expected], row[L.C_QUERY]
     assert decisions[L.C_VERDICT].tolist() == [L.V_OK, L.V_OK, L.V_CANNIBAL, L.V_USE, L.V_CANNIBAL, L.V_CANNIBAL]
     reasons = dict(zip(cannibal[L.C_QUERY], cannibal[L.C_REASON]))
-    assert reasons["knapp-unter-schwelle"] == L.REASON_BETTER_PLAIN
+    assert reasons == {
+        "ok-nah": L.REASON_OK_CLOSE,
+        "risiko": L.REASON_BETTER,
+        "nah-ohne-ranking": L.REASON_CLOSE,
+        "knapp-unter-schwelle": L.REASON_BETTER_PLAIN,
+        "nicht-im-export": L.REASON_NOT_IN_EXPORT,
+    }
     assert reasons["nicht-im-export"] == L.REASON_NOT_IN_EXPORT
 
 

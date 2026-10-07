@@ -973,7 +973,7 @@ def test_verdict_guide_sits_before_step_7a_and_covers_every_verdict():
     guide_index = next(i for i, (kind, first) in enumerate(kinds) if kind == "markdown" and "So entstehen die Urteile" in first)
     assert kinds[guide_index + 1][1].startswith("#@title Schritt 7a")
     guide = CELLS[guide_index][1]
-    for verdict in (L.V_OK, L.V_CANNIBAL, L.V_WATCH, L.V_USE, L.V_GAP, L.V_MATCH, L.V_CHECK):
+    for verdict in (L.V_OK, L.V_CANNIBAL, L.V_WATCH, L.V_USE, L.V_GAP, L.V_MATCH):
         assert verdict in guide, verdict
     assert "| **Rankt gut**" in guide
 
@@ -1006,3 +1006,13 @@ def test_notebook_ends_with_step_8_and_nothing_mentions_step_9_or_pairs():
     }
     for name, text in texts.items():
         assert "Schritt 9" not in text and "Paare bewerten" not in text and "Keyword-URL-Paare" not in text, name
+
+
+def test_no_serp_neighbour_hint_and_no_advice_column():
+    from qum import labels as L
+
+    for name in ("V_CHECK", "C_CAND", "C_CAND_KW", "C_CAND_OVERLAP", "C_CAND_SCORE", "C_CAND_CHUNK", "C_CAND_POS",
+                 "C_CAND_MORE", "C_ADVICE"):
+        assert not hasattr(L, name), name
+    text = "\n".join(source for _, source in CELLS)
+    assert "Vor Neuerstellung prüfen" not in text and "Die Empfehlung je Query" not in text

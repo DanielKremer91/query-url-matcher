@@ -4,14 +4,7 @@ from collections import Counter, defaultdict, deque
 import pandas as pd
 
 from . import labels as L
-from .normalize import normalize_query, normalize_url
-from .verdict import ADVICE, format_position
-
-# Urteile, bei denen "Beste URL" eine passende Seite ist
-_HAS_PAGE = {L.V_MATCH, L.V_USE, L.V_OK, L.V_CANNIBAL}
-_CANDIDATE_COLUMNS = [
-    L.C_CAND, L.C_CAND_KW, L.C_CAND_OVERLAP, L.C_CAND_SCORE, L.C_CAND_CHUNK, L.C_CAND_POS, L.C_CAND_MORE,
-]
+from .normalize import normalize_query
 
 
 def top_urls_per_keyword(serps: pd.DataFrame) -> dict:
@@ -97,54 +90,10 @@ def cluster_keywords(kw_urls: dict, min_overlap: float = 0.5, min_density: float
     return assignments
 
 
-def apply_serp(decisions, result, lead, serps, rankings=None, min_overlap=0.5, min_density=0.5) -> pd.DataFrame:
-    kw_urls = top_urls_per_keyword(serps)
-    edges = overlap_edges(kw_urls, min_overlap)
-    neighbours = _neighbours(kw_urls, edges)
-    clusters = cluster_keywords(kw_urls, min_overlap, min_density, edges)
-
-    out = decisions.copy()
-    norms = [normalize_query(q) for q in result.queries]
-    row_of = {norm: i for i, norm in enumerate(norms)}
-    u_index = {normalize_url(u): j for j, u in enumerate(result.urls)}
-    positions = {}
-    if rankings is not None:
-        for row in rankings.sort_values("position", kind="stable").itertuples():
-            positions.setdefault((row.query_norm, row.url_norm), row.position)
-
-    out[L.C_CLUSTER] = [clusters.get(norm, 0) for norm in norms]
-    for column in _CANDIDATE_COLUMNS:
-        # object-Spalte: nimmt später Text und Zahlen auf
-        out[column] = pd.Series([""] * len(out), index=out.index, dtype=object)
-
-    for i, norm in enumerate(norms):
-        if decisions.iloc[i][L.C_VERDICT] != L.V_GAP:
-            continue
-        candidates = []
-        for other in neighbours.get(norm, ()):
-            k = row_of.get(other)
-            if k is None or decisions.iloc[k][L.C_VERDICT] not in _HAS_PAGE:
-                continue
-            overlap = edges[tuple(sorted((norm, other)))]
-            candidates.append((overlap, result.queries[k], decisions.iloc[k][L.C_BEST_URL]))
-        if not candidates:
-            continue
-        candidates.sort(key=lambda c: (-c[0], c[1]))
-        overlap, keyword, url = candidates[0]
-        j = u_index[normalize_url(url)]
-        label = out.index[i]
-        out.loc[label, L.C_VERDICT] = L.V_CHECK
-        out.loc[label, L.C_ADVICE] = ADVICE[L.V_CHECK].format(best=url, rank_url="", position="")
-        out.loc[label, L.C_CAND] = url
-        out.loc[label, L.C_CAND_KW] = keyword
-        out.loc[label, L.C_CAND_OVERLAP] = f"{round(overlap * 100)} %"
-        out.loc[label, L.C_CAND_SCORE] = round(float(lead[i, j]), 4)
-        out.loc[label, L.C_CAND_CHUNK] = result.best_chunk(i, j)
-        out.loc[label, L.C_CAND_POS] = format_position(positions.get((norm, normalize_url(url))))
-        out.loc[label, L.C_CAND_MORE] = " | ".join(
-            f"{u} (Nachbar: {kw}, {round(o * 100)} %)" for o, kw, u in candidates[1:] if u != url
-        )
-    return out
+def topics(queries, serps, min_overlap=0.5, min_density=0.5) -> list:
+    """Je Query die Nummer ihres SERP-Clusters, 0 ohne Cluster."""
+    clusters = cluster_keywords(top_urls_per_keyword(serps), min_overlap, min_density)
+    return [clusters.get(normalize_query(query), 0) for query in queries]
 
 
 def gap_summary(decisions: pd.DataFrame) -> pd.DataFrame:
