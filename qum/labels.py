@@ -29,18 +29,14 @@ C_TOPIC = "Thema"
 
 C_CANNIBAL = "Kannibalisierungsgefahr"
 
-# Blatt Kannibalisierungsgefahr: bis zu drei konkurrierende URLs mit Leit-Score und eigener Position
+# Blatt Kannibalisierungsgefahr (Langformat): je konkurrierender URL eine Zeile mit Leit-Score und eigener Position
 C_STAGE = "Stufe"
 C_REASON = "Grund"
-C_URL_1 = "URL 1"
-C_SCORE_1 = "Score 1"
-C_POS_1 = "Position 1"
-C_URL_2 = "URL 2"
-C_SCORE_2 = "Score 2"
-C_POS_2 = "Position 2"
-C_URL_3 = "URL 3"
-C_SCORE_3 = "Score 3"
-C_POS_3 = "Position 3"
+C_SCORE_2 = "Score 2"  # Vorschau in Schritt 4
+C_NO = "Nr."
+C_COMP_URL = "Konkurrierende URL"
+C_COMP_SCORE = "Score der URL"
+C_COMP_POS = "Position der URL"
 
 # Prüfbeispiele um die Schwelle (Schritt 7a und 7b, nicht im Export)
 C_SIDE = "Lage"

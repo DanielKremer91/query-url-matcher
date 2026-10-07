@@ -90,8 +90,9 @@ def test_readme_explains_every_column_of_every_sheet_once_in_sheet_order():
 
 
 def test_every_column_label_is_explained():
-    # C_URL, C_SIDE und C_SCORE gehören nur zu den Prüfbeispielen in Schritt 7a und 7b, nicht zum Export
-    columns = [v for k, v in vars(L).items() if k.startswith("C_") and k not in ("C_URL", "C_SIDE", "C_SCORE")]
+    # C_URL, C_SIDE und C_SCORE gehören nur zu den Prüfbeispielen in Schritt 7a und 7b, C_SCORE_2 zur Vorschau in
+    # Schritt 4, nicht zum Export
+    columns = [v for k, v in vars(L).items() if k.startswith("C_") and k not in ("C_URL", "C_SIDE", "C_SCORE", "C_SCORE_2")]
     assert columns
     for column in columns:
         assert column in export._COLUMN_HELP, column
@@ -156,7 +157,7 @@ def test_help_texts_describe_the_rules():
     comparison = export._COLUMN_HELP[L.C_RANK_IS_BEST]
     for value in (L.YES, L.NO, L.CMP_NOT_RANKING, L.CMP_NOT_IN_EXPORT):
         assert f"'{value}'" in comparison, value
-    assert "weitere" in export._COLUMN_HELP[L.C_URL_1]
+    assert "filtern" in export._COLUMN_HELP[L.C_COMP_URL]
     assert "Schritt 6" in export._COLUMN_HELP[L.C_TOPIC]
 
 
@@ -178,12 +179,11 @@ def test_write_excel_creates_sheets_and_colours_verdicts(tmp_path):
 
 
 def test_write_excel_leaves_missing_scores_empty(tmp_path):
-    overview, cannibal, gaps = _frames()
-    export.write_excel(tmp_path / "out.xlsx", export.build_sheets(overview, cannibal, gaps, SETTINGS))
+    export.write_excel(tmp_path / "out.xlsx", _text_number_sheets())
     sheet = load_workbook(tmp_path / "out.xlsx")[export.SHEET_CANNIBAL]
     header = [cell.value for cell in sheet[1]]
-    assert sheet.cell(row=2, column=header.index(L.C_URL_3) + 1).value is None
-    assert sheet.cell(row=2, column=header.index(L.C_SCORE_3) + 1).value is None
+    assert sheet.cell(row=4, column=header.index(L.C_COMP_URL) + 1).value == "https://a.de/z"
+    assert sheet.cell(row=4, column=header.index(L.C_COMP_SCORE) + 1).value is None
 
 
 def test_write_excel_strips_control_characters_without_mutating_input(tmp_path):
@@ -261,12 +261,13 @@ def _text_number_sheets():
     overview, _, gaps = _frames()
     overview[L.C_POSITION] = ["4.3", "12", ""]
     gaps[L.C_POSITION] = ["7.5"]
-    cannibal = pd.DataFrame([{
-        L.C_QUERY: "a", L.C_URL_1: "https://a.de/x.html", L.C_SCORE_1: 0.842, L.C_POS_1: "4.3",
-        L.C_URL_2: "https://a.de/y", L.C_SCORE_2: -0.0123, L.C_POS_2: "", L.C_URL_3: "https://a.de/z", L.C_SCORE_3: None,
-        L.C_POS_3: "17.5", L.C_POSITION: "4.3", L.C_RANK_URL: "https://a.de/x.html", L.C_STAGE: L.STAGE_DANGER,
-        L.C_REASON: L.REASON_BETTER, L.C_PRIORITY: L.PRIO_MID,
-    }], columns=CANNIBAL_COLUMNS)
+    shared = {L.C_QUERY: "a", L.C_POSITION: "4.3", L.C_RANK_URL: "https://a.de/x.html", L.C_STAGE: L.STAGE_DANGER,
+              L.C_REASON: L.REASON_BETTER, L.C_PRIORITY: L.PRIO_MID}
+    cannibal = pd.DataFrame([
+        {**shared, L.C_NO: 1, L.C_COMP_URL: "https://a.de/x.html", L.C_COMP_SCORE: 0.842, L.C_COMP_POS: "4.3"},
+        {**shared, L.C_NO: 2, L.C_COMP_URL: "https://a.de/y", L.C_COMP_SCORE: -0.0123, L.C_COMP_POS: ""},
+        {**shared, L.C_NO: 3, L.C_COMP_URL: "https://a.de/z", L.C_COMP_SCORE: None, L.C_COMP_POS: "17.5"},
+    ], columns=CANNIBAL_COLUMNS)
     settings = {"Datum": "2026-10-05", "Modell": "multilingual-e5-large", "Schwelle": 0.8123, "Rankt gut bis Position": 10}
     return export.build_sheets(overview, cannibal, gaps, settings)
 
@@ -285,10 +286,9 @@ def test_semicolon_csv_uses_decimal_comma_in_positions_settings_and_scores(tmp_p
     frames = _csv_frames(tmp_path / "out.zip", ";")
     assert frames["uebersicht.csv"][L.C_POSITION].tolist() == ["4,3", "12", ""]
     assert frames["potentielle_content_luecken.csv"][L.C_POSITION].tolist() == ["7,5"]
-    row = frames["kannibalisierungsgefahr.csv"].iloc[0]
-    assert [row[L.C_POS_1], row[L.C_SCORE_1], row[L.C_SCORE_2], row[L.C_POS_2], row[L.C_SCORE_3], row[L.C_POS_3]] == [
-        "4,3", "0,842", "-0,0123", "", "", "17,5",
-    ]
+    rows = frames["kannibalisierungsgefahr.csv"]
+    assert rows[L.C_COMP_POS].tolist() == ["4,3", "", "17,5"] and rows[L.C_POSITION].tolist() == ["4,3"] * 3
+    assert rows[L.C_COMP_SCORE].tolist() == ["0,842", "-0,0123", ""]
     readme = frames["lesehilfe.csv"].set_index(L.R_ENTRY)[L.R_TEXT]
     assert readme["Schwelle"] == "0,8123"
     assert readme["Datum"] == "2026-10-05" and readme["Modell"] == "multilingual-e5-large"
@@ -301,8 +301,8 @@ def test_comma_csv_and_excel_keep_the_decimal_point_in_text(tmp_path):
     export.write_csv_zip(tmp_path / "out.zip", sheets, sep=",")
     frames = _csv_frames(tmp_path / "out.zip", ",")
     assert frames["uebersicht.csv"][L.C_POSITION].tolist() == ["4.3", "12", ""]
-    row = frames["kannibalisierungsgefahr.csv"].iloc[0]
-    assert [row[L.C_POS_1], row[L.C_SCORE_1], row[L.C_POS_3]] == ["4.3", "0.842", "17.5"]
+    rows = frames["kannibalisierungsgefahr.csv"]
+    assert rows[L.C_COMP_POS].tolist() == ["4.3", "", "17.5"] and rows[L.C_COMP_SCORE].tolist()[0] == "0.842"
     export.write_excel(tmp_path / "out.xlsx", sheets)
     book = load_workbook(tmp_path / "out.xlsx")
     position_col = OVERVIEW_COLUMNS.index(L.C_POSITION) + 1

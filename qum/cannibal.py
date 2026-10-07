@@ -5,15 +5,11 @@ from . import labels as L
 from .normalize import normalize_query, normalize_url
 from .verdict import RISK_CLEAR, RISK_NOT_IN_EXPORT, RISK_PLAIN, assess, format_position, risk_kind
 
-_PLACES = [
-    (L.C_URL_1, L.C_SCORE_1, L.C_POS_1),
-    (L.C_URL_2, L.C_SCORE_2, L.C_POS_2),
-    (L.C_URL_3, L.C_SCORE_3, L.C_POS_3),
+# Langformat: eine Zeile je Query, Stufe und konkurrierender URL; die Query steht in jeder Zeile
+COLUMNS = [
+    L.C_QUERY, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_COMP_POS,
+    L.C_POSITION, L.C_RANK_URL, L.C_STAGE, L.C_REASON, L.C_PRIORITY,
 ]
-COLUMNS = (
-    [L.C_QUERY] + [column for place in _PLACES for column in place]
-    + [L.C_POSITION, L.C_RANK_URL, L.C_STAGE, L.C_REASON, L.C_PRIORITY]
-)
 
 _RISK_REASON = {
     RISK_CLEAR: L.REASON_BETTER,
@@ -51,21 +47,19 @@ def _priority(a, stage, best_j, rankings_loaded) -> str:
     return L.PRIO_LOW if best_ranks else L.PRIO_MID
 
 
-def _row(query, hit, stage, reason, competing, priority_of) -> dict:
-    """hit: beste eigene Ranking-Zeile der Query oder None. competing: (URL, Score oder None, Position als Text) je URL.
-    Was über drei URLs hinausgeht, zählt der Grund."""
-    if len(competing) > len(_PLACES):
-        reason = f"{reason} … und {len(competing) - len(_PLACES)} weitere"
-    row = {
-        L.C_QUERY: query, L.C_STAGE: stage, L.C_REASON: reason,
+def _rows(query, hit, stage, reason, competing, priority_of) -> list:
+    """Eine Zeile je konkurrierender URL. hit: beste eigene Ranking-Zeile der Query oder None.
+    competing: (URL, Score oder None, Position als Text) je URL, in der gewünschten Reihenfolge."""
+    shared = {
         L.C_POSITION: format_position(hit.position) if hit is not None else "",
         L.C_RANK_URL: hit.url if hit is not None else "",
-        L.C_PRIORITY: priority_of(stage),
+        L.C_STAGE: stage, L.C_REASON: reason, L.C_PRIORITY: priority_of(stage),
     }
-    for k, (url_col, score_col, pos_col) in enumerate(_PLACES):
-        url, score, position = competing[k] if k < len(competing) else ("", None, "")
-        row.update({url_col: url, score_col: None if score is None else round(float(score), 4), pos_col: position})
-    return row
+    return [
+        {L.C_QUERY: query, L.C_NO: number, L.C_COMP_URL: url,
+         L.C_COMP_SCORE: None if score is None else round(float(score), 4), L.C_COMP_POS: position, **shared}
+        for number, (url, score, position) in enumerate(competing, start=1)
+    ]
 
 
 def _own_rankings(rankings) -> dict:
@@ -99,21 +93,21 @@ def find_cannibalization(
         fitting = [int(j) for j in np.argsort(-lead[i], kind="stable") if lead[i, j] >= threshold]
         if reason is None and len(fitting) >= 2:
             further = [(result.urls[j], lead[i, j], position_of.get(normalize_url(result.urls[j]), "")) for j in fitting]
-            rows.append(_row(query, a.hit, L.STAGE_POSSIBLE, L.REASON_FURTHER, further, priority))
+            rows.extend(_rows(query, a.hit, L.STAGE_POSSIBLE, L.REASON_FURTHER, further, priority))
         elif reason == L.REASON_CLOSE:
-            rows.append(_row(query, a.hit, L.STAGE_DANGER, reason, pages, priority))
+            rows.extend(_rows(query, a.hit, L.STAGE_DANGER, reason, pages, priority))
         elif reason is not None:
             score = None if a.ranking_j is None else lead[i, a.ranking_j]
             first = (a.hit.url, score, format_position(a.hit.position))
             others = [page for j, page in zip(a.close, pages) if j != a.ranking_j]
-            rows.append(_row(query, a.hit, L.STAGE_DANGER, reason, [first] + others, priority))
+            rows.extend(_rows(query, a.hit, L.STAGE_DANGER, reason, [first] + others, priority))
         visible = [r for r in own if r.position <= visible_position]
         if len(visible) >= 2:
             competing = [
                 (r.url, lead[i, u_index[r.url_norm]] if r.url_norm in u_index else None, format_position(r.position))
                 for r in visible
             ]
-            rows.append(_row(query, a.hit, L.STAGE_VISIBLE, L.REASON_RANKING, competing, priority))
+            rows.extend(_rows(query, a.hit, L.STAGE_VISIBLE, L.REASON_RANKING, competing, priority))
     return pd.DataFrame(rows, columns=COLUMNS)
 
 

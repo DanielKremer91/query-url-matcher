@@ -19,24 +19,31 @@ def _run(queries, scores, rankings=None, threshold=0.6, urls=(U1, U2, U3), **kwa
     return find_cannibalization(result, result.lead("chunk"), threshold, rankings, **kwargs)
 
 
-def _urls(row):
-    """(URL, Score, Position) der bis zu drei konkurrierenden URLs, leere Plätze weggelassen."""
-    out = []
-    for url, score, position in ((L.C_URL_1, L.C_SCORE_1, L.C_POS_1), (L.C_URL_2, L.C_SCORE_2, L.C_POS_2),
-                                 (L.C_URL_3, L.C_SCORE_3, L.C_POS_3)):
-        if row[url]:
-            out.append((row[url], None if pd.isna(row[score]) else row[score], row[position]))
-    return out
+def _first(df):
+    """Eine Zeile je Query und Stufe (die erste URL), für Prüfungen auf Stufe, Grund und Einordnung."""
+    return df.drop_duplicates([L.C_QUERY, L.C_STAGE]).reset_index(drop=True)
+
+
+def _urls(df, group=0):
+    """(URL, Score, Position) aller URLs der group-ten Gruppe aus Query und Stufe, in der Reihenfolge von Nr."""
+    key = list(_first(df)[[L.C_QUERY, L.C_STAGE]].itertuples(index=False, name=None))[group]
+    rows = df[(df[L.C_QUERY] == key[0]) & (df[L.C_STAGE] == key[1])]
+    assert rows[L.C_NO].tolist() == list(range(1, len(rows) + 1))
+    return [
+        (url, None if pd.isna(score) else score, position)
+        for url, score, position in zip(rows[L.C_COMP_URL], rows[L.C_COMP_SCORE], rows[L.C_COMP_POS])
+    ]
 
 
 def test_columns_and_empty_result():
     df = _run(["q"], [[0.9, 0.5, 0.1]])
     assert list(df.columns) == COLUMNS == [
-        L.C_QUERY,
-        L.C_URL_1, L.C_SCORE_1, L.C_POS_1, L.C_URL_2, L.C_SCORE_2, L.C_POS_2, L.C_URL_3, L.C_SCORE_3, L.C_POS_3,
+        L.C_QUERY, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_COMP_POS,
         L.C_POSITION, L.C_RANK_URL, L.C_STAGE, L.C_REASON, L.C_PRIORITY,
     ]
-    assert [L.C_URL_1, L.C_SCORE_2, L.C_POS_3] == ["URL 1", "Score 2", "Position 3"]
+    assert [L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_COMP_POS] == [
+        "Nr.", "Konkurrierende URL", "Score der URL", "Position der URL",
+    ]
     assert df.empty
 
 
@@ -45,11 +52,11 @@ def test_columns_and_empty_result():
 
 def test_several_close_pages_without_rankings_are_ordered_by_score():
     df = _run(["q"], [[0.79, 0.80, 0.3]])
-    assert df[L.C_STAGE].tolist() == [L.STAGE_DANGER]
-    assert df[L.C_REASON].tolist() == [L.REASON_CLOSE]
-    row = df.iloc[0]
-    assert _urls(row) == [(U2, 0.8, ""), (U1, 0.79, "")]
-    assert row[L.C_URL_3] == "" and pd.isna(row[L.C_SCORE_3]) and row[L.C_POS_3] == ""
+    assert _first(df)[L.C_STAGE].tolist() == [L.STAGE_DANGER]
+    assert _first(df)[L.C_REASON].tolist() == [L.REASON_CLOSE]
+    assert _urls(df) == [(U2, 0.8, ""), (U1, 0.79, "")]
+    assert len(df) == 2  # eine Zeile je URL, die Query steht in jeder Zeile
+    assert df[L.C_QUERY].tolist() == ["q", "q"] and df[L.C_REASON].tolist() == [L.REASON_CLOSE] * 2
 
 
 def test_close_but_below_threshold_is_not_listed():
@@ -57,47 +64,47 @@ def test_close_but_below_threshold_is_not_listed():
 
 
 def test_margin_is_adjustable_and_its_boundary_counts_as_close():
-    assert _run(["q"], [[0.80, 0.785, 0.1]])[L.C_STAGE].tolist() == [L.STAGE_POSSIBLE]
-    assert _run(["q"], [[0.80, 0.79, 0.1]])[L.C_STAGE].tolist() == [L.STAGE_DANGER]
-    assert _run(["q"], [[0.80, 0.70, 0.1]], margin=0.15)[L.C_STAGE].tolist() == [L.STAGE_DANGER]
-    assert _urls(_run(["q"], [[0.80, 0.78, 0.1]], margin=0.02).iloc[0]) == [(U1, 0.8, ""), (U2, 0.78, "")]
+    assert _first(_run(["q"], [[0.80, 0.785, 0.1]]))[L.C_STAGE].tolist() == [L.STAGE_POSSIBLE]
+    assert _first(_run(["q"], [[0.80, 0.79, 0.1]]))[L.C_STAGE].tolist() == [L.STAGE_DANGER]
+    assert _first(_run(["q"], [[0.80, 0.70, 0.1]], margin=0.15))[L.C_STAGE].tolist() == [L.STAGE_DANGER]
+    assert _urls(_run(["q"], [[0.80, 0.78, 0.1]], margin=0.02)) == [(U1, 0.8, ""), (U2, 0.78, "")]
 
 
 def test_weak_ranking_with_several_close_pages_is_ordered_by_score_with_positions():
     rankings = _rankings([("q", U3, U3, 35.0)])
     df = _run(["q"], [[0.1, 0.845, 0.85]], rankings)
-    assert df[L.C_REASON].tolist() == [L.REASON_CLOSE]
-    assert _urls(df.iloc[0]) == [(U3, 0.85, "35"), (U2, 0.845, "")]
+    assert _first(df)[L.C_REASON].tolist() == [L.REASON_CLOSE]
+    assert _urls(df) == [(U3, 0.85, "35"), (U2, 0.845, "")]
 
 
 def test_ranking_page_clearly_worse_lists_the_ranking_url_first():
     rankings = _rankings([("q", U1, U1, 4.0)])
     df = _run(["q"], [[0.65, 0.9, 0.1]], rankings)
-    assert df[L.C_STAGE].tolist() == [L.STAGE_DANGER]
-    assert df[L.C_REASON].tolist() == [L.REASON_BETTER]
-    assert _urls(df.iloc[0]) == [(U1, 0.65, "4"), (U2, 0.9, "")]
+    assert _first(df)[L.C_STAGE].tolist() == [L.STAGE_DANGER]
+    assert _first(df)[L.C_REASON].tolist() == [L.REASON_BETTER]
+    assert _urls(df) == [(U1, 0.65, "4"), (U2, 0.9, "")]
 
 
 def test_better_page_shows_its_own_position_when_it_ranks():
     rankings = _rankings([("q", U1, U1, 4.0), ("q", U2, U2, 31.0)])
     df = _run(["q"], [[0.65, 0.9, 0.1]], rankings)
-    assert _urls(df.iloc[0]) == [(U1, 0.65, "4"), (U2, 0.9, "31")]
+    assert _urls(df) == [(U1, 0.65, "4"), (U2, 0.9, "31")]
 
 
 def test_ranking_url_outside_the_export_has_no_score():
     rankings = _rankings([("q", ALT, ALT, 2.0)])
     df = _run(["q"], [[0.9, 0.1, 0.1]], rankings)
-    assert df[L.C_REASON].tolist() == [L.REASON_NOT_IN_EXPORT]
-    assert _urls(df.iloc[0]) == [(ALT, None, "2"), (U1, 0.9, "")]
+    assert _first(df)[L.C_REASON].tolist() == [L.REASON_NOT_IN_EXPORT]
+    assert _urls(df) == [(ALT, None, "2"), (U1, 0.9, "")]
     assert L.REASON_NOT_IN_EXPORT == "Rankende URL steht nicht im Frog-Export und wurde nicht verglichen"
 
 
 def test_plain_reason_with_margin_zero_or_ranking_page_below_threshold():
     rankings = _rankings([("q", U1, U1, 3.0)])
-    assert _run(["q"], [[0.842, 0.843, 0.1]], rankings, margin=0)[L.C_REASON].tolist() == [L.REASON_BETTER_PLAIN]
+    assert _first(_run(["q"], [[0.842, 0.843, 0.1]], rankings, margin=0))[L.C_REASON].tolist() == [L.REASON_BETTER_PLAIN]
     df = _run(["q"], [[0.795, 0.803, 0.1]], rankings, threshold=0.8)
-    assert df[L.C_REASON].tolist() == [L.REASON_BETTER_PLAIN]
-    assert _urls(df.iloc[0]) == [(U1, 0.795, "3"), (U2, 0.803, "")]
+    assert _first(df)[L.C_REASON].tolist() == [L.REASON_BETTER_PLAIN]
+    assert _urls(df) == [(U1, 0.795, "3"), (U2, 0.803, "")]
     assert L.REASON_BETTER == "Eine andere Seite passt deutlich besser als die rankende"
     assert L.REASON_BETTER_PLAIN == "Eine andere Seite passt besser als die rankende"
 
@@ -105,23 +112,22 @@ def test_plain_reason_with_margin_zero_or_ranking_page_below_threshold():
 def test_ok_with_an_almost_as_good_page_lists_the_ranking_url_first():
     rankings = _rankings([("q", U1, U1, 3.0), ("q", U2, U2, 31.0)])
     df = _run(["q"], [[0.842, 0.848, 0.1]], rankings, threshold=0.8)
-    assert df[L.C_STAGE].tolist() == [L.STAGE_DANGER]
-    assert df[L.C_REASON].tolist() == [L.REASON_OK_CLOSE]
+    assert _first(df)[L.C_STAGE].tolist() == [L.STAGE_DANGER]
+    assert _first(df)[L.C_REASON].tolist() == [L.REASON_OK_CLOSE]
     assert L.REASON_OK_CLOSE == "Rankende Seite passt, eine weitere passt fast gleich gut"
-    assert _urls(df.iloc[0]) == [(U1, 0.842, "3"), (U2, 0.848, "31")]
+    assert _urls(df) == [(U1, 0.842, "3"), (U2, 0.848, "31")]
 
 
 def test_ok_without_a_close_page_is_only_a_possible_danger():
     rankings = _rankings([("q", U1, U1, 3.0)])
-    assert _run(["q"], [[0.85, 0.80, 0.1]], rankings, threshold=0.8)[L.C_STAGE].tolist() == [L.STAGE_POSSIBLE]
+    assert _first(_run(["q"], [[0.85, 0.80, 0.1]], rankings, threshold=0.8))[L.C_STAGE].tolist() == [L.STAGE_POSSIBLE]
 
 
-def test_more_than_three_urls_are_counted_in_the_reason():
+def test_all_competing_urls_get_their_own_row():
     urls = (U1, U2, U3, U4, U5)
     df = _run(["q"], [[0.80, 0.805, 0.799, 0.801, 0.802]], urls=urls)
-    row = df.iloc[0]
-    assert row[L.C_REASON] == f"{L.REASON_CLOSE} … und 2 weitere"
-    assert [url for url, _, _ in _urls(row)] == [U2, U5, U4]
+    assert set(df[L.C_REASON]) == {L.REASON_CLOSE}
+    assert [url for url, _, _ in _urls(df)] == [U2, U5, U4, U1, U3]
 
 
 # --- Stufe Bereits sichtbar --------------------------------------------------------------------------------------
@@ -130,27 +136,27 @@ def test_more_than_three_urls_are_counted_in_the_reason():
 def test_several_own_urls_ranking_are_ordered_by_position():
     rankings = _rankings([("q", U2, U2, 12.0), ("q", U1, U1, 3.0), ("q", U3, U3, 45.0)])
     df = _run(["q"], [[0.9, 0.1, 0.1]], rankings)
-    assert df[L.C_STAGE].tolist() == [L.STAGE_VISIBLE]
-    assert df[L.C_REASON].tolist() == [L.REASON_RANKING]
-    assert _urls(df.iloc[0]) == [(U1, 0.9, "3"), (U2, 0.1, "12")]
+    assert _first(df)[L.C_STAGE].tolist() == [L.STAGE_VISIBLE]
+    assert _first(df)[L.C_REASON].tolist() == [L.REASON_RANKING]
+    assert _urls(df) == [(U1, 0.9, "3"), (U2, 0.1, "12")]
 
 
 def test_visible_position_is_adjustable():
     rankings = _rankings([("q", U1, U1, 3.0), ("q", U2, U2, 25.0)])
     assert _run(["q"], [[0.9, 0.1, 0.1]], rankings).empty
-    assert len(_run(["q"], [[0.9, 0.1, 0.1]], rankings, visible_position=30)) == 1
+    assert len(_first(_run(["q"], [[0.9, 0.1, 0.1]], rankings, visible_position=30))) == 1
 
 
 def test_visible_url_outside_the_export_has_no_score():
     rankings = _rankings([("q", U1, U1, 3.0), ("q", ALT, ALT, 8.0)])
-    assert _urls(_run(["q"], [[0.9, 0.1, 0.1]], rankings).iloc[0]) == [(U1, 0.9, "3"), (ALT, None, "8")]
+    assert _urls(_run(["q"], [[0.9, 0.1, 0.1]], rankings)) == [(U1, 0.9, "3"), (ALT, None, "8")]
 
 
-def test_visible_stage_with_more_than_three_urls():
+def test_visible_stage_lists_every_ranking_url():
     rankings = _rankings([("q", u, u, float(p)) for p, u in enumerate((U1, U2, U3, U4), start=1)])
-    row = _run(["q"], [[0.9, 0.1, 0.1, 0.1]], rankings, urls=(U1, U2, U3, U4)).iloc[0]
-    assert row[L.C_REASON] == f"{L.REASON_RANKING} … und 1 weitere"
-    assert [position for _, _, position in _urls(row)] == ["1", "2", "3"]
+    df = _run(["q"], [[0.9, 0.1, 0.1, 0.1]], rankings, urls=(U1, U2, U3, U4))
+    assert set(df[L.C_REASON]) == {L.REASON_RANKING}
+    assert [position for _, _, position in _urls(df)] == ["1", "2", "3", "4"]
 
 
 def test_visible_stage_for_several_queries_uses_each_querys_rankings():
@@ -158,15 +164,15 @@ def test_visible_stage_for_several_queries_uses_each_querys_rankings():
         [("a", U1, U1, 3.0), ("a", U2, U2, 5.0), ("b", U1, U1, 2.0), ("b", U3, U3, 25.0), ("b", U2, U2, 7.0)]
     )
     df = _run(["a", "b"], [[0.9, 0.1, 0.1], [0.9, 0.1, 0.1]], rankings)
-    assert df[L.C_QUERY].tolist() == ["a", "b"]
-    assert _urls(df.iloc[1]) == [(U1, 0.9, "2"), (U2, 0.1, "7")]
+    assert _first(df)[L.C_QUERY].tolist() == ["a", "b"]
+    assert _urls(df, 1) == [(U1, 0.9, "2"), (U2, 0.1, "7")]
 
 
 def test_both_stages_can_apply_to_one_query_danger_first():
     rankings = _rankings([("q", U1, U1, 3.0), ("q", U2, U2, 12.0)])
     df = _run(["q"], [[0.65, 0.9, 0.1]], rankings)
-    assert df[L.C_STAGE].tolist() == [L.STAGE_DANGER, L.STAGE_VISIBLE]
-    assert df[L.C_REASON].tolist() == [L.REASON_BETTER, L.REASON_RANKING]
+    assert _first(df)[L.C_STAGE].tolist() == [L.STAGE_DANGER, L.STAGE_VISIBLE]
+    assert _first(df)[L.C_REASON].tolist() == [L.REASON_BETTER, L.REASON_RANKING]
 
 
 # --- Übereinstimmung mit den Urteilen ----------------------------------------------------------------------------
@@ -209,9 +215,9 @@ def test_settings_are_the_same_as_for_the_verdicts():
     result = make_result(["q"], [U1, U2, U3], [[0.70, 0.90, 0.1]])
     lead = result.lead("chunk")
     # mit rankt gut bis 15 ist es eine Gefahr wegen der rankenden Seite, sonst nur eine mögliche
-    assert find_cannibalization(result, lead, 0.6, rankings)[L.C_STAGE].tolist() == [L.STAGE_POSSIBLE]
+    assert _first(find_cannibalization(result, lead, 0.6, rankings))[L.C_STAGE].tolist() == [L.STAGE_POSSIBLE]
     df = find_cannibalization(result, lead, 0.6, rankings, good_position=15)
-    assert df[L.C_REASON].tolist() == [L.REASON_BETTER]
+    assert _first(df)[L.C_REASON].tolist() == [L.REASON_BETTER]
 
 
 def test_negative_margin_is_rejected():
@@ -253,33 +259,34 @@ def test_one_word_for_cannibalisation():
 
 def test_possible_stage_for_further_fitting_pages_far_behind_without_rankings():
     df = _run(["q"], [[0.9, 0.7, 0.65]])
-    assert df[L.C_STAGE].tolist() == [L.STAGE_POSSIBLE]
-    assert df[L.C_REASON].tolist() == [L.REASON_FURTHER]
-    assert _urls(df.iloc[0]) == [(U1, 0.9, ""), (U2, 0.7, ""), (U3, 0.65, "")]
+    assert _first(df)[L.C_STAGE].tolist() == [L.STAGE_POSSIBLE]
+    assert _first(df)[L.C_REASON].tolist() == [L.REASON_FURTHER]
+    assert _urls(df) == [(U1, 0.9, ""), (U2, 0.7, ""), (U3, 0.65, "")]
 
 
 def test_possible_stage_when_ranking_well_with_the_best_page_and_another_fits_far_behind():
     rankings = _rankings([("q", U1, U1, 3.0)])
     df = _run(["q"], [[0.9, 0.7, 0.1]], rankings)
-    assert df[L.C_STAGE].tolist() == [L.STAGE_POSSIBLE]
-    assert _urls(df.iloc[0]) == [(U1, 0.9, "3"), (U2, 0.7, "")]
+    assert _first(df)[L.C_STAGE].tolist() == [L.STAGE_POSSIBLE]
+    assert _urls(df) == [(U1, 0.9, "3"), (U2, 0.7, "")]
 
 
 def test_no_possible_stage_with_one_fitting_page_or_when_already_in_danger():
     assert _run(["q"], [[0.9, 0.5, 0.1]]).empty
     df = _run(["q"], [[0.9, 0.895, 0.7]])
-    assert df[L.C_STAGE].tolist() == [L.STAGE_DANGER]
+    assert _first(df)[L.C_STAGE].tolist() == [L.STAGE_DANGER]
 
 
 def test_possible_and_visible_stages_can_both_apply():
     rankings = _rankings([("q", U1, U1, 3.0), ("q", U2, U2, 12.0)])
     df = _run(["q"], [[0.9, 0.7, 0.1]], rankings)
-    assert df[L.C_STAGE].tolist() == [L.STAGE_POSSIBLE, L.STAGE_VISIBLE]
+    assert _first(df)[L.C_STAGE].tolist() == [L.STAGE_POSSIBLE, L.STAGE_VISIBLE]
 
 
-def test_possible_stage_counts_further_pages_beyond_three():
+def test_possible_stage_lists_every_fitting_page():
     df = _run(["q"], [[0.9, 0.7, 0.7, 0.7, 0.7]], urls=(U1, U2, U3, U4, U5))
-    assert df[L.C_REASON].tolist() == [f"{L.REASON_FURTHER} … und 2 weitere"]
+    assert set(df[L.C_REASON]) == {L.REASON_FURTHER}
+    assert [url for url, _, _ in _urls(df)] == [U1, U2, U3, U4, U5]
 
 
 def test_annotate_grades_yes_possible_no():
@@ -307,7 +314,7 @@ def test_every_row_shows_the_querys_best_own_ranking():
 
 def test_ranking_columns_are_empty_without_rankings():
     df = _run(["q"], [[0.8, 0.8, 0.1]])
-    assert df[L.C_POSITION].tolist() == [""] and df[L.C_RANK_URL].tolist() == [""]
+    assert set(df[L.C_POSITION]) == {""} and set(df[L.C_RANK_URL]) == {""}
 
 
 # --- Einordnung: wie dringend, je nach eigenem Ranking ------------------------------------------------------------
@@ -317,7 +324,7 @@ def _priority(scores, ranking, **kwargs):
     rankings = None if ranking is None else _rankings([("q", url, url, float(pos)) for url, pos in ranking])
     if ranking == []:
         rankings = _rankings([("andere query", U1, U1, 1.0)])
-    return _run(["q"], [scores], rankings, **kwargs)[[L.C_STAGE, L.C_PRIORITY]].values.tolist()
+    return _first(_run(["q"], [scores], rankings, **kwargs))[[L.C_STAGE, L.C_PRIORITY]].values.tolist()
 
 
 def test_priority_values():

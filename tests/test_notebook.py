@@ -592,8 +592,9 @@ def _reason_of(nb, query):
     from qum import labels as L
 
     cannibal = nb.ns["cannibal"]
-    reason = cannibal.loc[(cannibal[L.C_QUERY] == query) & (cannibal[L.C_STAGE] == L.STAGE_DANGER), L.C_REASON].item()
-    return reason.split(" … und ")[0]  # ohne die Zahl weiterer URLs
+    reasons = cannibal.loc[(cannibal[L.C_QUERY] == query) & (cannibal[L.C_STAGE] == L.STAGE_DANGER), L.C_REASON]
+    assert reasons.nunique() == 1  # eine Zeile je URL, der Grund steht in jeder
+    return reasons.iloc[0]
 
 
 def test_smoke_step_7_margin_reaches_the_verdicts(nb):

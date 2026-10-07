@@ -29,7 +29,7 @@ _SHEET_HELP = {
         "das Urteil und ob die Query im Blatt Kannibalisierungsgefahr steht."
     ),
     SHEET_CANNIBAL: (
-        "Queries, bei denen mehrere eigene Seiten konkurrieren, getrennt nach Stufe, mit bis zu drei URLs. "
+        "Queries, bei denen mehrere eigene Seiten konkurrieren, getrennt nach Stufe, mit einer Zeile je konkurrierender URL (die Query steht in jeder Zeile). "
         f"Enthält jede Query mit dem Urteil '{L.V_CANNIBAL}'."
     ),
     SHEET_GAPS: (
@@ -89,19 +89,15 @@ _COLUMN_HELP = {
         f"auf welcher Position, sonst '{L.PRIO_LOW}'. '{L.PRIO_OPEN}': keine Rankings geladen, nur semantisch geprüft."
     ),
     L.C_STAGE: "Stufe der Kannibalisierungsgefahr, siehe die Stufen weiter oben in dieser Lesehilfe.",
-    L.C_REASON: "Warum die Query hier steht. Konkurrieren mehr als drei URLs, steht die Zahl der weiteren am Ende.",
-    L.C_URL_1: (
-        "Erste konkurrierende eigene URL. Stufe Gefahr: nach Score sortiert, die rankende URL zuerst, wenn der Grund sie "
-        "betrifft. Stufe Kannibalisierung bereits sichtbar: nach Position sortiert. Mehr als drei URLs zählt die Spalte Grund als weitere."
+    L.C_REASON: "Warum die Query hier steht. Steht in jeder Zeile der Gruppe.",
+    L.C_NO: "Laufende Nummer der URL innerhalb von Query und Stufe. Jede konkurrierende URL hat eine eigene Zeile.",
+    L.C_COMP_URL: (
+        "Eine der konkurrierenden eigenen URLs. Stufe Gefahr und Möglich: nach Score sortiert, die rankende URL zuerst, "
+        "wenn der Grund sie betrifft. Stufe Kannibalisierung bereits sichtbar: nach Position sortiert. Nach dieser Spalte "
+        "filtern zeigt, bei welchen Queries eine Seite mit anderen konkurriert."
     ),
-    L.C_SCORE_1: "Score der URL 1 nach der gewählten Bewertungsgrundlage. Leer, wenn sie nicht im Frog-Export steht.",
-    L.C_POS_1: "Eigene Position der URL 1 für die Query. Leer, wenn sie dafür nicht rankt.",
-    L.C_URL_2: "Zweite konkurrierende eigene URL.",
-    L.C_SCORE_2: "Score der URL 2 nach der gewählten Bewertungsgrundlage. Leer, wenn sie nicht im Frog-Export steht.",
-    L.C_POS_2: "Eigene Position der URL 2 für die Query. Leer, wenn sie dafür nicht rankt.",
-    L.C_URL_3: "Dritte konkurrierende eigene URL. Leer, wenn nur zwei URLs konkurrieren.",
-    L.C_SCORE_3: "Score der URL 3 nach der gewählten Bewertungsgrundlage. Leer, wenn sie nicht im Frog-Export steht.",
-    L.C_POS_3: "Eigene Position der URL 3 für die Query. Leer, wenn sie dafür nicht rankt.",
+    L.C_COMP_SCORE: "Score dieser URL nach der gewählten Bewertungsgrundlage. Leer, wenn sie nicht im Frog-Export steht.",
+    L.C_COMP_POS: "Eigene Position dieser URL für die Query. Leer, wenn sie dafür nicht rankt.",
     # Potentielle Content-Lücken
     L.C_BEST_SCORE: "Score der besten URL nach der gewählten Bewertungsgrundlage. Er liegt unter der Schwelle aus Schritt 7b.",
     L.C_TOPIC: (
@@ -256,7 +252,7 @@ def write_excel(path, sheets: dict) -> None:
 
 _PLAIN_NUMBER = re.compile(r"^-?\d+\.\d+$")
 # Positionen liegen als Text vor ("4.3"), damit ganze Zahlen ohne ".0" erscheinen
-_POSITION_COLUMNS = (L.C_POSITION, L.C_POS_1, L.C_POS_2, L.C_POS_3)
+_POSITION_COLUMNS = (L.C_POSITION, L.C_COMP_POS)
 
 
 def _comma_in_text(name, df: pd.DataFrame) -> pd.DataFrame:
