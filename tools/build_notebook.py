@@ -148,25 +148,21 @@ STEP4 = '''#@title Schritt 4: Matching { display-mode: "form" }
 #@markdown **0 heißt: empfohlene Größe für das gewählte Modell** (bei e5: 250 Wörter, Overlap 40). Nur ändern, wenn du bewusst andere Werte willst.
 chunk_groesse = 0 #@param {type:"integer"}
 chunk_overlap = 0 #@param {type:"integer"}
-#@markdown **bewertungsgrundlage:** Je Query und Seite gibt es drei Cosinus-Werte. Der gewählte entscheidet, ob eine Seite als "passend" gilt (mit der Schwelle aus Schritt 7b), welche Seite die beste ist und wie sortiert wird. Im Export stehen immer alle drei.
+#@markdown **bewertungsgrundlage:** Je Query und Seite gibt es drei Cosinus-Werte. Der gewählte entscheidet, ob eine Seite als "passend" gilt (mit der Schwelle aus Schritt 7b), welche Seite die beste, zweitbeste und drittbeste ist und wie sortiert wird. Im Export stehen immer alle drei.
 #@markdown **Chunk** (Empfehlung): Query gegen den besten Textabschnitt der Seite. Findet Seiten, die die Query in einem Abschnitt beantworten, auch wenn die Seite breiter ist.
 #@markdown **Gesamt-URL:** Query gegen die Seite als Ganzes. Bevorzugt Seiten, die sich komplett um das Thema drehen.
 #@markdown **Kombi:** Mischung aus beiden, der Anteil des Chunk-Werts steht im Regler darunter (0.7 = 70 % Chunk, 30 % Gesamt-URL).
 bewertungsgrundlage = "Chunk" #@param ["Chunk", "Gesamt-URL", "Kombi"]
 kombi_gewicht_chunk = 0.7 #@param {type:"slider", min:0, max:1, step:0.05}
-#@markdown **top_n:** So viele der am besten passenden URLs je Query erscheinen im Excel-Blatt "Top-Treffer". Auf die Urteile hat der Wert keinen Einfluss.
-top_n = 5 #@param {type:"integer"}
 
 from qum import colab
 from qum import labels as L
-from qum.match import estimate_chunks, run_matching, top_hits
+from qum.match import best_matches, estimate_chunks, preview, run_matching
 
 colab.require(globals(), 2, "spec", "embedder")
 colab.require(globals(), 3, "queries", "content")
 if chunk_groesse < 0 or chunk_overlap < 0:
     colab.stop("Chunk-Größe und Overlap dürfen nicht negativ sein. 0 bedeutet: Standardwert des Modells.")
-if top_n < 1:
-    colab.stop("Die Zahl der Treffer je Query (top_n) muss mindestens 1 sein.")
 # erst prüfen, übernommen wird erst nach erfolgreichem Matching (zusammen mit dem Ergebnis)
 new_size = chunk_groesse or spec.chunk_size
 new_overlap = chunk_overlap or spec.chunk_overlap
@@ -195,12 +191,12 @@ if hasattr(inner, "truncated_share"):
     if share > 0.05:
         print(f"⚠️ {share:.0%} der Chunks sind länger als das Modell lesen kann. Verkleinere die Chunk-Größe.")
 size, overlap, basis = new_size, new_overlap, new_basis
-weight, basis_label, n_top = kombi_gewicht_chunk, bewertungsgrundlage, top_n
+weight, basis_label = kombi_gewicht_chunk, bewertungsgrundlage
 result = new_result
 lead = result.lead(basis, weight)
-top = top_hits(result, basis, weight, n_top)
-display(top.head(10))
-print(f"✅ Schritt 4 fertig: {len(top)} Treffer berechnet. Optional weiter mit Schritt 5 und 6, sonst Schritt 7a.")
+print(f"Vorschau der ersten 10 Queries: beste und zweitbeste URL mit Score ({basis_label}). Alle Spalten stehen im Export im Blatt Übersicht.")
+display(preview(best_matches(result, lead, weight).head(10), basis))
+print(f"✅ Schritt 4 fertig: {len(result.queries)} Queries gematcht. Optional weiter mit Schritt 5 und 6, sonst Schritt 7a.")
 '''
 
 STEP5 = '''#@title Schritt 5 (optional): Eigene Rankings hochladen { display-mode: "form" }
@@ -436,7 +432,7 @@ from qum.cannibal import annotate, find_cannibalization
 from qum.serp import count_new_pages, topics
 from qum.verdict import build_decisions
 
-colab.require(globals(), 4, "result", "lead", "top", "size", "overlap", "weight", "basis_label", "n_top")
+colab.require(globals(), 4, "result", "lead", "size", "overlap", "weight", "basis_label")
 colab.require(globals(), "7b", "threshold", "threshold_source", "threshold_label")
 # bei einem Abbruch bleiben frühere Urteile stehen: das soll die Meldung sagen
 kept = " Bis dahin gelten die Urteile aus dem letzten Lauf von Schritt 7c." if globals().get("decisions") is not None else ""
@@ -464,7 +460,6 @@ settings = {
     "Overlap (Wörter)": overlap,
     "Bewertungsgrundlage": basis_label,
     "Kombi-Gewicht Chunk": weight,
-    "Treffer je Query (Top-N)": n_top,
     "Schwelle": round(threshold, 4),
     "Schwelle aus": threshold_label,
     "Kalibrierung bis Position": calibration_position,
@@ -499,8 +494,8 @@ csv_trennzeichen = "Semikolon (für deutsches Excel)" #@param ["Semikolon (für 
 
 from qum import colab, export
 
-colab.require(globals(), "7c", "decisions", "top", "cannibal", "settings", "threshold_source")
-sheets = export.build_sheets(decisions, top, cannibal, settings, threshold_source=threshold_source)
+colab.require(globals(), "7c", "decisions", "cannibal", "settings", "threshold_source")
+sheets = export.build_sheets(decisions, cannibal, settings, threshold_source=threshold_source)
 export.write_excel("query_url_matcher.xlsx", sheets)
 colab.download("query_url_matcher.xlsx")
 if zusaetzlich_csv_zip:

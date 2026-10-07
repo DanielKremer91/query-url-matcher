@@ -23,7 +23,6 @@ def _decisions(with_cluster=False):
     return df
 
 
-TOP = pd.DataFrame({L.C_QUERY: ["a"], L.C_URL: ["u1"]})
 CANNIBAL = pd.DataFrame(columns=COLUMNS)
 SETTINGS = {"Modell": "multilingual-e5-large", "Schwelle": "0.81"}
 
@@ -33,20 +32,20 @@ def test_content_gaps_contains_the_gap_verdicts():
 
 
 def test_sheets_without_serps():
-    sheets = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS)
+    sheets = export.build_sheets(_decisions(), CANNIBAL, SETTINGS)
     assert list(sheets) == [
-        export.SHEET_README, export.SHEET_DECISION, export.SHEET_TOP, export.SHEET_CANNIBAL, export.SHEET_GAPS,
+        export.SHEET_README, export.SHEET_DECISION, export.SHEET_CANNIBAL, export.SHEET_GAPS,
     ]
 
 
 def test_sheets_with_serps():
-    sheets = export.build_sheets(_decisions(with_cluster=True), TOP, CANNIBAL, SETTINGS)
+    sheets = export.build_sheets(_decisions(with_cluster=True), CANNIBAL, SETTINGS)
     assert list(sheets)[-1] == export.SHEET_GAP_CLUSTERS
-    assert not hasattr(export, "SHEET_PAIRS")
+    assert not hasattr(export, "SHEET_PAIRS") and not hasattr(export, "SHEET_TOP")
 
 
 def test_readme_lists_present_sheets_settings_and_disclaimer():
-    readme = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS)[export.SHEET_README]
+    readme = export.build_sheets(_decisions(), CANNIBAL, SETTINGS)[export.SHEET_README]
     assert list(readme.columns) == [L.R_AREA, L.R_ENTRY, L.R_TEXT]
     assert [L.R_AREA, L.R_ENTRY, L.R_TEXT] == ["Bereich", "Eintrag", "Erklärung"]
     entries = readme[L.R_ENTRY].tolist()
@@ -57,7 +56,7 @@ def test_readme_lists_present_sheets_settings_and_disclaimer():
 
 
 def test_every_sheet_has_query_first_except_readme_and_summary():
-    sheets = export.build_sheets(_decisions(with_cluster=True), TOP, CANNIBAL, SETTINGS)
+    sheets = export.build_sheets(_decisions(with_cluster=True), CANNIBAL, SETTINGS)
     for name, df in sheets.items():
         if name not in (export.SHEET_README, export.SHEET_GAP_CLUSTERS):
             assert df.columns[0] == L.C_QUERY, name
@@ -73,7 +72,7 @@ def test_every_label_column_has_a_help_text():
 
 def test_write_excel_creates_sheets_and_colours_verdicts(tmp_path):
     path = tmp_path / "out.xlsx"
-    export.write_excel(path, export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS))
+    export.write_excel(path, export.build_sheets(_decisions(), CANNIBAL, SETTINGS))
     book = load_workbook(path)
     assert book.sheetnames[:2] == [export.SHEET_README, export.SHEET_DECISION]
     sheet = book[export.SHEET_DECISION]
@@ -87,10 +86,10 @@ def test_write_excel_creates_sheets_and_colours_verdicts(tmp_path):
 
 def test_write_csv_zip_has_one_file_per_sheet(tmp_path):
     path = tmp_path / "out.zip"
-    export.write_csv_zip(path, export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS))
+    export.write_csv_zip(path, export.build_sheets(_decisions(), CANNIBAL, SETTINGS))
     with zipfile.ZipFile(path) as archive:
         assert archive.namelist() == [
-            "lesehilfe.csv", "entscheidung.csv", "top_treffer.csv", "kannibalisierungsgefahr.csv", "content_luecken.csv",
+            "lesehilfe.csv", "entscheidung.csv", "kannibalisierungsgefahr.csv", "content_luecken.csv",
         ]
         df = pd.read_csv(io.BytesIO(archive.read("entscheidung.csv")), encoding="utf-8-sig", sep=";")
     assert df[L.C_QUERY].tolist() == ["a", "b", "c"]
@@ -99,7 +98,7 @@ def test_write_csv_zip_has_one_file_per_sheet(tmp_path):
 @pytest.mark.parametrize("sep", [";", ","])
 def test_write_csv_zip_round_trips_with_either_separator(tmp_path, sep):
     path = tmp_path / "out.zip"
-    sheets = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS)
+    sheets = export.build_sheets(_decisions(), CANNIBAL, SETTINGS)
     sheets[export.SHEET_DECISION].loc[0, L.C_QUERY] = "futter; nass, 10 kg"  # beide Trennzeichen im Text
     export.write_csv_zip(path, sheets, sep=sep)
     with zipfile.ZipFile(path) as archive:
@@ -112,7 +111,7 @@ def test_write_csv_zip_round_trips_with_either_separator(tmp_path, sep):
 
 def test_write_csv_zip_defaults_to_semicolon(tmp_path):
     path = tmp_path / "out.zip"
-    export.write_csv_zip(path, export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS))
+    export.write_csv_zip(path, export.build_sheets(_decisions(), CANNIBAL, SETTINGS))
     with zipfile.ZipFile(path) as archive:
         header = archive.read("entscheidung.csv").decode("utf-8-sig").splitlines()[0]
     assert ";" in header
@@ -122,7 +121,7 @@ def test_write_excel_strips_control_characters_without_mutating_input(tmp_path):
     decisions = _decisions()
     decisions[L.C_CHUNK] = ["ok", "tab\x0bvertical", "unit\x1fsep"]
     path = tmp_path / "out.xlsx"
-    export.write_excel(path, export.build_sheets(decisions, TOP, CANNIBAL, SETTINGS))
+    export.write_excel(path, export.build_sheets(decisions, CANNIBAL, SETTINGS))
     sheet = load_workbook(path)[export.SHEET_DECISION]
     values = [sheet.cell(row=r, column=4).value for r in (2, 3, 4)]
     assert values == ["ok", "tab vertical", "unit sep"]
@@ -134,28 +133,28 @@ def _notes(readme):
 
 
 def test_readme_always_explains_the_score_band():
-    readme = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS)[export.SHEET_README]
+    readme = export.build_sheets(_decisions(), CANNIBAL, SETTINGS)[export.SHEET_README]
     assert _notes(readme)[0].startswith("Das Notebook sortiert vor")
     assert export.CAVEAT_SCORES in _notes(readme)
     assert export.CAVEAT_SCORES.startswith("Scores eines Modells liegen in einem engen Band (bei e5 etwa 0,7 bis 0,9).")
 
 
 def test_readme_flags_uncalibrated_median_threshold():
-    readme = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS, threshold_source="median")[export.SHEET_README]
+    readme = export.build_sheets(_decisions(), CANNIBAL, SETTINGS, threshold_source="median")[export.SHEET_README]
     notes = _notes(readme)
     assert notes == [export.DISCLAIMER, export.CAVEAT_SCORES, export.CAVEAT_THRESHOLD["median"]]
     assert notes[2].startswith("Schwelle nicht kalibriert:")
 
 
 def test_readme_explains_threshold_calibrated_from_rankings():
-    readme = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS, threshold_source="rankings")[export.SHEET_README]
+    readme = export.build_sheets(_decisions(), CANNIBAL, SETTINGS, threshold_source="rankings")[export.SHEET_README]
     notes = _notes(readme)
     assert notes[-1] == export.CAVEAT_THRESHOLD["rankings"]
     assert "75 % der gut rankenden Paare" in notes[-1] and "Rankt trotz schwachem Match" in notes[-1]
 
 
 def test_readme_says_when_threshold_was_set_by_hand():
-    readme = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS, threshold_source="manuell")[export.SHEET_README]
+    readme = export.build_sheets(_decisions(), CANNIBAL, SETTINGS, threshold_source="manuell")[export.SHEET_README]
     assert _notes(readme)[-1] == export.CAVEAT_THRESHOLD["manuell"]
     assert "von Hand" in export.CAVEAT_THRESHOLD["manuell"]
 
@@ -165,7 +164,7 @@ def test_write_excel_keeps_formula_like_text_as_text(tmp_path):
     decisions[L.C_QUERY] = ["=cmd|x", "+49 hotline", "@home"]
     decisions[L.C_CHUNK] = ["= 5 Euro", "-20 % Rabatt", "normal"]
     path = tmp_path / "out.xlsx"
-    export.write_excel(path, export.build_sheets(decisions, TOP, CANNIBAL, SETTINGS))
+    export.write_excel(path, export.build_sheets(decisions, CANNIBAL, SETTINGS))
     sheet = load_workbook(path)[export.SHEET_DECISION]
     cells = [sheet.cell(row=r, column=c) for c in (1, 4) for r in (2, 3, 4)]
     assert [cell.value for cell in cells] == ["=cmd|x", "+49 hotline", "@home", "= 5 Euro", "-20 % Rabatt", "normal"]
@@ -184,7 +183,7 @@ def test_help_texts_describe_the_margin_rule():
 @pytest.mark.parametrize("sep, number", [(";", "0,8123"), (",", "0.8123")])
 def test_write_csv_zip_writes_decimal_comma_only_with_semicolon(tmp_path, sep, number):
     path = tmp_path / "out.zip"
-    sheets = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS)
+    sheets = export.build_sheets(_decisions(), CANNIBAL, SETTINGS)
     sheets[export.SHEET_DECISION][L.C_S_CHUNK] = [0.8123, 0.5, 0.25]
     export.write_csv_zip(path, sheets, sep=sep)
     with zipfile.ZipFile(path) as archive:
@@ -207,8 +206,8 @@ def _text_number_sheets():
           "https://a.de/z", None, "17.5"]],
         columns=COLUMNS,
     )
-    settings = {"Datum": "2026-10-05", "Modell": "multilingual-e5-large", "Schwelle": 0.8123, "Treffer je Query (Top-N)": 5}
-    return export.build_sheets(decisions, TOP, cannibal, settings)
+    settings = {"Datum": "2026-10-05", "Modell": "multilingual-e5-large", "Schwelle": 0.8123, "Rankt gut bis Position": 10}
+    return export.build_sheets(decisions, cannibal, settings)
 
 
 def _csv_frames(path, sep):
@@ -232,7 +231,7 @@ def test_semicolon_csv_uses_decimal_comma_in_positions_settings_and_scores(tmp_p
     readme = frames["lesehilfe.csv"].set_index(L.R_ENTRY)[L.R_TEXT]
     assert readme["Schwelle"] == "0,8123"
     assert readme["Datum"] == "2026-10-05" and readme["Modell"] == "multilingual-e5-large"
-    assert readme["Treffer je Query (Top-N)"] == "5"
+    assert readme["Rankt gut bis Position"] == "10"
     assert sheets[export.SHEET_DECISION][L.C_POSITION].tolist() == ["4.3", "12", ""]  # Original unverändert
 
 

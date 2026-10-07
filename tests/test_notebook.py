@@ -239,8 +239,9 @@ def test_smoke_full_flow(nb, tmp_path, capsys):
     assert (tmp_path / "query_url_matcher.xlsx").exists()
     settings = nb.ns["settings"]
     assert settings["Eigene Rankings"] == "ja, aus Datei"
-    for key in ("Kalibrierung bis Position", "SERP-Überschneidung (%)", "Cluster-Dichte (%)", "Treffer je Query (Top-N)"):
+    for key in ("Kalibrierung bis Position", "SERP-Überschneidung (%)", "Cluster-Dichte (%)"):
         assert key in settings
+    assert "Treffer je Query (Top-N)" not in settings
 
 
 def test_smoke_minimal_flow_without_rankings_and_serps(nb, capsys):
@@ -301,7 +302,7 @@ def test_smoke_rerunning_step_4_invalidates_verdicts(nb, capsys):
     _load(nb)
     _verdicts(nb)
     assert nb.ns["decisions"] is not None
-    nb.run(4, top_n=3)
+    nb.run(4, bewertungsgrundlage="Kombi")
     for name in ("decisions", "settings", "threshold", "threshold_source", "threshold_label"):
         assert nb.ns[name] is None, name
     with pytest.raises(colab.NotebookStop):
@@ -363,12 +364,11 @@ def test_smoke_numeric_inputs_are_validated(nb, capsys):
     for form, hint in (
         ({"chunk_groesse": -1}, "nicht negativ"),
         ({"chunk_groesse": 10, "chunk_overlap": 10}, "Overlap"),
-        ({"chunk_groesse": 0, "chunk_overlap": 0, "top_n": 0}, "mindestens 1"),
     ):
         with pytest.raises(colab.NotebookStop):
             nb.run(4, **form)
         assert hint in capsys.readouterr().out
-    nb.run(4, chunk_groesse=0, chunk_overlap=0, top_n=5)
+    nb.run(4, chunk_groesse=0, chunk_overlap=0)
     with pytest.raises(colab.NotebookStop):
         nb.run("7a", kalibrierung_bis_position=0)
     assert "mindestens 1" in capsys.readouterr().out
@@ -896,10 +896,29 @@ def test_step_4_says_chunking_is_always_on():
     assert "Chunking ist immer aktiv" in source and "0 heißt: empfohlene Größe" in source
 
 
-def test_step_4_explains_basis_options_and_top_n():
+def test_step_4_explains_basis_options_and_has_no_top_n():
     source = next(s for s in _code_cells() if s.startswith("#@title Schritt 4"))
-    for text in ("**Chunk** (Empfehlung)", "**Gesamt-URL:**", "**Kombi:**", "**top_n:**", "Top-Treffer"):
+    for text in ("**Chunk** (Empfehlung)", "**Gesamt-URL:**", "**Kombi:**"):
         assert text in source, text
+    assert "top_n" not in source and _form_names(4) == {"chunk_groesse", "chunk_overlap", "bewertungsgrundlage", "kombi_gewicht_chunk"}
+
+
+@pytest.mark.parametrize("basis, column", [("Chunk", "Score Chunk"), ("Kombi", "Score Kombi")])
+def test_smoke_step_4_previews_the_first_ten_queries_from_the_overview_columns(nb, capsys, basis, column):
+    from qum import labels as L
+    from qum.match import best_matches
+
+    shown = []
+    nb.ns["display"] = shown.append
+    nb.run(3, "queries.csv", "frog_export.csv")
+    nb.run(4, bewertungsgrundlage=basis)
+    (frame,) = shown
+    assert list(frame.columns) == [L.C_QUERY, L.C_BEST_URL, L.C_SCORE, L.C_SECOND_URL, L.C_SCORE_2]
+    assert len(frame) == 10
+    matches = best_matches(nb.ns["result"], nb.ns["lead"], nb.ns["weight"]).head(10)
+    assert frame[L.C_SCORE].tolist() == matches[column].tolist()
+    assert frame[L.C_SECOND_URL].tolist() == matches[L.C_SECOND_URL].tolist()
+    assert "✅ Schritt 4 fertig: 12 Queries gematcht." in capsys.readouterr().out
 
 
 def test_upload_steps_say_the_column_fields_normally_stay_empty():

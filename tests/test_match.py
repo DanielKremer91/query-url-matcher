@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 
 from qum import labels as L
-from qum.match import estimate_chunks, ranks, run_matching, top_hits
+from qum.match import estimate_chunks, ranks, run_matching
 from tests.conftest import FakeEmbedder, make_result
 
 URLS = ["https://a.de/hund", "https://a.de/katze"]
@@ -112,38 +112,6 @@ def test_ranks():
     assert ranks(np.array([[0.1, 0.9, 0.5]])).tolist() == [[3, 1, 2]]
 
 
-def test_top_hits_columns_order_and_ranks():
-    result = make_result(["q"], ["u1", "u2", "u3"], [[0.5, 0.9, 0.7]], [[0.9, 0.1, 0.5]])
-    df = top_hits(result, basis="chunk", weight=0.7, top_n=2)
-    assert list(df.columns) == [
-        L.C_QUERY, L.C_URL, L.C_CHUNK, L.C_S_CHUNK, L.C_S_FULL, L.C_S_COMBI,
-        L.C_GAP_TO_BEST, L.C_R_CHUNK, L.C_R_FULL, L.C_R_COMBI, L.C_METHOD,
-    ]
-    assert df[L.C_URL].tolist() == ["u2", "u3"]
-    assert df[L.C_R_CHUNK].tolist() == [1, 2]
-    assert df[L.C_R_FULL].tolist() == [3, 2]
-    assert df[L.C_S_CHUNK].tolist() == [0.9, 0.7]
-
-
-def test_top_hits_gap_to_best_is_zero_for_the_best_row_and_positive_below():
-    result = make_result(["q"], ["u1", "u2", "u3"], [[0.5, 0.9, 0.7]], [[0.9, 0.1, 0.5]])
-    df = top_hits(result, basis="chunk", top_n=3)
-    assert df[L.C_GAP_TO_BEST].tolist() == [0, 0.2, 0.4]
-    full = top_hits(result, basis="full", top_n=3)
-    assert full[L.C_URL].tolist() == ["u1", "u3", "u2"]
-    assert full[L.C_GAP_TO_BEST].tolist() == [0, 0.4, 0.8]
-
-
-def test_top_hits_gap_to_best_is_per_query():
-    result = make_result(["a", "b"], ["u1", "u2"], [[0.9, 0.6], [0.3, 0.2]])
-    assert top_hits(result, top_n=2)[L.C_GAP_TO_BEST].tolist() == [0, 0.3, 0, 0.1]
-
-
-def test_top_hits_sorted_by_selected_basis():
-    result = make_result(["q"], ["u1", "u2"], [[0.5, 0.9]], [[0.9, 0.1]])
-    assert top_hits(result, basis="full", top_n=1)[L.C_URL].tolist() == ["u1"]
-
-
 def test_estimate_chunks():
     assert estimate_chunks(CONTENTS, 5, 1) == 5
 
@@ -215,3 +183,11 @@ def test_preview_shows_the_lead_score_of_the_best_and_second_best_url(basis, fir
     df = preview(best_matches(result, result.lead(basis, 0.6), 0.6), basis)
     assert list(df.columns) == [L.C_QUERY, L.C_BEST_URL, L.C_SCORE, L.C_SECOND_URL, L.C_SCORE_2]
     assert [df.iloc[0][L.C_SCORE], df.iloc[0][L.C_SCORE_2]] == [first, second]
+
+
+def test_top_hits_are_gone():
+    import qum.match
+
+    assert not hasattr(qum.match, "top_hits")
+    for name in ("C_R_CHUNK", "C_R_FULL", "C_R_COMBI", "C_METHOD", "C_GAP_TO_BEST"):
+        assert not hasattr(L, name), name

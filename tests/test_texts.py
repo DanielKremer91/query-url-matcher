@@ -12,7 +12,7 @@ FILES = sorted(ROOT.glob("qum/**/*.py")) + [
     ROOT / "docs/superpowers/specs/2026-10-05-query-url-matcher-design.md",
 ]
 # "Paare" bleibt als Wort für Query-URL-Paare der Kalibrierung erlaubt, verboten ist das Blatt "Paare"
-FORBIDDEN = ["Kannibalisierungs-Risiko", "Schritt 9", '"Paare"', "„Paare", "'Paare'", "Blatt Paare"]
+FORBIDDEN = ["Kannibalisierungs-Risiko", "Top-Treffer", "Schritt 9", '"Paare"', "„Paare", "'Paare'", "Blatt Paare"]
 
 
 @pytest.mark.parametrize("path", FILES, ids=lambda p: p.name)

@@ -75,7 +75,7 @@ Je Query und URL entstehen immer drei Scores:
 
 Ein Formularfeld „Bewertungsgrundlage" (Chunk als Default, Gesamt-URL, Kombi) legt den **Leit-Score** fest. Er entscheidet über „passend" und die Sortierung. Alle drei Scores und Ränge stehen immer im Export.
 
-Je Query werden die Top-N-URLs nach Leit-Score ausgegeben (Default 5, einstellbar).
+Je Query werden die drei besten URLs nach Leit-Score ausgegeben.
 
 Berechnete Vektoren werden in der Sitzung und auf der Colab-Platte zwischengespeichert, Schlüssel ist Modell, Rolle (Query oder Passage) und Text-Hash. Geänderte Schwellen oder ein wiederholter Schritt betten nichts neu ein. Die Ähnlichkeiten werden als Matrixoperation gerechnet.
 
@@ -166,12 +166,11 @@ Standard ist eine Excel-Datei, per Häkchen zusätzlich ein ZIP mit einer CSV je
 |---|---|---|
 | Lesehilfe | Bedeutung jedes Blatts und jeder Spalte, alle Einstellungen des Laufs | immer |
 | Entscheidung | eine Zeile je Query: Urteil, beste URL, Passage, drei Scores, Vorsprung vor der zweitbesten URL, rankende URL mit Position, Cluster, Nachbar-Kandidat, Empfehlung | immer |
-| Top-Treffer | Top-N-URLs je Query mit Scores, Abstand zur besten URL, Rängen, Methode der Gesamt-URL | immer |
 | Kannibalisierungsgefahr | Abschnitt 8 | immer (Stufe „bereits sichtbar" nur mit Rankings) |
 | Content-Lücken | Lücken-Queries, mit SERPs zusätzlich Cluster und Nachbar-Kandidat | immer |
 | Lücken je Cluster | Zusammenfassung: Lücken je Cluster und Zahl der neuen Seiten | nur mit SERPs |
 
-Die Query steht in jedem Blatt in der ersten Spalte. Urteile sind farbig hinterlegt. Zwei Spalten zeigen, wie klar die beste Seite vorn liegt, weil kurze Queries absolut niedrig scoren: „Vorsprung vor zweitbester URL" (Entscheidung, Score der gezeigten Seite minus bester Score aller anderen URLs, negativ wenn eine andere Seite knapp vorn liegt, leer bei nur einer URL) und „Abstand zur besten URL" (Top-Treffer, bester Score der Query minus Score der Zeile). Beide beruhen auf dem Score der gewählten Bewertungsgrundlage, sind auf vier Nachkommastellen gerundet und ändern kein Urteil.
+Die Query steht in jedem Blatt in der ersten Spalte. Urteile sind farbig hinterlegt. Zwei Spalten zeigen, wie klar die beste Seite vorn liegt, weil kurze Queries absolut niedrig scoren: „Vorsprung vor zweitbester URL" (Entscheidung, Score der gezeigten Seite minus bester Score aller anderen URLs, negativ wenn eine andere Seite knapp vorn liegt, leer bei nur einer URL). Beide beruhen auf dem Score der gewählten Bewertungsgrundlage, sind auf vier Nachkommastellen gerundet und ändern kein Urteil.
 
 ## 12. Paketaufbau
 
@@ -182,7 +181,7 @@ Die Query steht in jedem Blatt in der ersten Spalte. Urteile sind farbig hinterl
 | `qum/chunk.py` | Wort-Chunks |
 | `qum/models.py` | Modellregister: Ansteuerung, Chunk-Defaults, Kontextgrenzen |
 | `qum/embeddings/` | Basis-Schnittstelle, lokal, OpenAI, Gemini, Cache |
-| `qum/match.py` | drei Scores, Ränge, Top-N |
+| `qum/match.py` | drei Scores, die drei besten URLs je Query, Ränge für den Modellvergleich |
 | `qum/threshold.py` | Vorschläge der Schwelle (kalibriert, Median), Beispielpaare |
 | `qum/verdict.py` | Urteile, Textbausteine |
 | `qum/cannibal.py` | Kannibalisierungs-Stufen |

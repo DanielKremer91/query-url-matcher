@@ -24,7 +24,7 @@ VERDICT_STATE = (
     + ("threshold", "threshold_source", "threshold_label")  # Schritt 7b
     + DECISION_STATE
 )
-MATCH_STATE = ("result", "lead", "top") + VERDICT_STATE
+MATCH_STATE = ("result", "lead") + VERDICT_STATE
 
 
 class NotebookStop(Exception):

@@ -11,7 +11,6 @@ from .serp import gap_summary
 
 SHEET_README = "Lesehilfe"
 SHEET_DECISION = "Entscheidung"
-SHEET_TOP = "Top-Treffer"
 SHEET_CANNIBAL = "Kannibalisierungsgefahr"
 SHEET_GAPS = "Content-Lücken"
 SHEET_GAP_CLUSTERS = "Lücken je Cluster"
@@ -19,7 +18,6 @@ SHEET_GAP_CLUSTERS = "Lücken je Cluster"
 _CSV_NAMES = {
     SHEET_README: "lesehilfe.csv",
     SHEET_DECISION: "entscheidung.csv",
-    SHEET_TOP: "top_treffer.csv",
     SHEET_CANNIBAL: "kannibalisierungsgefahr.csv",
     SHEET_GAPS: "content_luecken.csv",
     SHEET_GAP_CLUSTERS: "luecken_je_cluster.csv",
@@ -27,7 +25,6 @@ _CSV_NAMES = {
 
 _SHEET_HELP = {
     SHEET_DECISION: "Eine Zeile je Query mit Urteil, bester URL, Passage und Scores.",
-    SHEET_TOP: "Die besten URLs je Query mit Chunk-, Gesamt-URL- und Kombi-Score samt Rängen.",
     SHEET_CANNIBAL: "Queries, bei denen mehrere eigene Seiten konkurrieren, getrennt nach Stufe.",
     SHEET_GAPS: "Queries ohne passende Seite.",
     SHEET_GAP_CLUSTERS: "Lücken gebündelt nach SERP-Cluster: ein Cluster entspricht einer neuen Seite.",
@@ -53,11 +50,6 @@ _COLUMN_HELP = {
     L.C_S_CHUNK_3: "Chunk-Score der drittbesten URL.",
     L.C_S_FULL_3: "Gesamt-URL-Score der drittbesten URL.",
     L.C_S_COMBI_3: "Kombi-Score der drittbesten URL.",
-    L.C_GAP_TO_BEST: "Abstand dieses Treffers zum besten Treffer der Query (0 = bester Treffer).",
-    L.C_R_CHUNK: "Rang der Seite nach Chunk-Score für diese Query. 1 = beste URL für diese Query unter allen URLs.",
-    L.C_R_FULL: "Rang der Seite nach Gesamt-URL-Score für diese Query. 1 = beste URL für diese Query unter allen URLs.",
-    L.C_R_COMBI: "Rang der Seite nach Kombi-Score für diese Query. 1 = beste URL für diese Query unter allen URLs.",
-    L.C_METHOD: f"'{L.FULLTEXT}': ganzer Text als ein Embedding. '{L.CHUNK_MEAN}': Text zu lang, Näherung.",
     L.C_VERDICT: "Einordnung der Query, siehe die Urteile weiter unten in dieser Lesehilfe.",
     L.C_BEST_URL: "Die Seite mit dem höchsten Score für die Query, nach der gewählten Bewertungsgrundlage.",
     L.C_RANK_URL: "Die eigene URL, die laut Rankings am besten für die Query rankt, egal auf welcher Position.",
@@ -166,11 +158,10 @@ def _readme(sheet_names, settings, present_columns, threshold_source=None) -> pd
     return pd.DataFrame(rows, columns=[L.R_AREA, L.R_ENTRY, L.R_TEXT])
 
 
-def build_sheets(decisions, top, cannibal, settings, threshold_source=None) -> dict:
+def build_sheets(decisions, cannibal, settings, threshold_source=None) -> dict:
     """threshold_source: "rankings", "median" oder "manuell" (Herkunft der Schwelle für die Lesehilfe)."""
     sheets = {
         SHEET_DECISION: decisions,
-        SHEET_TOP: top,
         SHEET_CANNIBAL: cannibal,
         SHEET_GAPS: content_gaps(decisions),
     }
