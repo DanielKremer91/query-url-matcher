@@ -1,5 +1,6 @@
 import csv
 import io
+import re
 from dataclasses import dataclass
 
 import pandas as pd
@@ -193,9 +194,13 @@ def load_queries(df: pd.DataFrame, column: str | None = None) -> list:
     return out
 
 
+# Frog-Metadaten mit "content" im Namen, die keinen Seitentext enthalten (z. B. "Content Type": text/html)
+_CONTENT_METADATA = re.compile(r"content[\s_-]*(type|length|encoding|language)", re.IGNORECASE)
+
+
 def _custom_content_column(df: pd.DataFrame) -> str | None:
-    """Screaming-Frog-Custom-Extraction: genau eine Spalte, deren Name "content" enthält."""
-    matches = [c for c in df.columns if "content" in str(c).lower()]
+    """Screaming-Frog-Custom-Extraction: genau eine Spalte, deren Name "content" enthält (ohne Metadaten-Spalten)."""
+    matches = [c for c in df.columns if "content" in str(c).lower() and not _CONTENT_METADATA.search(str(c))]
     return matches[0] if len(matches) == 1 else None
 
 

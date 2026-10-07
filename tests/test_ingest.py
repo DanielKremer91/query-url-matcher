@@ -423,3 +423,24 @@ def test_load_content_reports_the_columns_it_used():
     df = pd.DataFrame({"Address": ["https://a.de/1"], "Toom Main Content Extracotr 1": ["Text"]})
     table = ingest.load_content(df)
     assert (table.url_column, table.content_column) == ("Address", "Toom Main Content Extracotr 1")
+
+
+def test_load_content_ignores_content_type_without_extraction():
+    # Standard-Frog-Export ohne Custom Extraction: "Content Type" ist kein Seitentext
+    df = pd.DataFrame({"Address": ["https://a.de/1"], "Content Type": ["text/html; charset=utf-8"], "Title 1": ["T"]})
+    with pytest.raises(ingest.IngestError, match="Content"):
+        ingest.load_content(df)
+
+
+def test_load_content_finds_extraction_next_to_content_type():
+    df = pd.DataFrame(
+        {
+            "Address": ["https://a.de/1"],
+            "Content Type": ["text/html; charset=utf-8"],
+            "Status Code": [200],
+            "Main Content 1": ["Seitentext"],
+        }
+    )
+    table = ingest.load_content(df)
+    assert table.content_column == "Main Content 1"
+    assert table.contents == ["Seitentext"]
