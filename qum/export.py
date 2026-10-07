@@ -104,7 +104,10 @@ _STAGE_HELP = {
 
 # "passt klar": eine Seite erreicht die Schwelle und liegt mehr als den Abstand 'fast gleich' vor jeder anderen passenden
 VERDICT_HELP = {
-    L.V_MATCH: "Ohne Rankings: Genau eine Seite passt klar, sie erreicht die Schwelle und liegt deutlich vor allen anderen.",
+    L.V_MATCH: (
+        "Genau eine Seite passt klar: Sie erreicht die Schwelle und liegt deutlich vor allen anderen. Die Query rankt "
+        "schwach, gar nicht, oder es sind keine Rankings geladen. Diese Seite ausbauen und intern stärken statt neu bauen."
+    ),
     L.V_GAP: "Keine Seite erreicht die Schwelle. Die Query rankt nicht gut, oder es sind keine Rankings geladen.",
     L.V_OK: (
         "Die Query rankt gut, die rankende Seite erreicht die Schwelle und passt am besten oder fast gleich gut wie die "
@@ -118,16 +121,11 @@ VERDICT_HELP = {
         "passen fast gleich gut. Details im Blatt Kannibalisierungsgefahr."
     ),
     L.V_WATCH: "Die Query rankt gut, obwohl keine Seite die Schwelle erreicht.",
-    L.V_USE: (
-        "Die Query rankt nicht gut, aber genau eine Seite passt klar: Sie erreicht die Schwelle und liegt deutlich vor "
-        "allen anderen."
-    ),
 }
 
 _FILLS = {
-    L.V_MATCH: "C6EFCE",
+    L.V_MATCH: "FFEB9C",
     L.V_OK: "C6EFCE",
-    L.V_USE: "FFEB9C",
     L.V_CANNIBAL: "F8CBAD",
     L.V_GAP: "FFC7CE",
     L.V_WATCH: "D9D9D9",

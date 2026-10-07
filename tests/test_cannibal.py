@@ -185,7 +185,7 @@ def test_every_cannibalisation_verdict_and_every_close_ok_is_listed():
     decisions = build_decisions(result, lead, 0.8, rankings)
     cannibal = find_cannibalization(result, lead, 0.8, rankings)
     assert decisions[L.C_VERDICT].tolist() == [
-        L.V_OK, L.V_OK, L.V_CANNIBAL, L.V_CANNIBAL, L.V_CANNIBAL, L.V_CANNIBAL, L.V_CANNIBAL, L.V_USE, L.V_GAP,
+        L.V_OK, L.V_OK, L.V_CANNIBAL, L.V_CANNIBAL, L.V_CANNIBAL, L.V_CANNIBAL, L.V_CANNIBAL, L.V_MATCH, L.V_GAP,
     ]
     flagged = set(decisions.loc[decisions[L.C_VERDICT] == L.V_CANNIBAL, L.C_QUERY])
     assert flagged <= set(cannibal.loc[cannibal[L.C_STAGE] == L.STAGE_DANGER, L.C_QUERY])
@@ -219,7 +219,7 @@ def test_negative_margin_is_rejected():
 
 
 def test_annotate_says_yes_for_every_query_in_the_cannibalisation_sheet():
-    decisions = pd.DataFrame({L.C_QUERY: ["a", "b", "c"], L.C_VERDICT: [L.V_OK, L.V_USE, L.V_CANNIBAL]})
+    decisions = pd.DataFrame({L.C_QUERY: ["a", "b", "c"], L.C_VERDICT: [L.V_OK, L.V_MATCH, L.V_CANNIBAL]})
     rankings = _rankings([("b", U1, U1, 3.0), ("b", U2, U2, 9.0)])
     result = make_result(["a", "b", "c"], [U1, U2, U3], [[0.9, 0.1, 0.1], [0.9, 0.1, 0.1], [0.8, 0.8, 0.1]])
     cannibal = find_cannibalization(result, result.lead("chunk"), 0.6, rankings)

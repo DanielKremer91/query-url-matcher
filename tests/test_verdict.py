@@ -78,7 +78,7 @@ def test_ranks_well_but_nothing_fits():
 
 # Rankt schwach (schlechter als rankt_gut_bis_position)
 def test_ranks_weakly_and_one_page_fits_clearly():
-    assert _row([0.1, 0.9, 0.7], ranking=[(U1, 35)])[L.C_VERDICT] == L.V_USE
+    assert _row([0.1, 0.9, 0.7], ranking=[(U1, 35)])[L.C_VERDICT] == L.V_MATCH
 
 
 def test_ranks_weakly_and_several_pages_fit_close_together_is_cannibalisation():
@@ -91,7 +91,7 @@ def test_ranks_weakly_and_nothing_fits_is_a_gap():
 
 # Rankings geladen, aber kein Ranking für die Query
 def test_not_ranking_at_all_follows_the_weak_row():
-    assert _row([0.1, 0.9, 0.7], ranking=[])[L.C_VERDICT] == L.V_USE
+    assert _row([0.1, 0.9, 0.7], ranking=[])[L.C_VERDICT] == L.V_MATCH
     assert _row([0.1, 0.85, 0.845], ranking=[])[L.C_VERDICT] == L.V_CANNIBAL
     assert _row([0.1, 0.5, 0.4], ranking=[])[L.C_VERDICT] == L.V_GAP
 
@@ -138,7 +138,7 @@ def test_exact_tie_between_ranking_and_best_url_is_ok_and_almost_as_good():
 
 
 def test_good_position_is_adjustable():
-    assert _row([0.9, 0.7, 0.1], ranking=[(U1, 12)])[L.C_VERDICT] == L.V_USE
+    assert _row([0.9, 0.7, 0.1], ranking=[(U1, 12)])[L.C_VERDICT] == L.V_MATCH
     assert _row([0.9, 0.7, 0.1], ranking=[(U1, 12)], good_position=15)[L.C_VERDICT] == L.V_OK
 
 

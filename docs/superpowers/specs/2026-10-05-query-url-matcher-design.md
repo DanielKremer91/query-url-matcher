@@ -101,8 +101,7 @@ Eine URL „passt", wenn ihr Leit-Score mindestens die Schwelle erreicht. „Fas
 | | genau eine Seite passt klar | mehrere Seiten passen fast gleich gut | keine Seite passt |
 |---|---|---|---|
 | rankt gut | in Ordnung | rankende Seite ist die beste oder liegt im Abstand und passt: in Ordnung (Kannibalisierungsgefahr „ja“). Eine andere Seite deutlich besser, die rankende Seite unter der Schwelle, während eine andere passt, oder die rankende URL fehlt im Frog-Export: Kannibalisierungsgefahr | rankt trotz schwachem Match |
-| rankt schwach oder gar nicht | bestehende Seite nutzen | Kannibalisierungsgefahr | Content-Lücke |
-| keine Rankings geladen | passende Seite vorhanden | Kannibalisierungsgefahr | Content-Lücke |
+| rankt schwach, gar nicht oder keine Rankings geladen | passende Seite vorhanden | Kannibalisierungsgefahr | Content-Lücke |
 
 Prüfreihenfolge: zuerst „keine Seite passt", dann gutes Ranking, dann die Zahl der fast gleich guten Seiten. Bei gutem Ranking gilt die Bedingung der mittleren Spalte auch, wenn nur eine Seite klar passt: Ist es nicht die rankende Seite, lautet das Urteil Kannibalisierungsgefahr.
 

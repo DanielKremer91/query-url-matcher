@@ -1087,7 +1087,7 @@ def test_verdict_guide_sits_before_step_7a_and_covers_every_verdict():
     guide_index = next(i for i, (kind, first) in enumerate(kinds) if kind == "markdown" and "So entstehen die Urteile" in first)
     assert kinds[guide_index + 1][1].startswith("#@title Schritt 7a")
     guide = CELLS[guide_index][1]
-    for verdict in (L.V_OK, L.V_CANNIBAL, L.V_WATCH, L.V_USE, L.V_GAP, L.V_MATCH):
+    for verdict in (L.V_OK, L.V_CANNIBAL, L.V_WATCH, L.V_GAP, L.V_MATCH):
         assert verdict in guide, verdict
     assert "| **Rankt gut**" in guide
 
@@ -1143,12 +1143,11 @@ def test_verdict_guide_shows_the_three_column_matrix():
     guide = _guide()
     assert "| | Genau eine Seite passt klar | Mehrere Seiten passen fast gleich gut | Keine Seite passt |" in guide
     rows = {line.split("|")[1].strip(): line for line in guide.splitlines() if line.startswith("| **")}
-    assert set(rows) == {"**Rankt gut** (Voreinstellung: bis Position 10)", "**Rankt schwach oder gar nicht**",
-                         "**Keine Rankings geladen**"}
-    weak = rows["**Rankt schwach oder gar nicht**"].split("|")[2:5]
-    assert [L.V_USE in weak[0], L.V_CANNIBAL in weak[1], L.V_GAP in weak[2]] == [True, True, True]
-    none = rows["**Keine Rankings geladen**"].split("|")[2:5]
-    assert [L.V_MATCH in none[0], L.V_CANNIBAL in none[1], L.V_GAP in none[2]] == [True, True, True]
+    weak_row = "**Rankt schwach, gar nicht oder keine Rankings geladen**"
+    assert set(rows) == {"**Rankt gut** (Voreinstellung: bis Position 10)", weak_row}
+    weak = rows[weak_row].split("|")[2:5]
+    assert [L.V_MATCH in weak[0], L.V_CANNIBAL in weak[1], L.V_GAP in weak[2]] == [True, True, True]
+    assert "Bestehende Seite nutzen" not in guide
     good = rows["**Rankt gut** (Voreinstellung: bis Position 10)"].split("|")[2:5]
     assert L.V_OK in good[0] and L.V_OK in good[1] and L.V_CANNIBAL in good[1] and L.V_WATCH in good[2]
     assert "Spalte „Kannibalisierungsgefahr“" in guide and "Übersicht" in guide

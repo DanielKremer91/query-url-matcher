@@ -60,7 +60,6 @@ V_GAP = "Content-Lücke"
 V_OK = "In Ordnung"
 V_CANNIBAL = "Kannibalisierungsgefahr"
 V_WATCH = "Rankt trotz schwachem Match"
-V_USE = "Bestehende Seite nutzen"
 
 STAGE_DANGER = "Gefahr"
 STAGE_VISIBLE = "Bereits sichtbar"

@@ -79,7 +79,7 @@ def test_readme_columns_and_disclaimer_first():
 def test_readme_lists_all_four_sheets_all_verdicts_and_both_stages():
     readme = _readme()
     assert _entries(readme, "Blatt") == [export.SHEET_OVERVIEW, export.SHEET_CANNIBAL, export.SHEET_GAPS, export.SHEET_README]
-    assert _entries(readme, "Urteil") == [L.V_MATCH, L.V_GAP, L.V_OK, L.V_CANNIBAL, L.V_WATCH, L.V_USE]
+    assert _entries(readme, "Urteil") == [L.V_MATCH, L.V_GAP, L.V_OK, L.V_CANNIBAL, L.V_WATCH]
     assert _entries(readme, "Stufe") == [L.STAGE_DANGER, L.STAGE_VISIBLE]
 
 
@@ -146,8 +146,9 @@ def test_help_texts_describe_the_rules():
     assert "oder die rankende URL steht nicht im Frog-Export" in export.VERDICT_HELP[L.V_CANNIBAL]
     assert "Mehrere Seiten erreichen die Schwelle und passen fast gleich gut" in export.VERDICT_HELP[L.V_CANNIBAL]
     assert "fast gleich gut" in export._STAGE_HELP[L.STAGE_DANGER]
-    for verdict in (L.V_MATCH, L.V_USE):
-        assert "enau eine Seite passt klar" in export.VERDICT_HELP[verdict]
+    assert "enau eine Seite passt klar" in export.VERDICT_HELP[L.V_MATCH]
+    assert "keine Rankings geladen" in export.VERDICT_HELP[L.V_MATCH]
+    assert not hasattr(L, "V_USE")
     comparison = export._COLUMN_HELP[L.C_RANK_IS_BEST]
     for value in (L.YES, L.CMP_CLOSE, L.NO, L.CMP_NOT_RANKING, L.CMP_NOT_IN_EXPORT):
         assert f"'{value}'" in comparison, value
@@ -168,8 +169,8 @@ def test_write_excel_creates_sheets_and_colours_verdicts(tmp_path):
     column = OVERVIEW_COLUMNS.index(L.C_VERDICT) + 1
     fills = [sheet.cell(row=r, column=column).fill.fgColor.rgb for r in (2, 3, 4)]
     assert [sheet.cell(row=r, column=column).value for r in (2, 3, 4)] == [L.V_MATCH, L.V_GAP, L.V_CANNIBAL]
-    assert [f[-6:] for f in fills] == ["C6EFCE", "FFC7CE", "F8CBAD"]
-    assert set(export._FILLS) == set(export.VERDICT_HELP) == {L.V_MATCH, L.V_GAP, L.V_OK, L.V_CANNIBAL, L.V_WATCH, L.V_USE}
+    assert [f[-6:] for f in fills] == ["FFEB9C", "FFC7CE", "F8CBAD"]
+    assert set(export._FILLS) == set(export.VERDICT_HELP) == {L.V_MATCH, L.V_GAP, L.V_OK, L.V_CANNIBAL, L.V_WATCH}
 
 
 def test_write_excel_leaves_missing_scores_empty(tmp_path):

@@ -83,7 +83,7 @@ def assess(result, lead, threshold, rankings=None, good_position=10, margin=0.01
         elif len(close) >= 2:
             verdict = L.V_CANNIBAL
         else:
-            verdict = L.V_MATCH if rankings is None else L.V_USE
+            verdict = L.V_MATCH
         out.append(Assessment(verdict, close, hit, ranking_j, ranks_well))
     return out
 
