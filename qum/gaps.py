@@ -1,32 +1,30 @@
+import numpy as np
 import pandas as pd
 
 from . import labels as L
-from .normalize import normalize_query
-from .verdict import best_rankings, format_position
+from .verdict import assess, format_position
 
-COLUMNS = [L.C_QUERY, L.C_BEST_SCORE, L.C_BEST_URL, L.C_POSITION, L.C_RANK_URL, L.C_TOPIC]
+COLUMNS = [L.C_QUERY, L.C_BEST_SCORE, L.C_TO_THRESHOLD, L.C_BEST_URL, L.C_POSITION, L.C_RANK_URL, L.C_TOPIC]
 
 
-def find_gaps(result, lead, threshold, rankings=None, topics=None, below=0.0, max_position=0) -> pd.DataFrame:
-    """Potentielle Content-Lücken: bester Leit-Score unter below (0 = Schwelle aus Schritt 7b).
-    max_position > 0: nur Queries ohne eigenes Ranking bis zu dieser Position; ohne Rankings wirkungslos.
-    topics: SERP-Cluster je Query (0 = ohne Cluster) oder None ohne SERPs."""
-    limit = below or threshold
-    best = best_rankings(rankings)
+def find_gaps(result, lead, threshold, rankings=None, topics=None, good_position=10, gap_position=0) -> pd.DataFrame:
+    """Potentielle Content-Lücken: genau die Queries mit dem Urteil Content-Lücke (dieselbe Regel wie die Übersicht),
+    die sichersten zuerst (größter Abstand unter der Schwelle). topics: SERP-Cluster je Query (0 = ohne Cluster) oder
+    None ohne SERPs."""
+    assessments = assess(result, lead, threshold, rankings, good_position, gap_position=gap_position)
     rows = []
-    for i, query in enumerate(result.queries):
+    for i, (query, a) in enumerate(zip(result.queries, assessments)):
+        if a.verdict != L.V_GAP:
+            continue
         j = int(lead[i].argmax())
-        if lead[i, j] >= limit:
-            continue
-        hit = best.get(normalize_query(query))
-        if max_position > 0 and hit is not None and hit.position <= max_position:
-            continue
+        best = float(lead[i, j])
+        position, ranking_url = (format_position(a.hit.position), a.hit.url) if a.hit is not None else ("", "")
         topic = topics[i] if topics is not None and topics[i] else None
-        position, ranking_url = (format_position(hit.position), hit.url) if hit is not None else ("", "")
-        rows.append((query, round(float(lead[i, j]), 4), result.urls[j], position, ranking_url, topic))
+        rows.append((query, round(best, 4), float(np.round(best - threshold, 4)) + 0.0, result.urls[j], position,
+                     ranking_url, topic))
     df = pd.DataFrame(rows, columns=COLUMNS)
     df[L.C_TOPIC] = df[L.C_TOPIC].astype("Int64")
-    return df
+    return df.sort_values(L.C_TO_THRESHOLD, kind="stable").reset_index(drop=True)
 
 
 def count_new_pages(gaps: pd.DataFrame) -> int:

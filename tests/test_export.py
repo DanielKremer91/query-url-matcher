@@ -107,7 +107,7 @@ def test_gap_sheet_row_states_the_new_pages_with_serps():
     readme = _readme(new_pages=7)
     text = readme[(readme[L.R_AREA] == "Blatt") & (readme[L.R_ENTRY] == export.SHEET_GAPS)][L.R_TEXT].item()
     assert "Neue Seiten: 7 (eine je Thema" in text
-    assert "eigenen Einstellungen" in text and f"'{L.V_GAP}'" in text
+    assert f"Urteil '{L.V_GAP}'" in text and "Abstand zur Schwelle" in text and "eigenen Einstellungen" not in text
     plain = _readme()
     text = plain[(plain[L.R_AREA] == "Blatt") & (plain[L.R_ENTRY] == export.SHEET_GAPS)][L.R_TEXT].item()
     assert "Neue Seiten" not in text and "Ohne SERPs" in text

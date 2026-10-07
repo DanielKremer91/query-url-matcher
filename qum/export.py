@@ -33,9 +33,8 @@ _SHEET_HELP = {
         f"Enthält jede Query mit dem Urteil '{L.V_CANNIBAL}'."
     ),
     SHEET_GAPS: (
-        "Queries, deren bester Score unter der Lücken-Schwelle liegt, mit den eigenen Einstellungen luecke_unter_score "
-        "und luecke_nur_ohne_ranking_bis_position aus Schritt 7c. Wegen dieser eigenen Einstellungen kann die Zahl der "
-        f"Zeilen von der Zahl der Urteile '{L.V_GAP}' abweichen."
+        f"Genau die Queries mit dem Urteil '{L.V_GAP}', sortiert nach Abstand zur Schwelle: die sichersten Lücken "
+        "zuerst. Wer nur deutliche Lücken will, filtert die Spalte Abstand zur Schwelle (zum Beispiel kleiner als -0.03)."
     ),
     SHEET_README: "Diese Erklärungen: Hinweise, Blätter, Urteile, Stufen, Spalten und die Einstellungen des Laufs.",
 }
@@ -104,7 +103,7 @@ _COLUMN_HELP = {
     L.C_SCORE_3: "Score der URL 3 nach der gewählten Bewertungsgrundlage. Leer, wenn sie nicht im Frog-Export steht.",
     L.C_POS_3: "Eigene Position der URL 3 für die Query. Leer, wenn sie dafür nicht rankt.",
     # Potentielle Content-Lücken
-    L.C_BEST_SCORE: "Score der besten URL nach der gewählten Bewertungsgrundlage. Er liegt unter der Lücken-Schwelle.",
+    L.C_BEST_SCORE: "Score der besten URL nach der gewählten Bewertungsgrundlage. Er liegt unter der Schwelle aus Schritt 7b.",
     L.C_TOPIC: (
         "Nummer des SERP-Clusters aus Schritt 6: Queries mit gleicher Nummer haben stark überlappende Google-Ergebnisse "
         "und ergeben zusammen eine neue Seite. Leer ohne SERPs oder wenn die Query in keinem Cluster ist."

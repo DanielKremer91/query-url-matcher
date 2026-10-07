@@ -42,7 +42,7 @@ Schritt 8 lädt eine Excel-Datei mit vier Blättern herunter, auf Wunsch zusätz
 
 - **Übersicht:** eine Zeile je Query mit den drei am besten passenden URLs und ihren Scores, dem Abstand zur Schwelle (positiv = passt), der eigenen Rankingposition, dem Urteil und der Spalte Kannibalisierungsgefahr (ja, möglich oder nein).
 - **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen, mit bis zu drei konkurrierenden URLs samt Score und Position, Rankingposition und rankender URL der Query, Stufe (Gefahr, Möglich, Kannibalisierung bereits sichtbar), Grund und Einordnung (wie dringend: hoch, mittel, niedrig oder offen).
-- **Potentielle Content-Lücken:** Queries ohne ausreichend passende Seite, mit SERPs nach Thema gebündelt.
+- **Potentielle Content-Lücken:** genau die Queries mit dem Urteil Content-Lücke, die sichersten zuerst, mit SERPs nach Thema gebündelt.
 - **Lesehilfe:** erklärt jedes Blatt, jede Spalte, jedes Urteil und nennt die Einstellungen des Laufs.
 
 ## Wichtig
@@ -429,9 +429,6 @@ rankt_gut_bis_position = 10 #@param {type:"integer"}
 abstand_fast_gleich = 0.01 #@param {type:"number"}
 #@markdown **sichtbar_bis_position:** Ranken zwei eigene URLs für dieselbe Query bis zu dieser Position, steht die Query im Blatt Kannibalisierungsgefahr mit der Stufe "Kannibalisierung bereits sichtbar".
 sichtbar_bis_position = 20 #@param {type:"integer"}
-#@markdown **Potentielle Content-Lücken:** Das Blatt „Potentielle Content-Lücken“ hat eigene Einstellungen. Seine Zahl kann deshalb von der Zahl der Urteile „Content-Lücke“ abweichen.
-#@markdown **luecke_unter_score:** Eine Query gilt als potentielle Lücke, wenn der Score ihrer besten Seite unter diesem Wert liegt. 0 = Schwelle aus Schritt 7b. Sonst ein Wert zwischen 0 und 1. Niedriger ist strenger: Bei 0.75 zählen nur Queries, zu denen kaum eine Seite passt (weniger, aber sicherere Lücken). Höher ist großzügiger: Bei 0.8 zählen auch knappe Fälle. Wähle den Wert im Bereich deiner Scores, Schritt 7a zeigt Beispiele (bei e5 meist zwischen 0.75 und 0.9, bei anderen Modellen deutlich anders).
-luecke_unter_score = 0.0 #@param {type:"number"}
 #@markdown **luecke_nur_ohne_ranking_bis_position:** Voreinstellung 20: Eine Query ist keine Lücke, wenn eine eigene Seite bis Position 20 rankt, auch wenn keine Seite die Schwelle erreicht. Google hält die Seite dann für relevant, das Urteil lautet „Rankt trotz schwachem Match“ (ausbauen statt neu bauen). Gilt für das Urteil und für das Blatt „Potentielle Content-Lücken“. 0 = aus. Ohne Rankings wird der Wert ignoriert.
 luecke_nur_ohne_ranking_bis_position = 20 #@param {type:"integer"}
 #@markdown **Clustering (nur mit Schritt 6):** Das Tool fasst Keywords mit ähnlichen Google-Ergebnissen zu Themen zusammen. Die beiden Regler ändern nur die Spalte Thema im Blatt „Potentielle Content-Lücken“: Lücken mit gleichem Thema zählen als eine neue Seite, nicht als mehrere.
@@ -461,11 +458,6 @@ if not 0 <= abstand_fast_gleich < 0.1:
         'Der Abstand für "fast gleich" muss mindestens 0 und kleiner als 0.1 sein. Er ist eine Differenz von '
         f"Cosinus-Scores (zum Beispiel 0.01), kein Prozentwert.{kept}"
     )
-if not 0 <= luecke_unter_score <= 1:
-    colab.stop(
-        "luecke_unter_score muss 0 (Schwelle aus Schritt 7b) oder ein Wert zwischen 0 und 1 sein, zum Beispiel 0.8."
-        f"{kept}"
-    )
 if luecke_nur_ohne_ranking_bis_position < 0:
     colab.stop(f"luecke_nur_ohne_ranking_bis_position darf nicht negativ sein. 0 schaltet die Bedingung aus.{kept}")
 colab.invalidate(globals(), *colab.DECISION_STATE)
@@ -481,7 +473,7 @@ new_decisions = annotate(new_decisions, new_cannibal)
 if luecke_nur_ohne_ranking_bis_position not in (0, 20) and rankings is None:  # nur melden, wenn bewusst geändert
     print("ℹ️ luecke_nur_ohne_ranking_bis_position wird ignoriert: Es sind keine Rankings geladen.")
 new_topics = None if serps is None else topics(result.queries, serps, serp_ueberschneidung / 100, cluster_dichte / 100)
-new_gaps = find_gaps(result, lead, threshold, rankings, new_topics, luecke_unter_score, gap_position)
+new_gaps = find_gaps(result, lead, threshold, rankings, new_topics, rankt_gut_bis_position, gap_position)
 if luecke_nur_ohne_ranking_bis_position == 0:
     gap_position_setting = "aus"
 elif rankings is None:
@@ -502,7 +494,6 @@ settings = {
     "Rankt gut bis Position": rankt_gut_bis_position,
     "Abstand fast gleich": abstand_fast_gleich,
     "Sichtbar bis Position": sichtbar_bis_position,
-    "Lücke unter Score": luecke_unter_score or "Schwelle aus Schritt 7b",
     "Lücke nur ohne Ranking bis Position": gap_position_setting,
     "SERP-Überschneidung (%)": serp_ueberschneidung,
     "Cluster-Dichte (%)": cluster_dichte,
@@ -516,13 +507,9 @@ for verdict, count in counts.items():
     print(f"   {count:>5} × {verdict}")
 hints = decisions[L.C_CANNIBAL].value_counts()
 print(f"   Spalte Kannibalisierungsgefahr (über alle Urteile): {hints.get(L.YES, 0)} × ja, {hints.get(L.MAYBE, 0)} × möglich")
-uncalibrated = " (Schwelle nicht kalibriert)" if threshold_source == "median" and not luecke_unter_score else ""
+uncalibrated = " (Schwelle nicht kalibriert)" if threshold_source == "median" else ""
 pages = "" if new_pages is None else f", zusammen {new_pages} neue Seiten (eine je Thema, Lücken ohne Thema einzeln)"
 print(f"   {len(gaps):>5} potentielle Content-Lücken{uncalibrated}{pages}")
-print(
-    "ℹ️ Das Blatt „Potentielle Content-Lücken“ folgt seinen eigenen Einstellungen (luecke_unter_score, "
-    "luecke_nur_ohne_ranking_bis_position). Seine Zahl kann deshalb von der Zahl der Urteile „Content-Lücke“ abweichen."
-)
 print()
 print("Was die Urteile bedeuten:")
 for verdict in counts.index:
@@ -535,7 +522,7 @@ STEP8 = '''#@title Schritt 8: Export { display-mode: "form" }
 #@markdown Die Excel-Datei hat vier Blätter:
 #@markdown **Übersicht:** eine Zeile je Query mit den drei besten URLs, ihren Scores, der Rankingposition, dem Urteil und Kannibalisierungsgefahr ja, möglich oder nein.
 #@markdown **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen, mit bis zu drei konkurrierenden URLs samt Score und Position, Rankingposition und rankender URL der Query, Stufe (Gefahr, Möglich, Kannibalisierung bereits sichtbar), Grund und Einordnung (wie dringend: hoch, mittel, niedrig oder offen).
-#@markdown **Potentielle Content-Lücken:** Queries, deren beste Seite unter der Lücken-Schwelle aus Schritt 7c liegt, mit SERPs nach Thema gebündelt.
+#@markdown **Potentielle Content-Lücken:** genau die Queries mit dem Urteil Content-Lücke, sortiert nach Abstand zur Schwelle (die sichersten zuerst), mit SERPs nach Thema gebündelt.
 #@markdown **Lesehilfe:** erklärt Blätter, Spalten, Urteile und Stufen und nennt die Einstellungen des Laufs.
 #@markdown Das Trennzeichen gilt nur für die zusätzliche CSV-ZIP (eine CSV je Blatt).
 zusaetzlich_csv_zip = False #@param {type:"boolean"}
@@ -587,7 +574,7 @@ In der Übersicht steht neben jedem Urteil, ob weitere eigene Seiten um die Quer
 - **möglich**: Weitere Seiten passen, liegen aber deutlich hinter der besten (Stufe „Möglich“).
 - **nein**: Keine weitere Seite passt.
 
-Welche URLs es sind, steht im Blatt „Kannibalisierungsgefahr“. Das Blatt „Potentielle Content-Lücken“ hat eigene Einstellungen in Schritt 7c, seine Zahl kann deshalb von der Zahl der Urteile „Content-Lücke“ abweichen.
+Welche URLs es sind, steht im Blatt „Kannibalisierungsgefahr“. Das Blatt „Potentielle Content-Lücken“ enthält genau die Queries mit dem Urteil „Content-Lücke“, die sichersten zuerst (Spalte „Abstand zur Schwelle“).
 
 Alle Urteile sind Hinweise zum Prüfen, keine Entscheidungen.
 '''

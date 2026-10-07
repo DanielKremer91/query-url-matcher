@@ -129,10 +129,9 @@ Clustering nur mit Top-10-SERPs. Übernommen aus dem alten Skript:
 
 Das Clustering dient nur dem Blatt „Potentielle Content-Lücken": Die Cluster-Nummer steht dort in der Spalte Thema, und die Zahl neuer Seiten zählt eine Seite je Thema, Lücken ohne Thema einzeln.
 
-Das Blatt hat eigene Einstellungen in Schritt 7c, seine Zahl kann deshalb von der Zahl der Urteile „Content-Lücke" abweichen:
+Das Blatt enthält genau die Queries mit dem Urteil „Content-Lücke" (Abschnitt 7), sortiert nach „Abstand zur Schwelle", die sichersten Lücken zuerst. Spalten: Query · Bester Score · Abstand zur Schwelle · Beste URL · Rankingposition · Rankende URL · Thema. Bis 0.2.9 hatte das Blatt eine eigene Score-Grenze `luecke_unter_score`; sie fiel weg, weil Urteil und Blatt sonst auseinanderliefen (Entscheidung Daniel, 2026-10-07: „welcher boden im neuen haus" war Content-Lücke, fehlte aber im Blatt, weil 0.8 als absolute Grenze bei e5 fast wirkungslos ist). Wer nur deutliche Lücken will, filtert die Spalte Abstand zur Schwelle.
 
-- `luecke_unter_score` (Default 0 = Schwelle aus Schritt 7b): Eine Query ist eine potentielle Lücke, wenn ihr bester Leit-Score darunter liegt. Erlaubt sind 0 oder Werte zwischen 0 und 1.
-- `luecke_nur_ohne_ranking_bis_position` (Default 20, 0 = aus): Es zählen nur Queries ohne eigenes Ranking bis zu dieser Position (kein Ranking oder schlechter); gilt auch für das Urteil Content-Lücke (Abschnitt 7). Ohne Rankings wird der Wert ignoriert, mit einer Hinweiszeile nur, wenn er von 0 oder 20 abweicht.
+- `luecke_nur_ohne_ranking_bis_position` (Default 20, 0 = aus): Rankt eine eigene Seite bis zu dieser Position, ist die Query keine Content-Lücke (Abschnitt 7). Ohne Rankings wird der Wert ignoriert, mit einer Hinweiszeile nur, wenn er von 0 oder 20 abweicht.
 
 Schritt 7c nennt die Zahl der potentiellen Lücken und, mit SERPs, die Zahl der neuen Seiten; die Lesehilfe nennt die Zahl der neuen Seiten in der Zeile zum Blatt.
 
@@ -161,7 +160,7 @@ Vier Blätter in dieser Reihenfolge:
 |---|---|
 | Übersicht | Query · Beste URL · Relevanter Chunk · Score Chunk · Score Gesamt-URL · Score Kombi · Abstand zur Schwelle · Vorsprung vor zweitbester URL · Zweitbeste URL · Score Chunk 2 · Score Gesamt-URL 2 · Score Kombi 2 · Drittbeste URL · Score Chunk 3 · Score Gesamt-URL 3 · Score Kombi 3 · Rankingposition · Rankende URL · Rankende URL = beste URL? · Urteil · Kannibalisierungsgefahr |
 | Kannibalisierungsgefahr | Query · URL 1 · Score 1 · Position 1 · URL 2 · Score 2 · Position 2 · URL 3 · Score 3 · Position 3 · Rankingposition · Rankende URL · Stufe · Grund · Einordnung (Abschnitt 8) |
-| Potentielle Content-Lücken | Query · Bester Score · Beste URL · Rankingposition · Rankende URL · Thema (Abschnitt 9) |
+| Potentielle Content-Lücken | Query · Bester Score · Abstand zur Schwelle · Beste URL · Rankingposition · Rankende URL · Thema (Abschnitt 9) |
 | Lesehilfe | Hinweise (Einordnung, Score-Band, Herkunft der Schwelle), alle vier Blätter, alle Urteile, beide Stufen, jede Spalte, alle Einstellungen des Laufs |
 
 Übersicht, eine Zeile je Query:

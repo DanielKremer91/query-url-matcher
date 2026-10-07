@@ -572,7 +572,7 @@ def test_smoke_serps_with_few_urls_per_keyword_warn(nb, capsys):
 def test_step_7c_fine_settings_keep_their_defaults():
     source = _source("7c")
     for line in ("rankt_gut_bis_position = 10", "abstand_fast_gleich = 0.01", "sichtbar_bis_position = 20",
-                 "luecke_unter_score = 0.0", "luecke_nur_ohne_ranking_bis_position = 20",
+                 "luecke_nur_ohne_ranking_bis_position = 20",
                  "serp_ueberschneidung = 50", "cluster_dichte = 50"):
         assert re.search(rf"^{re.escape(line)} #@param", source, flags=re.M), line
     assert re.search(r"^kalibrierung_bis_position = 5 #@param", _source("7a"), flags=re.M)
@@ -1022,28 +1022,25 @@ def test_step_7c_explains_both_cluster_sliders_with_examples():
 
 def test_step_7c_explains_the_gap_fields():
     source = _source("7c")
-    assert "Niedriger ist strenger" in _source("7c") and "Höher ist großzügiger" in _source("7c")
-    for text in ("**luecke_unter_score:**", "0 = Schwelle aus Schritt 7b", "**luecke_nur_ohne_ranking_bis_position:**",
+    assert "luecke_unter_score" not in source and "eigene Einstellungen" not in source
+    for text in ("**luecke_nur_ohne_ranking_bis_position:**",
                  "0 = aus", "Ohne Rankings wird der Wert ignoriert", "Rankt trotz schwachem Match"):
         assert text in source, text
 
 
-def test_smoke_step_7c_counts_gaps_with_its_own_settings(nb, capsys):
+def test_smoke_step_7c_gap_sheet_lists_exactly_the_content_gap_verdicts(nb, capsys):
     from qum import labels as L
 
     _load(nb)
     _verdicts(nb)
     out = capsys.readouterr().out
-    gaps = nb.ns["gaps"]
+    gaps, decisions = nb.ns["gaps"], nb.ns["decisions"]
+    assert set(gaps[L.C_QUERY]) == set(decisions.loc[decisions[L.C_VERDICT] == L.V_GAP, L.C_QUERY])
     assert f"{len(gaps):>5} potentielle Content-Lücken (Schwelle nicht kalibriert)" in out
     assert "neue Seiten" not in out  # ohne SERPs gibt es kein Thema
-    assert "eigenen Einstellungen" in out and "Content-Lücke" in out
-    nb.run("7c", luecke_unter_score=1.0)
-    assert len(nb.ns["gaps"]) == 12
-    assert nb.ns["settings"]["Lücke unter Score"] == 1.0
-    nb.run("7c", luecke_unter_score=0.0)
-    assert nb.ns["settings"]["Lücke unter Score"] == "Schwelle aus Schritt 7b"
-    assert nb.ns["gaps"][L.C_TOPIC].isna().all()
+    assert "eigenen Einstellungen" not in out and "Lücke unter Score" not in nb.ns["settings"]
+    assert gaps[L.C_TO_THRESHOLD].is_monotonic_increasing
+    assert gaps[L.C_TOPIC].isna().all()
 
 
 def test_smoke_step_7c_gaps_with_rankings_and_serps(nb, capsys):
@@ -1055,18 +1052,19 @@ def test_smoke_step_7c_gaps_with_rankings_and_serps(nb, capsys):
     nb.run(6, "serps.csv")
     _verdicts(nb, OWN, eigene_schwelle=1.0, luecke_nur_ohne_ranking_bis_position=0)
     out = capsys.readouterr().out
-    gaps = nb.ns["gaps"]
-    assert len(gaps) == 12 and gaps[L.C_TOPIC].notna().any()
-    assert nb.ns["new_pages"] == count_new_pages(gaps) < 12
+    gaps, decisions = nb.ns["gaps"], nb.ns["decisions"]
+    # gut rankende Queries sind nie eine Lücke, alle anderen schon (Schwelle 1.0: keine Seite passt)
+    good = set(nb.ns["rankings"].query("position <= 10")["query_norm"])
+    expected = {q for q in nb.ns["queries"] if q.lower() not in good}
+    assert set(gaps[L.C_QUERY]) == expected and gaps[L.C_TOPIC].notna().any()
+    assert nb.ns["new_pages"] == count_new_pages(gaps) < len(gaps)
     assert f"   {len(gaps):>5} potentielle Content-Lücken, zusammen {nb.ns['new_pages']} neue Seiten" in out
-    nb.run("7c", luecke_nur_ohne_ranking_bis_position=10)
-    ranking = set(nb.ns["rankings"].query("position <= 10")["query_norm"])
-    assert len(nb.ns["gaps"]) == 12 - len(ranking & {q.lower() for q in nb.ns["queries"]})
-    assert nb.ns["settings"]["Lücke nur ohne Ranking bis Position"] == 10
-    # dieselbe Einstellung gilt für das Urteil: wer bis dahin rankt, ist keine Content-Lücke
+    nb.run("7c", luecke_nur_ohne_ranking_bis_position=40)
+    ranking = set(nb.ns["rankings"].query("position <= 40")["query_norm"])
+    assert set(nb.ns["gaps"][L.C_QUERY]) == {q for q in nb.ns["queries"] if q.lower() not in ranking}
+    assert nb.ns["settings"]["Lücke nur ohne Ranking bis Position"] == 40
     decisions = nb.ns["decisions"]
-    gap_verdicts = set(decisions.loc[decisions[L.C_VERDICT] == L.V_GAP, L.C_QUERY].str.lower())
-    assert not gap_verdicts & ranking
+    assert set(nb.ns["gaps"][L.C_QUERY]) == set(decisions.loc[decisions[L.C_VERDICT] == L.V_GAP, L.C_QUERY])
 
 
 def test_smoke_step_7c_ignores_the_ranking_condition_without_rankings(nb, capsys):
@@ -1080,8 +1078,7 @@ def test_smoke_step_7c_ignores_the_ranking_condition_without_rankings(nb, capsys
 
 @pytest.mark.parametrize(
     "form, hint",
-    [({"luecke_unter_score": -0.1}, "luecke_unter_score"), ({"luecke_unter_score": 1.5}, "luecke_unter_score"),
-     ({"luecke_nur_ohne_ranking_bis_position": -1}, "luecke_nur_ohne_ranking_bis_position")],
+    [({"luecke_nur_ohne_ranking_bis_position": -1}, "luecke_nur_ohne_ranking_bis_position")],
 )
 def test_smoke_step_7c_rejects_invalid_gap_settings(nb, capsys, form, hint):
     _load(nb)
