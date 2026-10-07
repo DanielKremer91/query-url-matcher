@@ -38,7 +38,7 @@ def _urls(df, group=0):
 def test_columns_and_empty_result():
     df = _run(["q"], [[0.9, 0.5, 0.1]])
     assert list(df.columns) == COLUMNS == [
-        L.C_QUERY, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_COMP_POS,
+        L.C_QUERY, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_GAP_TO_BEST, L.C_COMP_POS,
         L.C_POSITION, L.C_RANK_URL, L.C_STAGE, L.C_REASON, L.C_PRIORITY,
     ]
     assert [L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_COMP_POS] == [
@@ -328,7 +328,9 @@ def _priority(scores, ranking, **kwargs):
 
 
 def test_priority_values():
-    assert [L.PRIO_HIGH, L.PRIO_MID, L.PRIO_LOW, L.PRIO_OPEN] == ["hoch", "mittel", "niedrig", "offen"]
+    assert [L.PRIO_VERY_HIGH, L.PRIO_HIGH, L.PRIO_MID, L.PRIO_LOW, L.PRIO_VERY_LOW, L.PRIO_OPEN] == [
+        "sehr hoch", "hoch", "mittel", "niedrig", "sehr niedrig", "offen",
+    ]
 
 
 def test_priority_without_rankings_is_open():
@@ -336,10 +338,19 @@ def test_priority_without_rankings_is_open():
     assert _priority([0.9, 0.7, 0.1], None) == [[L.STAGE_POSSIBLE, L.PRIO_OPEN]]
 
 
-# Stufe Gefahr und Kannibalisierung bereits sichtbar: nach Top-Ranking
-def test_danger_without_a_top_ranking_is_high():
-    assert _priority([0.8, 0.8, 0.1], [(U1, 25)]) == [[L.STAGE_DANGER, L.PRIO_HIGH]]
+# Stufe Gefahr und Kannibalisierung bereits sichtbar: nach Ranking-Band
+def test_danger_ranking_just_below_the_top_is_very_high():
+    assert _priority([0.8, 0.8, 0.1], [(U1, 11)]) == [[L.STAGE_DANGER, L.PRIO_VERY_HIGH]]
+    assert _priority([0.8, 0.8, 0.1], [(U1, 20)]) == [[L.STAGE_DANGER, L.PRIO_VERY_HIGH]]
+
+
+def test_danger_ranking_beyond_the_band_or_not_at_all_is_high():
+    assert _priority([0.8, 0.8, 0.1], [(U1, 21)]) == [[L.STAGE_DANGER, L.PRIO_HIGH]]
     assert _priority([0.8, 0.8, 0.1], []) == [[L.STAGE_DANGER, L.PRIO_HIGH]]  # Rankings geladen, Query rankt nicht
+
+
+def test_the_band_ends_at_the_visible_position():
+    assert _priority([0.8, 0.8, 0.1], [(U1, 25)], visible_position=30) == [[L.STAGE_DANGER, L.PRIO_VERY_HIGH]]
 
 
 def test_danger_with_a_top_ranking_of_the_best_page_is_low():
@@ -354,19 +365,28 @@ def test_danger_with_a_top_ranking_of_another_page_is_medium():
 
 def test_visible_stage_follows_the_best_own_ranking():
     assert _priority([0.9, 0.1, 0.1], [(U1, 3), (U2, 15)]) == [[L.STAGE_VISIBLE, L.PRIO_LOW]]
-    assert _priority([0.9, 0.1, 0.1], [(U1, 14), (U2, 15)]) == [[L.STAGE_VISIBLE, L.PRIO_HIGH]]
+    assert _priority([0.9, 0.1, 0.1], [(U1, 14), (U2, 15)]) == [[L.STAGE_VISIBLE, L.PRIO_VERY_HIGH]]
 
 
 # Stufe Möglich: weitere Seiten liegen deutlich dahinter, entscheidend ist, ob eine schwächere Seite rankt
-def test_possible_with_the_best_page_ranking_at_any_position_is_low():
-    assert _priority([0.9, 0.7, 0.1], [(U1, 3)]) == [[L.STAGE_POSSIBLE, L.PRIO_LOW]]
-    assert _priority([0.9, 0.7, 0.1], [(U1, 11)]) == [[L.STAGE_POSSIBLE, L.PRIO_LOW]]  # sauna selber bauen
+def test_possible_with_the_best_page_ranking_at_any_position_is_very_low():
+    assert _priority([0.9, 0.7, 0.1], [(U1, 3)]) == [[L.STAGE_POSSIBLE, L.PRIO_VERY_LOW]]
+    assert _priority([0.9, 0.7, 0.1], [(U1, 11)]) == [[L.STAGE_POSSIBLE, L.PRIO_VERY_LOW]]  # sauna selber bauen
 
 
-def test_possible_without_any_ranking_is_low():
-    assert _priority([0.9, 0.7, 0.1], []) == [[L.STAGE_POSSIBLE, L.PRIO_LOW]]
+def test_possible_without_any_ranking_is_very_low():
+    assert _priority([0.9, 0.7, 0.1], []) == [[L.STAGE_POSSIBLE, L.PRIO_VERY_LOW]]
 
 
 def test_possible_with_a_weaker_page_ranking_is_medium():
     assert _priority([0.9, 0.7, 0.1], [(U2, 30)]) == [[L.STAGE_POSSIBLE, L.PRIO_MID]]
     assert _priority([0.9, 0.7, 0.1], [(ALT, 30)]) == [[L.STAGE_POSSIBLE, L.PRIO_MID]]
+
+
+def test_every_row_shows_the_distance_to_the_semantically_best_url():
+    rankings = _rankings([("q", U1, U1, 4.0), ("q", ALT, ALT, 6.0)])
+    df = _run(["q"], [[0.65, 0.9, 0.1]], rankings)
+    gaps = dict(zip(df[L.C_COMP_URL], df[L.C_GAP_TO_BEST]))
+    assert gaps[U2] == 0.0 and gaps[U1] == 0.25  # 0.9 - 0.65, die beste URL selbst hat 0
+    assert pd.isna(gaps[ALT])  # nicht im Frog-Export: kein Score, kein Abstand
+    assert L.C_GAP_TO_BEST == "Abstand zur besten URL"

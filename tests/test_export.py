@@ -320,3 +320,32 @@ def test_topic_is_written_as_a_whole_number_or_left_empty(tmp_path):
     sheet = load_workbook(tmp_path / "out.xlsx")[export.SHEET_GAPS]
     column = GAP_COLUMNS.index(L.C_TOPIC) + 1
     assert [sheet.cell(row=r, column=column).value for r in (2, 3, 4)] == [3, None, 3]
+
+
+def _lead_fills(path):
+    sheet = load_workbook(path)[export.SHEET_OVERVIEW]
+    column = OVERVIEW_COLUMNS.index(L.C_LEAD_GAP) + 1
+    return [sheet.cell(row=r, column=column).fill.fgColor.rgb[-6:] for r in (2, 3, 4)]
+
+
+def test_lead_over_the_second_url_is_coloured_by_the_margin(tmp_path):
+    sheets = _sheets()
+    sheets[export.SHEET_OVERVIEW][L.C_LEAD_GAP] = [0.03, 0.015, 0.01]
+    export.write_excel(tmp_path / "out.xlsx", sheets, margin=0.01)
+    # rot: höchstens der Abstand fast gleich, gelb: bis zum Doppelten, grün: darüber
+    assert _lead_fills(tmp_path / "out.xlsx") == ["C6EFCE", "FFEB9C", "F8CBAD"]
+    export.write_excel(tmp_path / "wide.xlsx", sheets, margin=0.02)
+    assert _lead_fills(tmp_path / "wide.xlsx") == ["FFEB9C", "F8CBAD", "F8CBAD"]
+    assert sheets[export.SHEET_OVERVIEW][L.C_LEAD_GAP].tolist() == [0.03, 0.015, 0.01]  # Werte bleiben
+
+
+def test_missing_lead_stays_uncoloured(tmp_path):
+    sheets = _sheets()
+    sheets[export.SHEET_OVERVIEW][L.C_LEAD_GAP] = [None, 0.5, 0.5]
+    export.write_excel(tmp_path / "out.xlsx", sheets)
+    assert _lead_fills(tmp_path / "out.xlsx")[0] == "000000"
+
+
+def test_lead_help_explains_the_colours():
+    text = export._COLUMN_HELP[L.C_LEAD_GAP]
+    assert "rot" in text and "gelb" in text and "grün" in text and "fast gleich" in text

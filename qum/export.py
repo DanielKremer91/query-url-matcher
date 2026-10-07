@@ -55,6 +55,8 @@ _COLUMN_HELP = {
     L.C_LEAD_GAP: (
         "Score der besten URL minus Score der zweitbesten URL, nach der gewählten Bewertungsgrundlage. "
         "Ein großer Vorsprung heißt: eine Seite sticht klar heraus, auch wenn der absolute Score niedrig ist. "
+        "Farbe im Excel, gemessen am Abstand 'fast gleich' aus Schritt 7c: rot = höchstens dieser Abstand (die "
+        "zweitbeste URL ist praktisch gleichauf), gelb = bis zum Doppelten, grün = die beste URL liegt klar vorn. "
         "Leer, wenn es nur eine URL gibt."
     ),
     L.C_SECOND_URL: "Die Seite mit dem zweithöchsten Score für die Query, nach der gewählten Bewertungsgrundlage.",
@@ -81,12 +83,14 @@ _COLUMN_HELP = {
     ),
     # Kannibalisierungsgefahr
     L.C_PRIORITY: (
-        f"Wie dringend der Fall ist (Top-Ranking = bis rankt_gut_bis_position). Stufe Gefahr oder Kannibalisierung "
-        f"bereits sichtbar: '{L.PRIO_HIGH}' ohne Top-Ranking, die Seiten stehen sich vermutlich im Weg, handeln "
-        f"(abgrenzen, zusammenführen, Hauptseite festlegen); '{L.PRIO_MID}' bei Top-Ranking einer anderen als der besten "
-        f"Seite, prüfen, ob Google die richtige gewählt hat; '{L.PRIO_LOW}' bei Top-Ranking der besten Seite, beobachten. "
-        f"Stufe Möglich (Konkurrenz deutlich dahinter): '{L.PRIO_MID}', wenn eine andere als die beste Seite rankt, egal "
-        f"auf welcher Position, sonst '{L.PRIO_LOW}'. '{L.PRIO_OPEN}': keine Rankings geladen, nur semantisch geprüft."
+        f"Wie dringend der Fall ist. Stufe Gefahr oder Kannibalisierung bereits sichtbar, nach dem besten eigenen Ranking: "
+        f"'{L.PRIO_VERY_HIGH}' knapp hinter den Top-Rankings bis sichtbar_bis_position (Voreinstellung 20), fast oben, die "
+        f"Konkurrenz bremst vermutlich; '{L.PRIO_HIGH}' schlechter oder kein Ranking, die Seiten stehen sich im Weg, "
+        f"handeln (abgrenzen, zusammenführen, Hauptseite festlegen); '{L.PRIO_MID}' Top-Ranking (bis "
+        f"rankt_gut_bis_position) einer anderen als der besten Seite, prüfen, ob Google die richtige gewählt hat; "
+        f"'{L.PRIO_LOW}' Top-Ranking der besten Seite, beobachten. Stufe Möglich (Konkurrenz deutlich dahinter): "
+        f"'{L.PRIO_MID}', wenn eine andere als die beste Seite rankt, egal wo, sonst '{L.PRIO_VERY_LOW}'. "
+        f"'{L.PRIO_OPEN}': keine Rankings geladen, nur semantisch geprüft."
     ),
     L.C_STAGE: "Stufe der Kannibalisierungsgefahr, siehe die Stufen weiter oben in dieser Lesehilfe.",
     L.C_REASON: "Warum die Query hier steht. Steht in jeder Zeile der Gruppe.",
@@ -97,6 +101,10 @@ _COLUMN_HELP = {
         "filtern zeigt, bei welchen Queries eine Seite mit anderen konkurriert."
     ),
     L.C_COMP_SCORE: "Score dieser URL nach der gewählten Bewertungsgrundlage. Leer, wenn sie nicht im Frog-Export steht.",
+    L.C_GAP_TO_BEST: (
+        "Score der semantisch besten URL der Query minus Score dieser URL. 0 bei der besten URL selbst; höchstens der "
+        "Abstand 'fast gleich' aus Schritt 7c heißt praktisch gleichauf. Leer, wenn die URL nicht im Frog-Export steht."
+    ),
     L.C_COMP_POS: "Eigene Position dieser URL für die Query. Leer, wenn sie dafür nicht rankt.",
     # Potentielle Content-Lücken
     L.C_BEST_SCORE: "Score der besten URL nach der gewählten Bewertungsgrundlage. Er liegt unter der Schwelle aus Schritt 7b.",
@@ -226,7 +234,19 @@ def _clean(df: pd.DataFrame) -> pd.DataFrame:
 _FORMULA_START = ("=", "+", "-", "@")
 
 
-def write_excel(path, sheets: dict) -> None:
+# Vorsprung vor zweitbester URL, gemessen am Abstand "fast gleich": höchstens der Abstand rot, bis zum Doppelten gelb
+_LEAD_FILLS = ("F8CBAD", "FFEB9C", "C6EFCE")
+
+
+def _lead_fill(value, margin):
+    if value is None or pd.isna(value):
+        return None
+    if value <= margin + 1e-9:
+        return _LEAD_FILLS[0]
+    return _LEAD_FILLS[1] if value <= 2 * margin + 1e-9 else _LEAD_FILLS[2]
+
+
+def write_excel(path, sheets: dict, margin=0.01) -> None:
     with pd.ExcelWriter(path, engine="openpyxl") as writer:
         for name, df in sheets.items():
             df = _clean(df)
@@ -246,6 +266,12 @@ def write_excel(path, sheets: dict) -> None:
                 col = list(df.columns).index(L.C_VERDICT) + 1
                 for row, verdict in enumerate(df[L.C_VERDICT], start=2):
                     colour = _FILLS.get(verdict)
+                    if colour:
+                        sheet.cell(row=row, column=col).fill = PatternFill("solid", fgColor=colour)
+            if L.C_LEAD_GAP in df.columns:
+                col = list(df.columns).index(L.C_LEAD_GAP) + 1
+                for row, value in enumerate(df[L.C_LEAD_GAP], start=2):
+                    colour = _lead_fill(value, margin)
                     if colour:
                         sheet.cell(row=row, column=col).fill = PatternFill("solid", fgColor=colour)
 

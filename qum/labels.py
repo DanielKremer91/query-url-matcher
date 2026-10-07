@@ -36,6 +36,7 @@ C_SCORE_2 = "Score 2"  # Vorschau in Schritt 4
 C_NO = "Nr."
 C_COMP_URL = "Konkurrierende URL"
 C_COMP_SCORE = "Score der URL"
+C_GAP_TO_BEST = "Abstand zur besten URL"
 C_COMP_POS = "Position der URL"
 
 # Prüfbeispiele um die Schwelle (Schritt 7a und 7b, nicht im Export)
@@ -60,9 +61,11 @@ V_WATCH = "Rankt trotz schwachem Match"
 
 STAGE_DANGER = "Gefahr"
 C_PRIORITY = "Einordnung"
+PRIO_VERY_HIGH = "sehr hoch"
 PRIO_HIGH = "hoch"
 PRIO_MID = "mittel"
 PRIO_LOW = "niedrig"
+PRIO_VERY_LOW = "sehr niedrig"
 PRIO_OPEN = "offen"
 STAGE_POSSIBLE = "Möglich"
 STAGE_VISIBLE = "Kannibalisierung bereits sichtbar"

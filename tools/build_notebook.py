@@ -41,7 +41,7 @@ Für die Modelle mit API-Key legst du im Secrets-Panel (Schlüssel-Symbol links)
 Schritt 8 lädt eine Excel-Datei mit vier Blättern herunter, auf Wunsch zusätzlich ein ZIP mit einer CSV je Blatt:
 
 - **Übersicht:** eine Zeile je Query mit den drei am besten passenden URLs und ihren Scores, dem Abstand zur Schwelle (positiv = passt), der eigenen Rankingposition, dem Urteil und der Spalte Kannibalisierungsgefahr (ja, möglich oder nein).
-- **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen, mit einer Zeile je konkurrierender URL samt Score und Position (die Query steht in jeder Zeile, nach URL filterbar), Rankingposition und rankender URL der Query, Stufe (Gefahr, Möglich, Kannibalisierung bereits sichtbar), Grund und Einordnung (wie dringend: hoch, mittel, niedrig oder offen).
+- **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen, mit einer Zeile je konkurrierender URL samt Score, Abstand zur besten URL und Position (die Query steht in jeder Zeile, nach URL filterbar), Rankingposition und rankender URL der Query, Stufe (Gefahr, Möglich, Kannibalisierung bereits sichtbar), Grund und Einordnung (wie dringend: sehr hoch, hoch, mittel, niedrig, sehr niedrig oder offen).
 - **Potentielle Content-Lücken:** genau die Queries mit dem Urteil Content-Lücke, die sichersten zuerst, mit SERPs nach Thema gebündelt.
 - **Lesehilfe:** erklärt jedes Blatt, jede Spalte, jedes Urteil und nennt die Einstellungen des Laufs.
 
@@ -521,7 +521,7 @@ print("✅ Schritt 7c fertig. Weiter mit Schritt 8 (Export).")
 STEP8 = '''#@title Schritt 8: Export { display-mode: "form" }
 #@markdown Die Excel-Datei hat vier Blätter:
 #@markdown **Übersicht:** eine Zeile je Query mit den drei besten URLs, ihren Scores, der Rankingposition, dem Urteil und Kannibalisierungsgefahr ja, möglich oder nein.
-#@markdown **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen, mit einer Zeile je konkurrierender URL samt Score und Position (die Query steht in jeder Zeile, nach URL filterbar), Rankingposition und rankender URL der Query, Stufe (Gefahr, Möglich, Kannibalisierung bereits sichtbar), Grund und Einordnung (wie dringend: hoch, mittel, niedrig oder offen).
+#@markdown **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen, mit einer Zeile je konkurrierender URL samt Score, Abstand zur besten URL und Position (die Query steht in jeder Zeile, nach URL filterbar), Rankingposition und rankender URL der Query, Stufe (Gefahr, Möglich, Kannibalisierung bereits sichtbar), Grund und Einordnung (wie dringend: sehr hoch, hoch, mittel, niedrig, sehr niedrig oder offen).
 #@markdown **Potentielle Content-Lücken:** genau die Queries mit dem Urteil Content-Lücke, sortiert nach Abstand zur Schwelle (die sichersten zuerst), mit SERPs nach Thema gebündelt.
 #@markdown **Lesehilfe:** erklärt Blätter, Spalten, Urteile und Stufen und nennt die Einstellungen des Laufs.
 #@markdown Das Trennzeichen gilt nur für die zusätzliche CSV-ZIP (eine CSV je Blatt).
@@ -532,7 +532,7 @@ from qum import colab, export
 
 colab.require(globals(), "7c", "decisions", "cannibal", "gaps", "settings", "threshold_source")
 sheets = export.build_sheets(decisions, cannibal, gaps, settings, threshold_source=threshold_source, new_pages=new_pages)
-export.write_excel("query_url_matcher.xlsx", sheets)
+export.write_excel("query_url_matcher.xlsx", sheets, margin=settings["Abstand fast gleich"])
 colab.download("query_url_matcher.xlsx")
 if zusaetzlich_csv_zip:
     separator = "," if csv_trennzeichen == "Komma" else ";"

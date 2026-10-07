@@ -1241,3 +1241,21 @@ def test_smoke_a_stale_package_stops_with_a_restart_hint(nb, monkeypatch, capsys
         nb.run(3, "queries.csv", "frog_export.csv")
     out = capsys.readouterr().out
     assert "geladen ist aber 0.0.1" in out and "Laufzeit → Sitzung neu starten" in out and "ab Schritt 2" in out
+
+
+def test_smoke_step_8_colours_the_lead_with_the_margin_of_step_7c(nb, tmp_path):
+    from openpyxl import load_workbook
+
+    from qum import labels as L
+
+    _load(nb)
+    _verdicts(nb, abstand_fast_gleich=0.05)
+    nb.run(8)
+    sheet = load_workbook(tmp_path / "query_url_matcher.xlsx")["Übersicht"]
+    header = [cell.value for cell in sheet[1]]
+    column = header.index(L.C_LEAD_GAP) + 1
+    for row in range(2, sheet.max_row + 1):
+        value = sheet.cell(row=row, column=column).value
+        colour = sheet.cell(row=row, column=column).fill.fgColor.rgb[-6:]
+        if value is not None and value <= 0.05:
+            assert colour == "F8CBAD", (row, value)

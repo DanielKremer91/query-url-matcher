@@ -180,5 +180,5 @@ def test_top_hits_are_gone():
     import qum.match
 
     assert not hasattr(qum.match, "top_hits")
-    for name in ("C_R_CHUNK", "C_R_FULL", "C_R_COMBI", "C_METHOD", "C_GAP_TO_BEST"):
+    for name in ("C_R_CHUNK", "C_R_FULL", "C_R_COMBI", "C_METHOD"):  # C_GAP_TO_BEST lebt im Kannibalisierungs-Blatt weiter
         assert not hasattr(L, name), name
