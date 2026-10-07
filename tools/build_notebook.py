@@ -160,8 +160,9 @@ chunk_overlap = 0 #@param {type:"integer"}
 #@markdown **bewertungsgrundlage:** Je Query und Seite gibt es drei Cosinus-Werte. Der gewählte entscheidet, ob eine Seite als "passend" gilt (mit der Schwelle aus Schritt 7b), welche Seite die beste, zweitbeste und drittbeste ist und wie sortiert wird. Im Export stehen immer alle drei.
 #@markdown **Chunk** (Empfehlung): Query gegen den besten Textabschnitt der Seite. Findet Seiten, die die Query in einem Abschnitt beantworten, auch wenn die Seite breiter ist.
 #@markdown **Gesamt-URL:** Query gegen die Seite als Ganzes. Bevorzugt Seiten, die sich komplett um das Thema drehen.
-#@markdown **Kombi:** Mischung aus beiden, der Anteil des Chunk-Werts steht im Regler darunter (0.7 = 70 % Chunk, 30 % Gesamt-URL).
+#@markdown **Kombi:** Mischung aus beiden, der Anteil des Chunk-Werts steht im Regler darunter.
 bewertungsgrundlage = "Chunk" #@param ["Chunk", "Gesamt-URL", "Kombi"]
+#@markdown **kombi_gewicht_chunk (nur relevant bei Kombi):** Anteil des Chunk-Werts am Kombi-Score (0.7 = 70 % Chunk, 30 % Gesamt-URL). Bei Chunk oder Gesamt-URL bestimmt er nur die Spalten „Score Kombi“ im Export, nicht das Urteil.
 kombi_gewicht_chunk = 0.7 #@param {type:"slider", min:0, max:1, step:0.05}
 
 from qum import colab
@@ -205,6 +206,8 @@ result = new_result
 lead = result.lead(basis, weight)
 print(f"Vorschau der ersten 10 Queries: beste und zweitbeste URL mit Score ({basis_label}). Alle Spalten stehen im Export im Blatt Übersicht.")
 display(preview(best_matches(result, lead, weight).head(10), basis))
+if bewertungsgrundlage != "Kombi" and abs(kombi_gewicht_chunk - 0.7) > 1e-9:
+    print(f"ℹ️ Der Regler kombi_gewicht_chunk ({kombi_gewicht_chunk}) wirkt nur bei Kombi. Mit {bewertungsgrundlage} ändert er nur die Spalten „Score Kombi“ im Export, nicht das Urteil.")
 print(f"✅ Schritt 4 fertig: {len(result.queries)} Queries gematcht. Optional weiter mit Schritt 5 und 6, sonst Schritt 7a.")
 '''
 

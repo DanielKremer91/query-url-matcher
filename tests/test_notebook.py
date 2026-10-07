@@ -1190,3 +1190,24 @@ def test_intro_and_readme_describe_the_four_sheets():
         for name in (export.SHEET_OVERVIEW, export.SHEET_CANNIBAL, export.SHEET_GAPS, export.SHEET_README):
             assert name in text, name
         assert "Entscheidung" not in text and "Lücken je Cluster" not in text
+
+
+def test_step_4_marks_the_weight_slider_as_only_relevant_for_kombi():
+    source = _source(4)
+    assert "**kombi_gewicht_chunk (nur relevant bei Kombi):**" in source
+    assert source.index("(nur relevant bei Kombi)") < source.index("kombi_gewicht_chunk = 0.7")
+    assert "nicht das Urteil" in source
+
+
+def test_smoke_step_4_hints_when_the_weight_is_changed_but_not_used(nb, capsys):
+    nb.run(3, "queries.csv", "frog_export.csv")
+    hint = "wirkt nur bei Kombi"
+    capsys.readouterr()
+    nb.run(4, bewertungsgrundlage="Chunk", kombi_gewicht_chunk=0.5)
+    assert hint in capsys.readouterr().out
+    nb.run(4, bewertungsgrundlage="Gesamt-URL", kombi_gewicht_chunk=0.9)
+    assert hint in capsys.readouterr().out
+    nb.run(4, bewertungsgrundlage="Kombi", kombi_gewicht_chunk=0.5)
+    assert hint not in capsys.readouterr().out
+    nb.run(4, bewertungsgrundlage="Chunk")
+    assert hint not in capsys.readouterr().out
