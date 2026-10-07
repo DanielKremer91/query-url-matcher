@@ -592,6 +592,26 @@ Welche URLs es sind, steht im Blatt „Kannibalisierungsgefahr“. Das Blatt „
 Alle Urteile sind Hinweise zum Prüfen, keine Entscheidungen.
 '''
 
+# Steht vor der ersten Nutzung des Pakets in jeder Code-Zelle. Wird das Notebook in einer laufenden Sitzung neu geladen,
+# bleibt das alte Paket im Speicher, auch wenn Schritt 2 die neue Version installiert. Ohne diese Prüfung endet das in
+# unverständlichen Fehlern; alte Paketversionen haben colab.stop ebenfalls.
+VERSION_CHECK = """import qum as _qum_paket
+from qum import colab
+if _qum_paket.__version__ != "__VERSION__":
+    colab.stop(
+        f"Dieses Notebook gehört zu Paketversion __VERSION__, geladen ist aber {_qum_paket.__version__}. "
+        "Wähle im Menü „Laufzeit → Sitzung neu starten“ und führe die Zellen ab Schritt 2 neu aus."
+    )
+""".replace("__VERSION__", __version__)
+
+
+def _with_version_check(source: str) -> str:
+    """Fügt die Versionsprüfung vor der ersten Zeile ein, die das Paket importiert (in Schritt 2 nach pip install)."""
+    lines = source.split("\n")
+    first = next(i for i, line in enumerate(lines) if line.startswith(("from qum", "import qum")))
+    return "\n".join(lines[:first] + VERSION_CHECK.rstrip("\n").split("\n") + lines[first:])
+
+
 CELLS = [
     ("markdown", INTRO),
     ("code", STEP2),
@@ -605,6 +625,7 @@ CELLS = [
     ("code", STEP7C),
     ("code", STEP8),
 ]
+CELLS = [(kind, _with_version_check(source) if kind == "code" else source) for kind, source in CELLS]
 
 
 def _cell(kind: str, source: str) -> dict:

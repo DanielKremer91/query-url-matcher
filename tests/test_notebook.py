@@ -1216,3 +1216,30 @@ def test_smoke_step_4_hints_when_the_weight_is_changed_but_not_used(nb, capsys):
     assert hint not in capsys.readouterr().out
     nb.run(4, bewertungsgrundlage="Chunk")
     assert hint not in capsys.readouterr().out
+
+
+# --- Versionsprüfung: Notebook und geladenes Paket müssen zusammenpassen -------------------------------------------
+
+
+def test_every_code_cell_checks_the_loaded_package_version_before_using_it():
+    from qum import __version__
+
+    check = f'if _qum_paket.__version__ != "{__version__}":'
+    for source in _code_cells():
+        lines = source.splitlines()
+        assert check in lines, lines[0]
+        first_use = next(i for i, line in enumerate(lines) if line.startswith(("from qum", "import qum")))
+        assert lines[first_use] == "import qum as _qum_paket", lines[0]
+    step_2 = _source(2)
+    assert step_2.index("!pip install") < step_2.index(check)
+
+
+def test_smoke_a_stale_package_stops_with_a_restart_hint(nb, monkeypatch, capsys):
+    import qum
+    from qum import colab
+
+    monkeypatch.setattr(qum, "__version__", "0.0.1")
+    with pytest.raises(colab.NotebookStop):
+        nb.run(3, "queries.csv", "frog_export.csv")
+    out = capsys.readouterr().out
+    assert "geladen ist aber 0.0.1" in out and "Laufzeit → Sitzung neu starten" in out and "ab Schritt 2" in out
