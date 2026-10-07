@@ -10,7 +10,7 @@ from .normalize import normalize_query, normalize_url
 _AFTER_COMBI = MATCH_COLUMNS.index(L.C_S_COMBI) + 1
 OVERVIEW_COLUMNS = (
     MATCH_COLUMNS[:_AFTER_COMBI] + [L.C_TO_THRESHOLD] + MATCH_COLUMNS[_AFTER_COMBI:]
-    + [L.C_POSITION, L.C_RANK_URL, L.C_RANK_IS_BEST, L.C_VERDICT, L.C_CANNIBAL]
+    + [L.C_POSITION, L.C_RANK_URL, L.C_RANK_IS_BEST, L.C_VERDICT]
 )
 
 
@@ -115,7 +115,7 @@ def _compare(a: Assessment, best_j, rankings_loaded) -> str:
 def build_decisions(
     result, lead, threshold, rankings=None, good_position=10, weight=0.7, margin=0.01, gap_position=0
 ) -> pd.DataFrame:
-    """Übersicht ohne die Spalte Kannibalisierungsgefahr, die setzt cannibal.annotate."""
+    """Blatt Übersicht: eine Zeile je Query."""
     out = best_matches(result, lead, weight)
     assessments = assess(result, lead, threshold, rankings, good_position, margin, gap_position)
     best_j = lead.argmax(axis=1)

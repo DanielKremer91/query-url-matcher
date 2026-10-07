@@ -40,9 +40,10 @@ Für die Modelle mit API-Key legst du im Secrets-Panel (Schlüssel-Symbol links)
 
 Schritt 8 lädt eine Excel-Datei mit vier Blättern herunter, auf Wunsch zusätzlich ein ZIP mit einer CSV je Blatt:
 
-- **Übersicht:** eine Zeile je Query mit den drei am besten passenden URLs und ihren Scores, dem Abstand zur Schwelle (positiv = passt), der eigenen Rankingposition, dem Urteil und der Spalte Kannibalisierungsgefahr (ja, möglich oder nein).
-- **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen, mit einer Zeile je konkurrierender URL samt Score, Abstand zur besten URL und Position (die Query steht in jeder Zeile, nach URL filterbar), Rankingposition und rankender URL der Query, Stufe (Gefahr, Möglich, Kannibalisierung bereits sichtbar), Grund und Einordnung (wie dringend: sehr hoch, hoch, mittel, niedrig, sehr niedrig oder offen).
+- **Übersicht:** eine Zeile je Query mit den drei am besten passenden URLs und ihren Scores, dem Abstand zur Schwelle (positiv = passt), der eigenen Rankingposition und dem Urteil.
+- **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen oder mehrere eigene URLs ranken, mit einer Zeile je konkurrierender URL samt Score, Abstand zur besten URL und Position, dazu Rankingposition, rankende URL und Einordnung (wie dringend: sehr hoch, hoch, mittel, niedrig, sehr niedrig oder offen).
 - **Potentielle Content-Lücken:** genau die Queries mit dem Urteil Content-Lücke, die sichersten zuerst, mit SERPs nach Thema gebündelt.
+- **Chunk auf anderer Seite:** Queries, deren bester Textabschnitt auf einer anderen Seite steht als die Seite, die insgesamt am besten passt.
 - **Lesehilfe:** erklärt jedes Blatt, jede Spalte, jedes Urteil und nennt die Einstellungen des Laufs.
 
 ## Wichtig
@@ -427,7 +428,7 @@ STEP7C = '''#@title Schritt 7c: Urteile bilden { display-mode: "form" }
 rankt_gut_bis_position = 10 #@param {type:"integer"}
 #@markdown **abstand_fast_gleich:** Score-Unterschied, bis zu dem zwei Seiten als gleich gut gelten (0.01 = ein Hundertstel). Liegen mehrere passende Seiten so nah beieinander, gibt es Kannibalisierungsgefahr.
 abstand_fast_gleich = 0.01 #@param {type:"number"}
-#@markdown **sichtbar_bis_position:** Ranken zwei eigene URLs für dieselbe Query bis zu dieser Position, steht die Query im Blatt Kannibalisierungsgefahr mit der Stufe "Kannibalisierung bereits sichtbar".
+#@markdown **sichtbar_bis_position:** Ranken zwei eigene URLs für dieselbe Query bis zu dieser Position, steht die Query im Blatt Kannibalisierungsgefahr. Bis zu dieser Position gilt ein Ranking außerdem als „knapp dahinter“ (Einordnung „sehr hoch“).
 sichtbar_bis_position = 20 #@param {type:"integer"}
 #@markdown **luecke_nur_ohne_ranking_bis_position:** Voreinstellung 20: Eine Query ist keine Lücke, wenn eine eigene Seite bis Position 20 rankt, auch wenn keine Seite die Schwelle erreicht. Google hält die Seite dann für relevant, das Urteil lautet „Rankt trotz schwachem Match“ (ausbauen statt neu bauen). Gilt für das Urteil und für das Blatt „Potentielle Content-Lücken“. 0 = aus. Ohne Rankings wird der Wert ignoriert.
 luecke_nur_ohne_ranking_bis_position = 20 #@param {type:"integer"}
@@ -442,7 +443,8 @@ from datetime import date
 
 from qum import colab, export
 from qum import labels as L
-from qum.cannibal import annotate, find_cannibalization
+from qum.cannibal import find_cannibalization
+from qum.elsewhere import chunk_elsewhere
 from qum.gaps import count_new_pages, find_gaps
 from qum.serp import topics
 from qum.verdict import build_decisions
@@ -469,7 +471,7 @@ new_decisions = build_decisions(
 new_cannibal = find_cannibalization(
     result, lead, threshold, rankings, rankt_gut_bis_position, abstand_fast_gleich, sichtbar_bis_position, gap_position
 )
-new_decisions = annotate(new_decisions, new_cannibal)
+new_elsewhere = chunk_elsewhere(result, rankings)
 if luecke_nur_ohne_ranking_bis_position not in (0, 20) and rankings is None:  # nur melden, wenn bewusst geändert
     print("ℹ️ luecke_nur_ohne_ranking_bis_position wird ignoriert: Es sind keine Rankings geladen.")
 new_topics = None if serps is None else topics(result.queries, serps, serp_ueberschneidung / 100, cluster_dichte / 100)
@@ -500,16 +502,19 @@ settings = {
     "Eigene Rankings": {"Datei": "ja, aus Datei", "SERPs": "ja, aus den SERPs abgeleitet"}.get(rankings_source, "nein"),
     "Top-10-SERPs": "ja" if serps is not None else "nein",
 }
-decisions, cannibal, gaps = new_decisions, new_cannibal, new_gaps
+decisions, cannibal, gaps, elsewhere = new_decisions, new_cannibal, new_gaps, new_elsewhere
 new_pages = None if serps is None else count_new_pages(gaps)
 counts = decisions[L.C_VERDICT].value_counts()
 for verdict, count in counts.items():
     print(f"   {count:>5} × {verdict}")
-hints = decisions[L.C_CANNIBAL].value_counts()
-print(f"   Spalte Kannibalisierungsgefahr (über alle Urteile): {hints.get(L.YES, 0)} × ja, {hints.get(L.MAYBE, 0)} × möglich")
+urgency = cannibal.drop_duplicates(L.C_QUERY)[L.C_PRIORITY].value_counts()
+levels = ", ".join(f"{urgency[level]} {level}" for level in (L.PRIO_VERY_HIGH, L.PRIO_HIGH, L.PRIO_MID, L.PRIO_LOW,
+                   L.PRIO_VERY_LOW, L.PRIO_OPEN) if level in urgency)
+print(f"   {cannibal[L.C_QUERY].nunique():>5} Queries im Blatt Kannibalisierungsgefahr, über alle Urteile ({levels or 'keine'})")
 uncalibrated = " (Schwelle nicht kalibriert)" if threshold_source == "median" else ""
 pages = "" if new_pages is None else f", zusammen {new_pages} neue Seiten (eine je Thema, Lücken ohne Thema einzeln)"
 print(f"   {len(gaps):>5} potentielle Content-Lücken{uncalibrated}{pages}")
+print(f"   {len(elsewhere):>5} Queries mit dem besten Chunk auf einer anderen Seite als der besten Seite insgesamt")
 print()
 print("Was die Urteile bedeuten:")
 for verdict in counts.index:
@@ -520,18 +525,21 @@ print("✅ Schritt 7c fertig. Weiter mit Schritt 8 (Export).")
 
 STEP8 = '''#@title Schritt 8: Export { display-mode: "form" }
 #@markdown Die Excel-Datei hat vier Blätter:
-#@markdown **Übersicht:** eine Zeile je Query mit den drei besten URLs, ihren Scores, der Rankingposition, dem Urteil und Kannibalisierungsgefahr ja, möglich oder nein.
-#@markdown **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen, mit einer Zeile je konkurrierender URL samt Score, Abstand zur besten URL und Position (die Query steht in jeder Zeile, nach URL filterbar), Rankingposition und rankender URL der Query, Stufe (Gefahr, Möglich, Kannibalisierung bereits sichtbar), Grund und Einordnung (wie dringend: sehr hoch, hoch, mittel, niedrig, sehr niedrig oder offen).
+#@markdown **Übersicht:** eine Zeile je Query mit den drei besten URLs, ihren Scores, der Rankingposition und dem Urteil.
+#@markdown **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen oder mehrere eigene URLs ranken, eine Zeile je konkurrierender URL mit Score, Abstand zur besten URL, Position und Einordnung (wie dringend).
 #@markdown **Potentielle Content-Lücken:** genau die Queries mit dem Urteil Content-Lücke, sortiert nach Abstand zur Schwelle (die sichersten zuerst), mit SERPs nach Thema gebündelt.
-#@markdown **Lesehilfe:** erklärt Blätter, Spalten, Urteile und Stufen und nennt die Einstellungen des Laufs.
+#@markdown **Chunk auf anderer Seite:** Queries, deren bester Textabschnitt auf einer anderen Seite steht als die Seite, die insgesamt am besten passt, unabhängig von der Schwelle.
+#@markdown **Lesehilfe:** erklärt Blätter, Spalten und Urteile und nennt die Einstellungen des Laufs.
 #@markdown Das Trennzeichen gilt nur für die zusätzliche CSV-ZIP (eine CSV je Blatt).
 zusaetzlich_csv_zip = False #@param {type:"boolean"}
 csv_trennzeichen = "Semikolon (für deutsches Excel)" #@param ["Semikolon (für deutsches Excel)", "Komma"]
 
 from qum import colab, export
 
-colab.require(globals(), "7c", "decisions", "cannibal", "gaps", "settings", "threshold_source")
-sheets = export.build_sheets(decisions, cannibal, gaps, settings, threshold_source=threshold_source, new_pages=new_pages)
+colab.require(globals(), "7c", "decisions", "cannibal", "gaps", "elsewhere", "settings", "threshold_source")
+sheets = export.build_sheets(
+    decisions, cannibal, gaps, settings, threshold_source=threshold_source, new_pages=new_pages, elsewhere=elsewhere
+)
 export.write_excel("query_url_matcher.xlsx", sheets, margin=settings["Abstand fast gleich"])
 colab.download("query_url_matcher.xlsx")
 if zusaetzlich_csv_zip:
@@ -560,21 +568,26 @@ Ohne Rankings weiß das Tool nicht, ob eine Seite schon funktioniert. „In Ordn
 | Ranking der Query | Urteil |
 |---|---|
 | **Rankt gut** (Voreinstellung: bis Position 10), die rankende Seite passt und ist die am besten passende | **In Ordnung** |
-| **Rankt gut**, die rankende Seite passt, aber eine andere passt besser | **In Ordnung**, dazu Kannibalisierungsgefahr „ja“ und „Rankende URL = beste URL?“ = „nein“ |
-| **Rankt gut**, aber die rankende Seite passt nicht | **Rankt trotz schwachem Match**: Passt eine andere Seite, steht Kannibalisierungsgefahr „ja“ (prüfen, ob sie die richtige wäre), sonst die Schwelle prüfen |
+| **Rankt gut**, die rankende Seite passt, aber eine andere passt besser | **In Ordnung**, steht aber im Blatt Kannibalisierungsgefahr, und „Rankende URL = beste URL?“ = „nein“ |
+| **Rankt gut**, aber die rankende Seite passt nicht | **Rankt trotz schwachem Match**: Passt eine andere Seite, steht die Query im Blatt Kannibalisierungsgefahr (prüfen, ob sie die richtige wäre), sonst die Schwelle prüfen |
 | **Rankt gut** mit einer URL, die nicht im Frog-Export steht | **In Ordnung**: nicht prüfbar, die Spalte „Rankende URL = beste URL?“ zeigt „nicht im Frog-Export“ |
 | **Rankt schwach** (bis Position 20, einstellbar mit luecke_nur_ohne_ranking_bis_position) und keine Seite passt | **Rankt trotz schwachem Match**: keine Lücke, Google hält die Seite für relevant, also ausbauen statt neu bauen |
 | **Rankt schwach oder gar nicht**, sonst | wie ohne Rankings: **Passende Seite vorhanden**, **Kannibalisierungsgefahr** oder **Content-Lücke** |
 
-### Spalte „Kannibalisierungsgefahr“ (unabhängig vom Urteil)
+### Blatt „Kannibalisierungsgefahr“ (unabhängig vom Urteil)
 
-In der Übersicht steht neben jedem Urteil, ob weitere eigene Seiten um die Query konkurrieren:
+Hier steht jede Query, bei der weitere eigene Seiten die Schwelle erreichen oder mehrere eigene URLs bis Position 20 ranken, auch wenn das Urteil „In Ordnung“ lautet. Je konkurrierender URL eine Zeile. Die Spalte **Einordnung** sagt, wie dringend der Fall ist:
 
-- **ja**: Eine andere passende Seite ist besser oder fast gleich gut. Bei gutem Ranking auch dann, wenn heute die richtige Seite rankt, denn Google kann wechseln. Ebenso, wenn mehrere eigene URLs schon für die Query ranken (Stufe „Kannibalisierung bereits sichtbar“).
-- **möglich**: Weitere Seiten passen, liegen aber deutlich hinter der besten (Stufe „Möglich“).
-- **nein**: Keine weitere Seite passt.
+| Einordnung | wann |
+|---|---|
+| **sehr hoch** | Seiten konkurrieren eng (höchstens 0.01 auseinander, oder eine andere ist besser als die rankende) oder ranken beide, und die Query rankt knapp hinter den Top 10, bis Position 20 |
+| **hoch** | wie oben, aber Ranking schlechter als 20 oder gar keins |
+| **mittel** | Top 10 mit einer anderen als der besten Seite, oder eine schwächere Seite rankt |
+| **niedrig** | Top 10 mit der besten Seite: beobachten, Google kann wechseln |
+| **sehr niedrig** | weitere Seiten liegen deutlich hinter der besten, und keine schwächere rankt |
+| **offen** | keine Rankings geladen |
 
-Welche URLs es sind, steht im Blatt „Kannibalisierungsgefahr“. Das Blatt „Potentielle Content-Lücken“ enthält genau die Queries mit dem Urteil „Content-Lücke“, die sichersten zuerst (Spalte „Abstand zur Schwelle“).
+Das Blatt „Potentielle Content-Lücken“ enthält genau die Queries mit dem Urteil „Content-Lücke“, die sichersten zuerst (Spalte „Abstand zur Schwelle“). Das Blatt „Chunk auf anderer Seite“ zeigt, wo der beste Textabschnitt auf einer anderen Seite steht als die insgesamt beste Seite.
 
 Alle Urteile sind Hinweise zum Prüfen, keine Entscheidungen.
 '''

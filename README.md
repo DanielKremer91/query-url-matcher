@@ -60,10 +60,11 @@ Eine Excel-Datei mit vier Blättern:
 
 | Blatt | Inhalt |
 |---|---|
-| Übersicht | eine Zeile je Query: die drei am besten passenden URLs mit Chunk-, Gesamt-URL- und Kombi-Score, Abstand zur Schwelle (positiv = passt), Vorsprung vor der zweitbesten URL, beste eigene Rankingposition und rankende URL, ob die rankende URL die beste ist, das Urteil und Kannibalisierungsgefahr ja, möglich oder nein |
-| Kannibalisierungsgefahr | Queries, bei denen weitere eigene Seiten passen, mit einer Zeile je konkurrierender URL samt Score, Abstand zur besten URL und Position (die Query steht in jeder Zeile, nach URL filterbar), Rankingposition und rankender URL der Query, Stufe (Gefahr, Möglich, Kannibalisierung bereits sichtbar), Grund und Einordnung (wie dringend: sehr hoch, hoch, mittel, niedrig, sehr niedrig oder offen) |
+| Übersicht | eine Zeile je Query: die drei am besten passenden URLs mit Chunk-, Gesamt-URL- und Kombi-Score, Abstand zur Schwelle (positiv = passt), Vorsprung vor der zweitbesten URL, beste eigene Rankingposition und rankende URL, ob die rankende URL die beste ist, und das Urteil |
+| Kannibalisierungsgefahr | Queries, bei denen weitere eigene Seiten passen oder mehrere eigene URLs ranken, unabhängig vom Urteil: eine Zeile je konkurrierender URL samt Score, Abstand zur besten URL und Position (die Query steht in jeder Zeile, nach URL filterbar), dazu Rankingposition und rankende URL der Query und die Einordnung (wie dringend: sehr hoch, hoch, mittel, niedrig, sehr niedrig oder offen) |
 | Potentielle Content-Lücken | genau die Queries mit dem Urteil Content-Lücke, die sichersten zuerst (Abstand zur Schwelle), mit bester URL, Rankingposition, rankender URL und, mit SERPs, dem Thema; Lücken mit gleichem Thema ergeben eine neue Seite |
-| Lesehilfe | Bedeutung jedes Blatts, jeder Spalte, jedes Urteils und beider Stufen, dazu die Einstellungen des Laufs |
+| Chunk auf anderer Seite | Queries, deren bester Textabschnitt auf einer anderen Seite steht als die Seite, die insgesamt am besten passt (höchster Gesamt-URL-Score), unabhängig von Schwelle und Bewertungsgrundlage, mit Ranking und welche der beiden Seiten rankt |
+| Lesehilfe | Bedeutung jedes Blatts, jeder Spalte und jedes Urteils, dazu die Einstellungen des Laufs |
 
 Auf Wunsch zusätzlich ein ZIP mit einer CSV je Blatt: mit Semikolon und Dezimalkomma für deutsches Excel oder mit Komma und Dezimalpunkt.
 

@@ -27,7 +27,6 @@ C_RANK_IS_BEST = "Rankende URL = beste URL?"
 C_BEST_SCORE = "Bester Score"
 C_TOPIC = "Thema"
 
-C_CANNIBAL = "Kannibalisierungsgefahr"
 
 # Blatt Kannibalisierungsgefahr (Langformat): je konkurrierender URL eine Zeile mit Leit-Score und eigener Position
 C_STAGE = "Stufe"
@@ -81,7 +80,6 @@ REASON_RANKING = "Mehrere eigene Seiten ranken für die Query"
 # Werte der Spalten "Rankende URL = beste URL?" und Kannibalisierungsgefahr
 YES = "ja"
 NO = "nein"
-MAYBE = "möglich"
 CMP_NOT_RANKING = "rankt nicht"
 CMP_NOT_IN_EXPORT = "nicht im Frog-Export"
 
@@ -98,3 +96,15 @@ THRESHOLD_CHOICE = {
 P_QUERIES = "Queries"
 P_CHUNKS = "Chunks"
 P_PAGES = "Ganze Seiten"
+
+# Blatt Chunk auf anderer Seite: bester Chunk und beste Seite insgesamt (Gesamt-URL-Score) gehören zu verschiedenen URLs
+C_CHUNK_URL = "Seite mit bestem Chunk"
+C_BEST_CHUNK = "Bester Chunk"
+C_S_BEST_CHUNK = "Score bester Chunk"
+C_S_FULL_CHUNK_URL = "Score Gesamt-URL der Chunk-Seite"
+C_OVERALL_URL = "Beste Seite insgesamt"
+C_S_FULL_OVERALL = "Score Gesamt-URL der besten Seite"
+C_RANK_IS = "Rankende URL ist"
+RANK_IS_CHUNK = "die Seite mit bestem Chunk"
+RANK_IS_OVERALL = "die beste Seite insgesamt"
+RANK_IS_OTHER = "eine andere Seite"

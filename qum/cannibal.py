@@ -5,11 +5,18 @@ from . import labels as L
 from .normalize import normalize_query, normalize_url
 from .verdict import RISK_CLEAR, RISK_NOT_IN_EXPORT, RISK_PLAIN, assess, format_position, risk_kind
 
-# Langformat: eine Zeile je Query, Stufe und konkurrierender URL; die Query steht in jeder Zeile
-COLUMNS = [
+# Einzelne Fälle (intern, mit Stufe und Grund): eine Zeile je Query, Stufe und konkurrierender URL
+CASE_COLUMNS = [
     L.C_QUERY, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_GAP_TO_BEST, L.C_COMP_POS,
     L.C_POSITION, L.C_RANK_URL, L.C_STAGE, L.C_REASON, L.C_PRIORITY,
 ]
+# Blatt Kannibalisierungsgefahr (Langformat): eine Zeile je Query und konkurrierender URL, die Query steht in jeder Zeile
+COLUMNS = [
+    L.C_QUERY, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_GAP_TO_BEST, L.C_COMP_POS,
+    L.C_POSITION, L.C_RANK_URL, L.C_PRIORITY,
+]
+# dringendste zuerst; je Query gilt die dringendste Einordnung ihrer Fälle
+_URGENCY = [L.PRIO_VERY_HIGH, L.PRIO_HIGH, L.PRIO_MID, L.PRIO_LOW, L.PRIO_VERY_LOW, L.PRIO_OPEN]
 
 _RISK_REASON = {
     RISK_CLEAR: L.REASON_BETTER,
@@ -76,10 +83,10 @@ def _own_rankings(rankings) -> dict:
     return {query: list(group.itertuples()) for query, group in ordered.groupby("query_norm", sort=False)}
 
 
-def find_cannibalization(
+def cannibal_cases(
     result, lead, threshold, rankings=None, good_position=10, margin=0.01, visible_position=20, gap_position=0
 ) -> pd.DataFrame:
-    """Stufe Gefahr: jedes Urteil Kannibalisierungsgefahr und bei gutem Ranking jede andere passende Seite, die besser
+    """Einzelne Fälle mit Stufe und Grund (Grundlage für das Blatt und seine Einordnung). Stufe Gefahr: jedes Urteil Kannibalisierungsgefahr und bei gutem Ranking jede andere passende Seite, die besser
     oder fast gleich gut ist als die rankende. Stufe Möglich: sonst weitere Seiten, die die Schwelle erreichen.
     Stufe Kannibalisierung bereits sichtbar: mehrere eigene URLs ranken bis visible_position."""
     assessments = assess(result, lead, threshold, rankings, good_position, margin, gap_position)
@@ -109,22 +116,33 @@ def find_cannibalization(
             rows.extend(_rows(query, a.hit, L.STAGE_DANGER, reason, [first] + others, priority, lead[i].max()))
         visible = [r for r in own if r.position <= visible_position]
         if len(visible) >= 2:
+            # Seiten aus dem Frog-Export in dessen Schreibweise, damit dieselbe Seite überall gleich aussieht
             competing = [
-                (r.url, lead[i, u_index[r.url_norm]] if r.url_norm in u_index else None, format_position(r.position))
+                (result.urls[u_index[r.url_norm]], lead[i, u_index[r.url_norm]], format_position(r.position))
+                if r.url_norm in u_index else (r.url, None, format_position(r.position))
                 for r in visible
             ]
             rows.extend(_rows(query, a.hit, L.STAGE_VISIBLE, L.REASON_RANKING, competing, priority, lead[i].max()))
+    return pd.DataFrame(rows, columns=CASE_COLUMNS)
+
+
+def find_cannibalization(
+    result, lead, threshold, rankings=None, good_position=10, margin=0.01, visible_position=20, gap_position=0
+) -> pd.DataFrame:
+    """Blatt Kannibalisierungsgefahr: je Query alle konkurrierenden URLs aus allen Fällen (passende Seiten nah an der
+    besten, weitere passende Seiten, mehrere rankende Seiten), jede URL einmal, nach Score sortiert (ohne Score nach
+    Position). Einordnung: die dringendste der Fälle der Query."""
+    cases = cannibal_cases(result, lead, threshold, rankings, good_position, margin, visible_position, gap_position)
+    rows = []
+    for query, group in cases.groupby(L.C_QUERY, sort=False):
+        urgency = min(group[L.C_PRIORITY], key=_URGENCY.index)
+        ordered = group.assign(
+            _score=group[L.C_COMP_SCORE].astype(float).fillna(-np.inf),
+            _position=pd.to_numeric(group[L.C_COMP_POS].replace("", np.nan), errors="coerce").fillna(np.inf),
+            _key=group[L.C_COMP_URL].map(normalize_url),
+        ).sort_values(["_score", "_position"], ascending=[False, True], kind="stable")
+        ordered = ordered.drop_duplicates("_key")  # www- und Frog-Schreibweise derselben Seite nur einmal
+        for number, row in enumerate(ordered.to_dict("records"), start=1):
+            rows.append({column: row[column] for column in COLUMNS} | {L.C_NO: number, L.C_PRIORITY: urgency})
     return pd.DataFrame(rows, columns=COLUMNS)
 
-
-def annotate(decisions: pd.DataFrame, cannibal: pd.DataFrame) -> pd.DataFrame:
-    """Kopie der Übersicht mit der Spalte Kannibalisierungsgefahr: "ja" bei Stufe Gefahr oder Kannibalisierung bereits sichtbar,
-    "möglich" nur bei Stufe Möglich, sonst "nein"."""
-    possible = cannibal[L.C_STAGE] == L.STAGE_POSSIBLE
-    flagged = set(cannibal.loc[~possible, L.C_QUERY])
-    maybe = set(cannibal.loc[possible, L.C_QUERY])
-    out = decisions.copy()
-    out[L.C_CANNIBAL] = [
-        L.YES if query in flagged else L.MAYBE if query in maybe else L.NO for query in out[L.C_QUERY]
-    ]
-    return out

@@ -110,13 +110,13 @@ Die Übersicht nennt immer die wirklich beste URL nach Leit-Score, auch bei „i
 
 ## 8. Kannibalisierungsgefahr
 
-Eigenes Blatt mit drei Stufen:
+Intern gibt es drei Arten von Fällen (Stufen); das Blatt zeigt sie seit 0.4.0 nicht mehr einzeln, sie bestimmen nur, welche URLs dastehen und wie die Einordnung ausfällt (Entscheidung Daniel, 2026-10-07: Ausgabe verschlanken, Stufe, Grund und die Übersichtsspalte ja / möglich / nein entfallen):
 
 - **Gefahr:** jede Query mit dem Urteil „Kannibalisierungsgefahr" und jede gut rankende Query, bei der eine andere passende Seite besser oder fast gleich gut ist als die rankende (Urteil „in Ordnung" oder „rankt trotz schwachem Match"). Gründe: „deutlich besser" (die beste Seite liegt mehr als einen positiven Abstand vor der rankenden), „besser" (Abstand 0 oder die rankende Seite erreicht die Schwelle nicht), „nicht verglichen" (rankende URL fehlt im Frog-Export), „Rankende Seite passt, eine weitere passt fast gleich gut" (in Ordnung) und „Mehrere Seiten passen fast gleich gut" (schwaches, fehlendes oder kein Ranking). Funktioniert auch ohne Rankings.
 - **Möglich:** keine Gefahr, aber zwei oder mehr Seiten erreichen die Schwelle; die weiteren liegen mehr als den Abstand „fast gleich" hinter der besten. Grund „Weitere Seiten erreichen die Schwelle, liegen aber deutlich hinter der besten". URLs nach Leit-Score sortiert.
 - **Kannibalisierung bereits sichtbar:** zwei oder mehr eigene URLs ranken für die Query mit Position ≤ 20 (einstellbar).
 
-Langformat (Entscheidung Daniel, 2026-10-07): eine Zeile je Query, Stufe und konkurrierender URL, die Query steht in jeder Zeile; alle konkurrierenden URLs, keine Obergrenze. „Nr." zählt die URLs je Query und Stufe. Stufe Gefahr und Möglich: nach Leit-Score sortiert, die rankende URL zuerst, wenn der Grund sie betrifft. Kannibalisierung bereits sichtbar: nach Position sortiert. „Score der URL" ist der Leit-Score (leer, wenn die URL nicht im Frog-Export steht), „Position der URL" die eigene Position für die Query (leer, wenn sie dafür nicht rankt). Rankingposition, Rankende URL, Stufe, Grund und Einordnung stehen in jeder Zeile. Übersicht (eine Zeile je Query, wegen Urteil und Zählungen) und Lücken-Blatt (ohnehin eine URL je Query) bleiben breit. Die Spalte Einordnung sagt, wie dringend der Fall ist (Entscheidung Daniel, 2026-10-07, Variante A): ohne Rankings „offen". Stufe Gefahr und Kannibalisierung bereits sichtbar nach dem besten eigenen Ranking: Top-Ranking (bis rankt_gut_bis_position) der besten URL „niedrig", einer anderen URL oder einer URL außerhalb des Frog-Exports „mittel"; danach bis sichtbar_bis_position (Voreinstellung 20) „sehr hoch" (fast oben, die Konkurrenz bremst vermutlich); schlechter oder kein Ranking „hoch". Stufe Möglich: „mittel", wenn eine andere als die beste URL rankt, egal wo, sonst „sehr niedrig". „Abstand zur besten URL" je Zeile: Leit-Score der semantisch besten URL der Query minus Leit-Score dieser URL (leer ohne Score).
+Blatt im Langformat: eine Zeile je Query und konkurrierender URL, die Query steht in jeder Zeile. Alle URLs aus allen Fällen der Query, jede Seite einmal (www- und Frog-Schreibweise zusammengeführt), nach Leit-Score sortiert, Seiten ohne Score (nicht im Frog-Export) zuletzt nach Position. „Nr." zählt die URLs je Query. „Score der URL" ist der Leit-Score, „Abstand zur besten URL" der Abstand zur semantisch besten URL der Query, „Position der URL" die eigene Position (leer, wenn sie nicht rankt). Rankingposition, Rankende URL und Einordnung stehen in jeder Zeile; je Query gilt die dringendste Einordnung ihrer Fälle. Die Spalte Einordnung sagt, wie dringend der Fall ist (Entscheidung Daniel, 2026-10-07, Variante A): ohne Rankings „offen". Stufe Gefahr und Kannibalisierung bereits sichtbar nach dem besten eigenen Ranking: Top-Ranking (bis rankt_gut_bis_position) der besten URL „niedrig", einer anderen URL oder einer URL außerhalb des Frog-Exports „mittel"; danach bis sichtbar_bis_position (Voreinstellung 20) „sehr hoch" (fast oben, die Konkurrenz bremst vermutlich); schlechter oder kein Ranking „hoch". Stufe Möglich: „mittel", wenn eine andere als die beste URL rankt, egal wo, sonst „sehr niedrig". „Abstand zur besten URL" je Zeile: Leit-Score der semantisch besten URL der Query minus Leit-Score dieser URL (leer ohne Score).
 
 ## 9. SERP-Clustering und potentielle Content-Lücken
 
@@ -159,9 +159,10 @@ Vier Blätter in dieser Reihenfolge:
 | Blatt | Spalten |
 |---|---|
 | Übersicht | Query · Beste URL · Relevanter Chunk · Score Chunk · Score Gesamt-URL · Score Kombi · Abstand zur Schwelle · Vorsprung vor zweitbester URL · Zweitbeste URL · Score Chunk 2 · Score Gesamt-URL 2 · Score Kombi 2 · Drittbeste URL · Score Chunk 3 · Score Gesamt-URL 3 · Score Kombi 3 · Rankingposition · Rankende URL · Rankende URL = beste URL? · Urteil · Kannibalisierungsgefahr |
-| Kannibalisierungsgefahr | Query · Nr. · Konkurrierende URL · Score der URL · Abstand zur besten URL · Position der URL · Rankingposition · Rankende URL · Stufe · Grund · Einordnung (Abschnitt 8, Langformat) |
+| Kannibalisierungsgefahr | Query · Nr. · Konkurrierende URL · Score der URL · Abstand zur besten URL · Position der URL · Rankingposition · Rankende URL · Einordnung (Abschnitt 8, Langformat) |
+| Chunk auf anderer Seite | Query · Seite mit bestem Chunk · Bester Chunk · Score bester Chunk · Score Gesamt-URL der Chunk-Seite · Beste Seite insgesamt · Score Gesamt-URL der besten Seite · Rankingposition · Rankende URL · Rankende URL ist (die Seite mit bestem Chunk / die beste Seite insgesamt / eine andere Seite / rankt nicht / nicht im Frog-Export). Queries, bei denen die Seite mit dem höchsten Chunk-Score nicht die Seite mit dem höchsten Gesamt-URL-Score ist, unabhängig von Schwelle und Bewertungsgrundlage, stärkster Chunk zuerst (Entscheidung Daniel, 2026-10-07; bei TOOM 97 von 398) |
 | Potentielle Content-Lücken | Query · Bester Score · Abstand zur Schwelle · Beste URL · Rankingposition · Rankende URL · Thema (Abschnitt 9) |
-| Lesehilfe | Hinweise (Einordnung, Score-Band, Herkunft der Schwelle), alle vier Blätter, alle Urteile, beide Stufen, jede Spalte, alle Einstellungen des Laufs |
+| Lesehilfe | Hinweise (Einordnung, Score-Band, Herkunft der Schwelle), alle Blätter, alle Urteile, jede Spalte, alle Einstellungen des Laufs |
 
 Übersicht, eine Zeile je Query:
 
@@ -171,7 +172,6 @@ Vier Blätter in dieser Reihenfolge:
 - „Vorsprung vor zweitbester URL" ist im Excel eingefärbt, gemessen am Abstand „fast gleich": rot bis zu diesem Abstand, gelb bis zum Doppelten, grün darüber (feste Grenzen statt Farbskala, damit dieselbe Zahl in jedem Lauf dieselbe Farbe hat).
 - „Abstand zur Schwelle": bester Leit-Score minus Schwelle aus Schritt 7b, 4 Nachkommastellen; positiv heißt passend. Lesbarer als der Score selbst, weil Scores je nach Modell in ganz anderen Bereichen liegen (Entscheidung Daniel, 2026-10-07).
 - „Rankende URL = beste URL?": „ja", „nein" (eine andere Seite hat einen höheren Leit-Score, auch knapp; Entscheidung Daniel, 2026-10-07: Ja-Nein-Frage, die Nähe zeigen Scores und Grund), „rankt nicht" (Rankings geladen, aber keines für die Query), „nicht im Frog-Export", leer ohne Rankings.
-- „Kannibalisierungsgefahr": „ja" bei Stufe Gefahr oder Kannibalisierung bereits sichtbar, „möglich", wenn die Query nur mit Stufe Möglich im Blatt steht, sonst „nein".
 
 Die Query steht in den ersten drei Blättern in der ersten Spalte. Urteile sind farbig hinterlegt.
 
@@ -187,7 +187,8 @@ Die Query steht in den ersten drei Blättern in der ersten Spalte. Urteile sind 
 | `qum/match.py` | drei Scores, die drei besten URLs je Query und die Vorschau in Schritt 4, Ränge für den Modellvergleich |
 | `qum/threshold.py` | Vorschläge der Schwelle (kalibriert, Median), Beispielpaare |
 | `qum/verdict.py` | Urteile und die Ranking-Spalten der Übersicht |
-| `qum/cannibal.py` | Blatt Kannibalisierungsgefahr mit drei Stufen, Spalte Kannibalisierungsgefahr der Übersicht |
+| `qum/cannibal.py` | interne Fälle mit Stufe und Grund, daraus das Blatt Kannibalisierungsgefahr mit Einordnung |
+| `qum/elsewhere.py` | Blatt Chunk auf anderer Seite |
 | `qum/serp.py` | Clustering, Thema je Query |
 | `qum/gaps.py` | Blatt Potentielle Content-Lücken, Zahl neuer Seiten |
 | `qum/export.py` | vier Blätter, Lesehilfe, Excel und CSV-ZIP |

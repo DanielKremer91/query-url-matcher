@@ -8,35 +8,45 @@ from openpyxl.utils import get_column_letter
 
 from . import labels as L
 from .cannibal import COLUMNS as CANNIBAL_COLUMNS
+from .elsewhere import COLUMNS as ELSEWHERE_COLUMNS
 from .gaps import COLUMNS as GAP_COLUMNS
 from .verdict import OVERVIEW_COLUMNS
 
 SHEET_OVERVIEW = "Übersicht"
 SHEET_CANNIBAL = "Kannibalisierungsgefahr"
 SHEET_GAPS = "Potentielle Content-Lücken"
+SHEET_ELSEWHERE = "Chunk auf anderer Seite"
 SHEET_README = "Lesehilfe"
 
 _CSV_NAMES = {
     SHEET_OVERVIEW: "uebersicht.csv",
     SHEET_CANNIBAL: "kannibalisierungsgefahr.csv",
     SHEET_GAPS: "potentielle_content_luecken.csv",
+    SHEET_ELSEWHERE: "chunk_auf_anderer_seite.csv",
     SHEET_README: "lesehilfe.csv",
 }
 
 _SHEET_HELP = {
     SHEET_OVERVIEW: (
-        "Eine Zeile je Query: die drei am besten passenden URLs mit ihren Scores, die beste eigene Rankingposition, "
-        "das Urteil und ob die Query im Blatt Kannibalisierungsgefahr steht."
+        "Eine Zeile je Query: die drei am besten passenden URLs mit ihren Scores, die beste eigene Rankingposition "
+        "und das Urteil."
     ),
     SHEET_CANNIBAL: (
-        "Queries, bei denen mehrere eigene Seiten konkurrieren, getrennt nach Stufe, mit einer Zeile je konkurrierender URL (die Query steht in jeder Zeile). "
+        "Queries, bei denen weitere eigene Seiten passen oder mehrere eigene URLs ranken, unabhängig vom Urteil, mit einer "
+        "Zeile je konkurrierender URL (die Query steht in jeder Zeile) und der Einordnung, wie dringend der Fall ist. "
         f"Enthält jede Query mit dem Urteil '{L.V_CANNIBAL}'."
     ),
     SHEET_GAPS: (
         f"Genau die Queries mit dem Urteil '{L.V_GAP}', sortiert nach Abstand zur Schwelle: die sichersten Lücken "
         "zuerst. Wer nur deutliche Lücken will, filtert die Spalte Abstand zur Schwelle (zum Beispiel kleiner als -0.03)."
     ),
-    SHEET_README: "Diese Erklärungen: Hinweise, Blätter, Urteile, Stufen, Spalten und die Einstellungen des Laufs.",
+    SHEET_ELSEWHERE: (
+        "Queries, deren bester Chunk auf einer anderen Seite liegt als die beste Seite insgesamt (höchster Gesamt-URL-"
+        "Score), unabhängig von Schwelle und Bewertungsgrundlage. Eine Seite dreht sich insgesamt um das Thema, die "
+        "konkreteste Antwort steht aber auf einer anderen: Kandidaten für Kannibalisierung durch einzelne Abschnitte. "
+        "Stärkster Chunk zuerst."
+    ),
+    SHEET_README: "Diese Erklärungen: Hinweise, Blätter, Urteile, Spalten und die Einstellungen des Laufs.",
 }
 
 _COLUMN_HELP = {
@@ -44,6 +54,17 @@ _COLUMN_HELP = {
     L.C_QUERY: "Die Suchanfrage, um die es in der Zeile geht.",
     L.C_BEST_URL: "Die Seite mit dem höchsten Score für die Query, nach der gewählten Bewertungsgrundlage.",
     L.C_CHUNK: "Der Textblock der besten URL, der zur Query am besten passt.",
+    # Chunk auf anderer Seite
+    L.C_CHUNK_URL: "Die Seite, auf der der zur Query am besten passende Textblock steht (höchster Chunk-Score).",
+    L.C_BEST_CHUNK: "Dieser Textblock.",
+    L.C_S_BEST_CHUNK: "Cosinus-Ähnlichkeit zwischen Query und diesem Textblock.",
+    L.C_S_FULL_CHUNK_URL: "Gesamt-URL-Score der Seite mit dem besten Chunk: wie gut sie als Ganzes passt.",
+    L.C_OVERALL_URL: "Die Seite, die als Ganzes am besten passt (höchster Gesamt-URL-Score).",
+    L.C_S_FULL_OVERALL: "Gesamt-URL-Score dieser Seite.",
+    L.C_RANK_IS: (
+        f"Welche Seite für die Query rankt: '{L.RANK_IS_CHUNK}', '{L.RANK_IS_OVERALL}', '{L.RANK_IS_OTHER}', "
+        f"'{L.CMP_NOT_RANKING}' (keine eigene URL rankt) oder '{L.CMP_NOT_IN_EXPORT}'. Leer ohne Rankings."
+    ),
     L.C_S_CHUNK: "Cosinus-Ähnlichkeit zwischen Query und dem am besten passenden Textblock der besten URL.",
     L.C_S_FULL: "Cosinus-Ähnlichkeit zwischen Query und dem gesamten Main Content der besten URL.",
     L.C_S_COMBI: "Gewichtete Mischung aus Chunk-Score und Gesamt-URL-Score der besten URL.",
@@ -76,29 +97,24 @@ _COLUMN_HELP = {
         "steht nicht im Frog-Export und wurde nicht verglichen. Leer ohne Rankings."
     ),
     L.C_VERDICT: "Einordnung der Query, siehe die Urteile weiter oben in dieser Lesehilfe.",
-    L.C_CANNIBAL: (
-        f"'{L.YES}': die Query steht im Blatt Kannibalisierungsgefahr mit der Stufe Gefahr oder Kannibalisierung bereits sichtbar. "
-        f"'{L.MAYBE}': nur mit der Stufe Möglich, weitere Seiten passen, liegen aber deutlich dahinter. "
-        f"'{L.NO}': keine weitere Seite erreicht die Schwelle. Unabhängig vom Urteil."
-    ),
     # Kannibalisierungsgefahr
     L.C_PRIORITY: (
-        f"Wie dringend der Fall ist. Stufe Gefahr oder Kannibalisierung bereits sichtbar, nach dem besten eigenen Ranking: "
-        f"'{L.PRIO_VERY_HIGH}' knapp hinter den Top-Rankings bis sichtbar_bis_position (Voreinstellung 20), fast oben, die "
-        f"Konkurrenz bremst vermutlich; '{L.PRIO_HIGH}' schlechter oder kein Ranking, die Seiten stehen sich im Weg, "
-        f"handeln (abgrenzen, zusammenführen, Hauptseite festlegen); '{L.PRIO_MID}' Top-Ranking (bis "
-        f"rankt_gut_bis_position) einer anderen als der besten Seite, prüfen, ob Google die richtige gewählt hat; "
-        f"'{L.PRIO_LOW}' Top-Ranking der besten Seite, beobachten. Stufe Möglich (Konkurrenz deutlich dahinter): "
-        f"'{L.PRIO_MID}', wenn eine andere als die beste Seite rankt, egal wo, sonst '{L.PRIO_VERY_LOW}'. "
+        f"Wie dringend der Fall ist, je Query (steht in jeder Zeile). Konkurrieren Seiten eng (höchstens der Abstand "
+        f"'fast gleich' hinter der besten, oder eine andere passende Seite ist besser als die rankende) oder ranken mehrere "
+        f"eigene URLs bis sichtbar_bis_position, zählt das beste eigene Ranking: '{L.PRIO_VERY_HIGH}' knapp hinter den "
+        f"Top-Rankings bis sichtbar_bis_position (Voreinstellung 20), fast oben, die Konkurrenz bremst vermutlich; "
+        f"'{L.PRIO_HIGH}' schlechter oder kein Ranking, abgrenzen, zusammenführen oder Hauptseite festlegen; "
+        f"'{L.PRIO_MID}' Top-Ranking (bis rankt_gut_bis_position) einer anderen als der besten Seite, prüfen, ob Google "
+        f"die richtige gewählt hat; '{L.PRIO_LOW}' Top-Ranking der besten Seite, beobachten. Liegen die weiteren Seiten "
+        f"deutlich dahinter: '{L.PRIO_MID}', wenn eine andere als die beste Seite rankt, sonst '{L.PRIO_VERY_LOW}'. "
         f"'{L.PRIO_OPEN}': keine Rankings geladen, nur semantisch geprüft."
     ),
-    L.C_STAGE: "Stufe der Kannibalisierungsgefahr, siehe die Stufen weiter oben in dieser Lesehilfe.",
-    L.C_REASON: "Warum die Query hier steht. Steht in jeder Zeile der Gruppe.",
-    L.C_NO: "Laufende Nummer der URL innerhalb von Query und Stufe. Jede konkurrierende URL hat eine eigene Zeile.",
+    L.C_NO: "Laufende Nummer der URL innerhalb der Query. Jede konkurrierende URL hat eine eigene Zeile.",
     L.C_COMP_URL: (
-        "Eine der konkurrierenden eigenen URLs. Stufe Gefahr und Möglich: nach Score sortiert, die rankende URL zuerst, "
-        "wenn der Grund sie betrifft. Stufe Kannibalisierung bereits sichtbar: nach Position sortiert. Nach dieser Spalte "
-        "filtern zeigt, bei welchen Queries eine Seite mit anderen konkurriert."
+        "Eine der konkurrierenden eigenen URLs: Seiten, die die Schwelle erreichen und nah an der besten liegen oder "
+        "weiter dahinter, und eigene URLs, die bis sichtbar_bis_position ranken. Jede Seite einmal, nach Score sortiert, "
+        "Seiten ohne Score (nicht im Frog-Export) zuletzt nach Position. Nach dieser Spalte filtern zeigt, bei welchen "
+        "Queries eine Seite mit anderen konkurriert."
     ),
     L.C_COMP_SCORE: "Score dieser URL nach der gewählten Bewertungsgrundlage. Leer, wenn sie nicht im Frog-Export steht.",
     L.C_GAP_TO_BEST: (
@@ -114,19 +130,6 @@ _COLUMN_HELP = {
     ),
 }
 
-_STAGE_HELP = {
-    L.STAGE_DANGER: (
-        "Mehrere eigene Seiten passen semantisch fast gleich gut, oder bei gutem Ranking passt eine andere eigene Seite "
-        "besser als die rankende (oder die rankende URL steht nicht im Frog-Export). In den Rankings ist das noch nicht "
-        "sichtbar, Google kann die rankende Seite aber wechseln."
-    ),
-    L.STAGE_POSSIBLE: (
-        "Weitere eigene Seiten erreichen die Schwelle, liegen aber deutlich hinter der besten (mehr als der Abstand "
-        "'fast gleich'). Kein akuter Konflikt, aber Seiten, die man beim Ausbau im Blick behalten sollte."
-    ),
-    L.STAGE_VISIBLE: "Mehrere eigene Seiten ranken bereits für die Query (bis zur Position aus sichtbar_bis_position).",
-}
-
 # "passt klar": eine Seite erreicht die Schwelle und liegt mehr als den Abstand 'fast gleich' vor jeder anderen passenden
 VERDICT_HELP = {
     L.V_MATCH: (
@@ -140,7 +143,7 @@ VERDICT_HELP = {
     L.V_OK: (
         "Die Query rankt gut, und die rankende Seite erreicht die Schwelle. Steht die rankende URL nicht im Frog-Export, "
         "kann das Tool sie nicht prüfen und wertet ebenfalls 'In Ordnung'. Passt eine andere eigene Seite besser oder "
-        "fast gleich gut, steht in der Spalte Kannibalisierungsgefahr 'ja': Heute rankt die richtige Seite, Google kann "
+        "fast gleich gut, steht die Query zusätzlich im Blatt Kannibalisierungsgefahr: Heute rankt die richtige Seite, Google kann "
         "aber wechseln."
     ),
     L.V_CANNIBAL: (
@@ -149,7 +152,7 @@ VERDICT_HELP = {
     ),
     L.V_WATCH: (
         "Die Query rankt gut, aber die rankende Seite erreicht die Schwelle nicht. Passt eine andere eigene Seite, steht "
-        "in der Spalte Kannibalisierungsgefahr 'ja': prüfen, welche Seite die richtige ist. Passt gar keine Seite, die "
+        "die Query zusätzlich im Blatt Kannibalisierungsgefahr: prüfen, welche Seite die richtige ist. Passt gar keine Seite, die "
         "Schwelle prüfen. Ebenso, wenn keine Seite passt, aber eine eigene Seite bis zur Position aus "
         "luecke_nur_ohne_ranking_bis_position rankt (Voreinstellung 20): Google hält sie für relevant, also ausbauen "
         "statt neu bauen."
@@ -204,20 +207,20 @@ def _readme(sheets, settings, threshold_source, new_pages) -> pd.DataFrame:
         text = _gap_sheet_help(new_pages) if name == SHEET_GAPS else _SHEET_HELP[name]
         rows.append(("Blatt", name, text))
     rows += [("Urteil", verdict, text) for verdict, text in VERDICT_HELP.items()]
-    rows += [("Stufe", stage, text) for stage, text in _STAGE_HELP.items()]
     columns = dict.fromkeys(column for df in sheets.values() for column in df.columns)
     rows += [("Spalte", column, _COLUMN_HELP[column]) for column in columns]
     rows += [("Einstellung", key, str(value)) for key, value in settings.items()]
     return pd.DataFrame(rows, columns=[L.R_AREA, L.R_ENTRY, L.R_TEXT])
 
 
-def build_sheets(overview, cannibal, gaps, settings, threshold_source=None, new_pages=None) -> dict:
+def build_sheets(overview, cannibal, gaps, settings, threshold_source=None, new_pages=None, elsewhere=None) -> dict:
     """threshold_source: "rankings", "median" oder "manuell" (Herkunft der Schwelle für die Lesehilfe).
     new_pages: Zahl neuer Seiten aus den Lücken, nur mit SERPs (sonst None)."""
     sheets = {
         SHEET_OVERVIEW: overview[OVERVIEW_COLUMNS],
         SHEET_CANNIBAL: cannibal[CANNIBAL_COLUMNS],
         SHEET_GAPS: gaps[GAP_COLUMNS],
+        SHEET_ELSEWHERE: (pd.DataFrame(columns=ELSEWHERE_COLUMNS) if elsewhere is None else elsewhere)[ELSEWHERE_COLUMNS],
     }
     return {**sheets, SHEET_README: _readme(sheets, settings, threshold_source, new_pages)}
 

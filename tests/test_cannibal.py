@@ -2,7 +2,8 @@ import pandas as pd
 import pytest
 
 from qum import labels as L
-from qum.cannibal import COLUMNS, annotate, find_cannibalization
+from qum.cannibal import CASE_COLUMNS, COLUMNS, cannibal_cases, find_cannibalization
+from qum.normalize import normalize_url
 from qum.verdict import build_decisions
 from tests.conftest import make_result
 
@@ -16,7 +17,7 @@ def _rankings(rows):
 
 def _run(queries, scores, rankings=None, threshold=0.6, urls=(U1, U2, U3), **kwargs):
     result = make_result(queries, list(urls), scores)
-    return find_cannibalization(result, result.lead("chunk"), threshold, rankings, **kwargs)
+    return cannibal_cases(result, result.lead("chunk"), threshold, rankings, **kwargs)
 
 
 def _first(df):
@@ -37,7 +38,7 @@ def _urls(df, group=0):
 
 def test_columns_and_empty_result():
     df = _run(["q"], [[0.9, 0.5, 0.1]])
-    assert list(df.columns) == COLUMNS == [
+    assert list(df.columns) == CASE_COLUMNS == [
         L.C_QUERY, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_GAP_TO_BEST, L.C_COMP_POS,
         L.C_POSITION, L.C_RANK_URL, L.C_STAGE, L.C_REASON, L.C_PRIORITY,
     ]
@@ -190,13 +191,14 @@ def test_every_cannibalisation_verdict_and_every_competing_page_at_good_ranking_
     result = make_result(queries, [U1, U2, U3], scores)
     lead = result.lead("chunk")
     decisions = build_decisions(result, lead, 0.8, rankings)
-    cannibal = find_cannibalization(result, lead, 0.8, rankings)
+    cannibal = cannibal_cases(result, lead, 0.8, rankings)
     assert decisions[L.C_VERDICT].tolist() == [
         L.V_OK, L.V_OK, L.V_WATCH, L.V_CANNIBAL, L.V_CANNIBAL, L.V_WATCH, L.V_OK, L.V_MATCH, L.V_GAP,
     ]
     # gutes Ranking: das Urteil folgt der rankenden Seite, die Gefahr steht trotzdem im Blatt
-    assert annotate(decisions, cannibal)[L.C_CANNIBAL].tolist() == [
-        L.YES, L.NO, L.YES, L.YES, L.YES, L.YES, L.YES, L.NO, L.NO,
+    sheet = find_cannibalization(result, lead, 0.8, rankings)
+    assert list(dict.fromkeys(sheet[L.C_QUERY])) == [
+        "ok-nah", "deutlich", "nah-schwach", "nah-ohne-ranking", "knapp-unter", "nicht-im-export",
     ]
     flagged = set(decisions.loc[decisions[L.C_VERDICT] == L.V_CANNIBAL, L.C_QUERY])
     assert flagged <= set(cannibal.loc[cannibal[L.C_STAGE] == L.STAGE_DANGER, L.C_QUERY])
@@ -215,34 +217,15 @@ def test_settings_are_the_same_as_for_the_verdicts():
     result = make_result(["q"], [U1, U2, U3], [[0.70, 0.90, 0.1]])
     lead = result.lead("chunk")
     # mit rankt gut bis 15 ist es eine Gefahr wegen der rankenden Seite, sonst nur eine mögliche
-    assert _first(find_cannibalization(result, lead, 0.6, rankings))[L.C_STAGE].tolist() == [L.STAGE_POSSIBLE]
-    df = find_cannibalization(result, lead, 0.6, rankings, good_position=15)
+    assert _first(cannibal_cases(result, lead, 0.6, rankings))[L.C_STAGE].tolist() == [L.STAGE_POSSIBLE]
+    df = cannibal_cases(result, lead, 0.6, rankings, good_position=15)
     assert _first(df)[L.C_REASON].tolist() == [L.REASON_BETTER]
 
 
 def test_negative_margin_is_rejected():
     result = make_result(["q"], [U1, U2, U3], [[0.9, 0.1, 0.1]])
     with pytest.raises(ValueError):
-        find_cannibalization(result, result.lead("chunk"), 0.6, margin=-0.01)
-
-
-# --- Spalte Kannibalisierungsgefahr in der Übersicht -------------------------------------------------------------
-
-
-def test_annotate_says_yes_for_every_query_in_the_cannibalisation_sheet():
-    decisions = pd.DataFrame({L.C_QUERY: ["a", "b", "c"], L.C_VERDICT: [L.V_OK, L.V_MATCH, L.V_CANNIBAL]})
-    rankings = _rankings([("b", U1, U1, 3.0), ("b", U2, U2, 9.0)])
-    result = make_result(["a", "b", "c"], [U1, U2, U3], [[0.9, 0.1, 0.1], [0.9, 0.1, 0.1], [0.8, 0.8, 0.1]])
-    cannibal = find_cannibalization(result, result.lead("chunk"), 0.6, rankings)
-    out = annotate(decisions, cannibal)
-    assert list(out.columns)[-1] == L.C_CANNIBAL
-    assert out[L.C_CANNIBAL].tolist() == [L.NO, L.YES, L.YES]
-    assert L.C_CANNIBAL not in decisions.columns
-
-
-def test_annotate_with_empty_cannibalisation_sheet():
-    decisions = pd.DataFrame({L.C_QUERY: ["a"], L.C_VERDICT: [L.V_GAP]})
-    assert annotate(decisions, pd.DataFrame(columns=COLUMNS))[L.C_CANNIBAL].tolist() == [L.NO]
+        cannibal_cases(result, result.lead("chunk"), 0.6, margin=-0.01)
 
 
 def test_one_word_for_cannibalisation():
@@ -250,7 +233,6 @@ def test_one_word_for_cannibalisation():
 
     assert L.V_CANNIBAL == "Kannibalisierungsgefahr"
     assert export.SHEET_CANNIBAL == "Kannibalisierungsgefahr"
-    assert L.C_CANNIBAL == "Kannibalisierungsgefahr"
     assert [L.STAGE_DANGER, L.STAGE_POSSIBLE, L.STAGE_VISIBLE] == ["Gefahr", "Möglich", "Kannibalisierung bereits sichtbar"]
 
 
@@ -287,20 +269,6 @@ def test_possible_stage_lists_every_fitting_page():
     df = _run(["q"], [[0.9, 0.7, 0.7, 0.7, 0.7]], urls=(U1, U2, U3, U4, U5))
     assert set(df[L.C_REASON]) == {L.REASON_FURTHER}
     assert [url for url, _, _ in _urls(df)] == [U1, U2, U3, U4, U5]
-
-
-def test_annotate_grades_yes_possible_no():
-    rankings = _rankings([("sichtbar", U1, U1, 3.0), ("sichtbar", U2, U2, 9.0)])
-    queries = ["gefahr", "moeglich", "nein", "sichtbar", "moeglich-und-sichtbar"]
-    scores = [[0.8, 0.8, 0.1], [0.9, 0.7, 0.1], [0.9, 0.1, 0.1], [0.9, 0.1, 0.1], [0.9, 0.7, 0.1]]
-    rankings = pd.concat([rankings, _rankings([("moeglich-und-sichtbar", U1, U1, 2.0),
-                                               ("moeglich-und-sichtbar", U3, U3, 8.0)])])
-    result = make_result(queries, [U1, U2, U3], scores)
-    lead = result.lead("chunk")
-    decisions = build_decisions(result, lead, 0.6, rankings)
-    out = annotate(decisions, find_cannibalization(result, lead, 0.6, rankings))
-    assert out[L.C_CANNIBAL].tolist() == [L.YES, L.MAYBE, L.NO, L.YES, L.YES]
-    assert L.MAYBE == "möglich" and L.STAGE_POSSIBLE == "Möglich"
 
 
 def test_every_row_shows_the_querys_best_own_ranking():
@@ -390,3 +358,53 @@ def test_every_row_shows_the_distance_to_the_semantically_best_url():
     assert gaps[U2] == 0.0 and gaps[U1] == 0.25  # 0.9 - 0.65, die beste URL selbst hat 0
     assert pd.isna(gaps[ALT])  # nicht im Frog-Export: kein Score, kein Abstand
     assert L.C_GAP_TO_BEST == "Abstand zur besten URL"
+
+
+# --- Blatt Kannibalisierungsgefahr: alle Fälle einer Query zusammengeführt ---------------------------------------
+
+
+def _sheet(queries, scores, rankings=None, threshold=0.6, urls=(U1, U2, U3), **kwargs):
+    result = make_result(queries, list(urls), scores)
+    return find_cannibalization(result, result.lead("chunk"), threshold, rankings, **kwargs)
+
+
+def test_sheet_columns_without_stage_and_reason():
+    df = _sheet(["q"], [[0.8, 0.8, 0.1]])
+    assert list(df.columns) == COLUMNS == [
+        L.C_QUERY, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_GAP_TO_BEST, L.C_COMP_POS,
+        L.C_POSITION, L.C_RANK_URL, L.C_PRIORITY,
+    ]
+
+
+def test_sheet_merges_the_cases_of_a_query_each_url_once_by_score():
+    # Möglich (U1 0.9, U2 0.7) und bereits sichtbar (U1 auf 3, U3 auf 8): drei URLs, U1 nur einmal
+    rankings = _rankings([("q", U1, U1, 3.0), ("q", U3, U3, 8.0)])
+    df = _sheet(["q"], [[0.9, 0.7, 0.1]], rankings)
+    assert df[L.C_COMP_URL].tolist() == [U1, U2, U3]
+    assert df[L.C_NO].tolist() == [1, 2, 3]
+    assert df[L.C_COMP_POS].tolist() == ["3", "", "8"]
+    # die dringendste Einordnung gilt: bereits sichtbar mit Top-Ranking der besten Seite ist niedrig,
+    # Möglich mit der besten Seite rankend sehr niedrig
+    assert set(df[L.C_PRIORITY]) == {L.PRIO_LOW}
+
+
+def test_sheet_lists_the_same_page_in_www_and_frog_spelling_once():
+    frog = "https://toom.de/a/"
+    rankings = pd.DataFrame(
+        [("q", "https://www.toom.de/a", normalize_url("https://www.toom.de/a"), 3.0),
+         ("q", U2, normalize_url(U2), 9.0)],
+        columns=["query_norm", "url", "url_norm", "position"],
+    )
+    df = _sheet(["q"], [[0.9, 0.1, 0.1]], rankings, urls=(frog, U2, U3))
+    assert df[L.C_COMP_URL].tolist() == [frog, U2]
+    assert df[L.C_COMP_SCORE].tolist()[0] == 0.9
+
+
+def test_sheet_urls_without_score_come_last_by_position():
+    rankings = _rankings([("q", ALT, ALT, 2.0), ("q", U1, U1, 9.0)])
+    df = _sheet(["q"], [[0.9, 0.1, 0.1]], rankings)
+    assert df[L.C_COMP_URL].tolist() == [U1, ALT]
+
+
+def test_sheet_is_empty_without_competition():
+    assert _sheet(["q"], [[0.9, 0.1, 0.1]]).empty

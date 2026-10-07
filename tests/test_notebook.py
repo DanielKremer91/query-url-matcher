@@ -234,7 +234,7 @@ def test_smoke_full_flow(nb, tmp_path, capsys):
     _verdicts(nb)
     nb.run(8)
     out = capsys.readouterr().out
-    assert "✅ Schritt 8 fertig: 4 Blätter exportiert." in out
+    assert "✅ Schritt 8 fertig: 5 Blätter exportiert." in out
     assert nb.downloads == ["query_url_matcher.xlsx"]
     assert _sheet_names(tmp_path / "query_url_matcher.xlsx") == SHEETS
     assert nb.ns["new_pages"] is not None
@@ -245,7 +245,7 @@ def test_smoke_full_flow(nb, tmp_path, capsys):
     assert "Treffer je Query (Top-N)" not in settings
 
 
-SHEETS = ["Übersicht", "Kannibalisierungsgefahr", "Potentielle Content-Lücken", "Lesehilfe"]
+SHEETS = ["Übersicht", "Kannibalisierungsgefahr", "Potentielle Content-Lücken", "Chunk auf anderer Seite", "Lesehilfe"]
 
 
 def _sheet_names(path):
@@ -433,7 +433,8 @@ def _zip_header(path):
 
     with zipfile.ZipFile(path) as archive:
         assert archive.namelist() == [
-            "uebersicht.csv", "kannibalisierungsgefahr.csv", "potentielle_content_luecken.csv", "lesehilfe.csv",
+            "uebersicht.csv", "kannibalisierungsgefahr.csv", "potentielle_content_luecken.csv", "chunk_auf_anderer_seite.csv",
+            "lesehilfe.csv",
         ]
         return archive.read("uebersicht.csv").decode("utf-8-sig").splitlines()[0]
 
@@ -591,7 +592,12 @@ def _verdict_of(nb, query):
 def _reason_of(nb, query):
     from qum import labels as L
 
-    cannibal = nb.ns["cannibal"]
+    from qum.cannibal import cannibal_cases
+
+    # die internen Fälle mit den Einstellungen, die Schritt 7c verwendet hat (das Blatt zeigt keine Gründe mehr)
+    ns, settings = nb.ns, nb.ns["settings"]
+    cannibal = cannibal_cases(ns["result"], ns["lead"], ns["threshold"], ns["rankings"],
+                              settings["Rankt gut bis Position"], settings["Abstand fast gleich"])
     reasons = cannibal.loc[(cannibal[L.C_QUERY] == query) & (cannibal[L.C_STAGE] == L.STAGE_DANGER), L.C_REASON]
     assert reasons.nunique() == 1  # eine Zeile je URL, der Grund steht in jeder
     return reasons.iloc[0]
@@ -1103,7 +1109,7 @@ def test_verdict_guide_sits_before_step_7a_and_covers_every_verdict():
     assert "| **Rankt gut**" in guide
 
 
-def test_smoke_decisions_carry_the_cannibalisation_column(nb, capsys):
+def test_smoke_step_7c_counts_the_queries_of_the_cannibalisation_sheet(nb, capsys):
     from qum import labels as L
 
     _load(nb)
@@ -1112,17 +1118,20 @@ def test_smoke_decisions_carry_the_cannibalisation_column(nb, capsys):
     nb.run("7b", schwelle_waehlen=MEDIAN)
     nb.run("7c")
     decisions, cannibal = nb.ns["decisions"], nb.ns["cannibal"]
-    assert set(decisions[L.C_CANNIBAL]) <= {L.YES, L.MAYBE, L.NO}
-    flagged = set(decisions.loc[decisions[L.C_CANNIBAL] != L.NO, L.C_QUERY])
-    assert flagged == set(cannibal[L.C_QUERY])
-    assert "über alle Urteile" in capsys.readouterr().out
+    assert L.C_PRIORITY not in decisions.columns
+    assert set(decisions.loc[decisions[L.C_VERDICT] == L.V_CANNIBAL, L.C_QUERY]) <= set(cannibal[L.C_QUERY])
+    out = capsys.readouterr().out
+    assert f"{cannibal[L.C_QUERY].nunique():>5} Queries im Blatt Kannibalisierungsgefahr, über alle Urteile (" in out
 
 
-def test_verdict_guide_says_the_cannibalisation_column_is_independent_of_the_verdict():
+def test_verdict_guide_explains_the_cannibalisation_sheet_and_its_urgency():
+    from qum import labels as L
+
     guide = next(source for kind, source in CELLS if kind == "markdown" and "So entstehen die Urteile" in source)
-    assert "Spalte „Kannibalisierungsgefahr“ (unabhängig vom Urteil)" in guide
-    for value in ("**ja**", "**möglich**", "**nein**"):
-        assert value in guide, value
+    assert "Blatt „Kannibalisierungsgefahr“ (unabhängig vom Urteil)" in guide
+    for value in (L.PRIO_VERY_HIGH, L.PRIO_HIGH, L.PRIO_MID, L.PRIO_LOW, L.PRIO_VERY_LOW, L.PRIO_OPEN):
+        assert f"| **{value}** |" in guide, value
+    assert "**ja**" not in guide and "**möglich**" not in guide and "Chunk auf anderer Seite" in guide
 
 
 def test_notebook_ends_with_step_8_and_nothing_mentions_step_9_or_pairs():
@@ -1156,7 +1165,7 @@ def test_verdict_guide_shows_two_scenarios_without_and_with_rankings():
     guide = _guide()
     without = guide.index("### Ohne Rankings")
     with_rankings = guide.index("### Mit Rankings")
-    column = guide.index("### Spalte „Kannibalisierungsgefahr“")
+    column = guide.index("### Blatt „Kannibalisierungsgefahr“")
     assert without < with_rankings < column
     for verdict in (L.V_MATCH, L.V_CANNIBAL, L.V_GAP):
         assert verdict in guide[without:with_rankings], verdict
@@ -1167,7 +1176,7 @@ def test_verdict_guide_shows_two_scenarios_without_and_with_rankings():
     assert "wie ohne Rankings" in guide[with_rankings:column]
     assert "die rankende Seite passt, aber eine andere passt besser" in guide[with_rankings:column]
     assert "nicht im Frog-Export" in guide[with_rankings:column]
-    assert "Bestehende Seite nutzen" not in guide and "Übersicht" in guide
+    assert "Bestehende Seite nutzen" not in guide
 
 
 def test_step_6_says_serps_only_group_the_gaps_into_topics():

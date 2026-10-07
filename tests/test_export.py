@@ -8,7 +8,8 @@ from openpyxl import load_workbook
 from qum import export
 from qum import labels as L
 from qum.cannibal import COLUMNS as CANNIBAL_COLUMNS
-from qum.cannibal import annotate, find_cannibalization
+from qum.cannibal import find_cannibalization
+from qum.elsewhere import COLUMNS as ELSEWHERE_COLUMNS
 from qum.gaps import COLUMNS as GAP_COLUMNS
 from qum.gaps import find_gaps
 from qum.verdict import OVERVIEW_COLUMNS, build_decisions
@@ -23,7 +24,7 @@ def _frames(queries=("a", "b", "c"), scores=((0.9, 0.1, 0.1), (0.5, 0.2, 0.1), (
     result = make_result(list(queries), [U1, U2, U3], [list(s) for s in scores])
     lead = result.lead("chunk")
     cannibal = find_cannibalization(result, lead, 0.8)
-    overview = annotate(build_decisions(result, lead, 0.8), cannibal)
+    overview = build_decisions(result, lead, 0.8)
     return overview, cannibal, find_gaps(result, lead, 0.8, topics=topics)
 
 
@@ -43,8 +44,10 @@ def _entries(readme, area):
 # --- Blätter -----------------------------------------------------------------------------------------------------
 
 
-def test_four_sheets_in_order():
-    assert list(_sheets()) == [export.SHEET_OVERVIEW, export.SHEET_CANNIBAL, export.SHEET_GAPS, export.SHEET_README]
+def test_five_sheets_in_order():
+    assert list(_sheets()) == [
+        export.SHEET_OVERVIEW, export.SHEET_CANNIBAL, export.SHEET_GAPS, export.SHEET_ELSEWHERE, export.SHEET_README,
+    ]
     assert [export.SHEET_OVERVIEW, export.SHEET_CANNIBAL, export.SHEET_GAPS, export.SHEET_README] == [
         "Übersicht", "Kannibalisierungsgefahr", "Potentielle Content-Lücken", "Lesehilfe",
     ]
@@ -63,7 +66,7 @@ def test_sheets_keep_their_columns():
     assert list(sheets[export.SHEET_OVERVIEW].columns) == OVERVIEW_COLUMNS
     assert list(sheets[export.SHEET_CANNIBAL].columns) == CANNIBAL_COLUMNS
     assert list(sheets[export.SHEET_GAPS].columns) == GAP_COLUMNS
-    assert sheets[export.SHEET_OVERVIEW][L.C_CANNIBAL].tolist() == [L.NO, L.NO, L.YES]
+    assert L.C_PRIORITY not in sheets[export.SHEET_OVERVIEW].columns
     assert sheets[export.SHEET_GAPS][L.C_QUERY].tolist() == ["b"]
 
 
@@ -78,21 +81,24 @@ def test_readme_columns_and_disclaimer_first():
 
 def test_readme_lists_all_four_sheets_all_verdicts_and_both_stages():
     readme = _readme()
-    assert _entries(readme, "Blatt") == [export.SHEET_OVERVIEW, export.SHEET_CANNIBAL, export.SHEET_GAPS, export.SHEET_README]
+    assert _entries(readme, "Blatt") == [
+        export.SHEET_OVERVIEW, export.SHEET_CANNIBAL, export.SHEET_GAPS, export.SHEET_ELSEWHERE, export.SHEET_README,
+    ]
     assert _entries(readme, "Urteil") == [L.V_MATCH, L.V_GAP, L.V_OK, L.V_CANNIBAL, L.V_WATCH]
-    assert _entries(readme, "Stufe") == [L.STAGE_DANGER, L.STAGE_POSSIBLE, L.STAGE_VISIBLE]
+    assert _entries(readme, "Stufe") == []  # Stufen sind intern, das Blatt zeigt die Einordnung
 
 
 def test_readme_explains_every_column_of_every_sheet_once_in_sheet_order():
-    expected = list(dict.fromkeys(OVERVIEW_COLUMNS + CANNIBAL_COLUMNS + GAP_COLUMNS))
+    expected = list(dict.fromkeys(OVERVIEW_COLUMNS + CANNIBAL_COLUMNS + GAP_COLUMNS + ELSEWHERE_COLUMNS))
     assert _entries(_readme(), "Spalte") == expected
     assert set(export._COLUMN_HELP) == set(expected)
 
 
 def test_every_column_label_is_explained():
     # C_URL, C_SIDE und C_SCORE gehören nur zu den Prüfbeispielen in Schritt 7a und 7b, C_SCORE_2 zur Vorschau in
-    # Schritt 4, nicht zum Export
-    columns = [v for k, v in vars(L).items() if k.startswith("C_") and k not in ("C_URL", "C_SIDE", "C_SCORE", "C_SCORE_2")]
+    # Schritt 4, C_STAGE und C_REASON zu den internen Fällen der Kannibalisierung, nicht zum Export
+    internal = ("C_URL", "C_SIDE", "C_SCORE", "C_SCORE_2", "C_STAGE", "C_REASON")
+    columns = [v for k, v in vars(L).items() if k.startswith("C_") and k not in internal]
     assert columns
     for column in columns:
         assert column in export._COLUMN_HELP, column
@@ -146,11 +152,9 @@ def test_help_texts_describe_the_rules():
     assert "Mehrere eigene Seiten erreichen die Schwelle und passen fast gleich gut" in export.VERDICT_HELP[L.V_CANNIBAL]
     assert "nicht im Frog-Export" in export.VERDICT_HELP[L.V_OK]
     for verdict in (L.V_OK, L.V_WATCH):
-        assert "Kannibalisierungsgefahr 'ja'" in export.VERDICT_HELP[verdict]
-    assert "fast gleich gut" in export._STAGE_HELP[L.STAGE_DANGER]
-    assert "deutlich" in export._STAGE_HELP[L.STAGE_POSSIBLE]
-    for value in (L.YES, L.MAYBE, L.NO):
-        assert f"'{value}'" in export._COLUMN_HELP[L.C_CANNIBAL], value
+        assert "im Blatt Kannibalisierungsgefahr" in export.VERDICT_HELP[verdict]
+    for value in (L.PRIO_VERY_HIGH, L.PRIO_HIGH, L.PRIO_MID, L.PRIO_LOW, L.PRIO_VERY_LOW, L.PRIO_OPEN):
+        assert f"'{value}'" in export._COLUMN_HELP[L.C_PRIORITY], value
     assert "enau eine Seite passt klar" in export.VERDICT_HELP[L.V_MATCH]
     assert "keine Rankings geladen" in export.VERDICT_HELP[L.V_MATCH]
     assert not hasattr(L, "V_USE")
@@ -168,7 +172,9 @@ def test_write_excel_creates_sheets_and_colours_verdicts(tmp_path):
     path = tmp_path / "out.xlsx"
     export.write_excel(path, _sheets())
     book = load_workbook(path)
-    assert book.sheetnames == [export.SHEET_OVERVIEW, export.SHEET_CANNIBAL, export.SHEET_GAPS, export.SHEET_README]
+    assert book.sheetnames == [
+        export.SHEET_OVERVIEW, export.SHEET_CANNIBAL, export.SHEET_GAPS, export.SHEET_ELSEWHERE, export.SHEET_README,
+    ]
     sheet = book[export.SHEET_OVERVIEW]
     assert sheet["A1"].font.bold
     column = OVERVIEW_COLUMNS.index(L.C_VERDICT) + 1
@@ -217,7 +223,8 @@ def test_write_csv_zip_has_one_file_per_sheet(tmp_path):
     export.write_csv_zip(path, _sheets())
     with zipfile.ZipFile(path) as archive:
         assert archive.namelist() == [
-            "uebersicht.csv", "kannibalisierungsgefahr.csv", "potentielle_content_luecken.csv", "lesehilfe.csv",
+            "uebersicht.csv", "kannibalisierungsgefahr.csv", "potentielle_content_luecken.csv", "chunk_auf_anderer_seite.csv",
+            "lesehilfe.csv",
         ]
         df = pd.read_csv(io.BytesIO(archive.read("uebersicht.csv")), encoding="utf-8-sig", sep=";")
     assert df[L.C_QUERY].tolist() == ["a", "b", "c"]
@@ -261,8 +268,7 @@ def _text_number_sheets():
     overview, _, gaps = _frames()
     overview[L.C_POSITION] = ["4.3", "12", ""]
     gaps[L.C_POSITION] = ["7.5"]
-    shared = {L.C_QUERY: "a", L.C_POSITION: "4.3", L.C_RANK_URL: "https://a.de/x.html", L.C_STAGE: L.STAGE_DANGER,
-              L.C_REASON: L.REASON_BETTER, L.C_PRIORITY: L.PRIO_MID}
+    shared = {L.C_QUERY: "a", L.C_POSITION: "4.3", L.C_RANK_URL: "https://a.de/x.html", L.C_PRIORITY: L.PRIO_MID}
     cannibal = pd.DataFrame([
         {**shared, L.C_NO: 1, L.C_COMP_URL: "https://a.de/x.html", L.C_COMP_SCORE: 0.842, L.C_COMP_POS: "4.3"},
         {**shared, L.C_NO: 2, L.C_COMP_URL: "https://a.de/y", L.C_COMP_SCORE: -0.0123, L.C_COMP_POS: ""},
