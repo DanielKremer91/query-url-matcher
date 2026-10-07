@@ -371,9 +371,10 @@ def _sheet(queries, scores, rankings=None, threshold=0.6, urls=(U1, U2, U3), **k
 def test_sheet_columns_without_stage_and_reason():
     df = _sheet(["q"], [[0.8, 0.8, 0.1]])
     assert list(df.columns) == COLUMNS == [
-        L.C_QUERY, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_GAP_TO_BEST, L.C_COMP_POS, L.C_COMP_CHUNK,
-        L.C_POSITION, L.C_RANK_URL, L.C_PRIORITY,
+        L.C_QUERY, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_GAP_TO_BEST, L.C_COMP_POS, L.C_COMP_CHUNK, L.C_PRIORITY,
     ]
+    # kein Ranking der Query in jeder Zeile: jede Zeile zeigt nur die Position ihrer eigenen URL
+    assert L.C_POSITION not in COLUMNS and L.C_RANK_URL not in COLUMNS
     assert L.C_COMP_CHUNK == "Relevanter Chunk der URL"
 
 
@@ -445,3 +446,30 @@ def test_chunk_column_can_be_left_out_for_the_whole_url_basis():
     df = _sheet(["q"], [[0.8, 0.8, 0.1]], include_chunk=False)
     assert L.C_COMP_CHUNK not in df.columns
     assert list(df.columns) == [c for c in COLUMNS if c != L.C_COMP_CHUNK]
+
+
+# --- Position je Zeile, die rankende URL immer dabei ------------------------------------------------------------
+
+
+def test_each_row_shows_only_its_own_position():
+    # korkboden verlegen: die Übersichtsseite passt minimal besser, rankt aber nicht; die Kork-Seite rankt auf 18
+    rankings = _rankings([("q", U2, U2, 18.0)])
+    df = _sheet(["q"], [[0.8546, 0.8544, 0.1]], rankings)
+    assert df[L.C_COMP_URL].tolist() == [U1, U2]
+    assert df[L.C_COMP_POS].tolist() == ["", "18"]
+
+
+def test_the_ranking_url_is_always_listed_even_if_it_does_not_fit():
+    # Möglich: U1 und U2 passen, die rankende U3 erreicht die Schwelle nicht
+    rankings = _rankings([("q", U3, U3, 30.0)])
+    df = _sheet(["q"], [[0.9, 0.7, 0.3]], rankings)
+    assert df[L.C_COMP_URL].tolist() == [U1, U2, U3]
+    assert df[L.C_COMP_POS].tolist() == ["", "", "30"]
+    assert df[L.C_GAP_TO_BEST].tolist()[2] == 0.6
+
+
+def test_a_ranking_url_outside_the_export_is_listed_last_without_score():
+    rankings = _rankings([("q", ALT, ALT, 30.0)])
+    df = _sheet(["q"], [[0.9, 0.7, 0.1]], rankings)
+    assert df[L.C_COMP_URL].tolist() == [U1, U2, ALT]
+    assert pd.isna(df[L.C_COMP_SCORE].tolist()[2]) and df[L.C_COMP_CHUNK].tolist()[2] == ""

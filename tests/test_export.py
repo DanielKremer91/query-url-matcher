@@ -268,7 +268,7 @@ def _text_number_sheets():
     overview, _, gaps = _frames()
     overview[L.C_POSITION] = ["4.3", "12", ""]
     gaps[L.C_POSITION] = ["7.5"]
-    shared = {L.C_QUERY: "a", L.C_POSITION: "4.3", L.C_RANK_URL: "https://a.de/x.html", L.C_PRIORITY: L.PRIO_MID}
+    shared = {L.C_QUERY: "a", L.C_PRIORITY: L.PRIO_MID, L.C_COMP_CHUNK: "Text"}
     cannibal = pd.DataFrame([
         {**shared, L.C_NO: 1, L.C_COMP_URL: "https://a.de/x.html", L.C_COMP_SCORE: 0.842, L.C_COMP_POS: "4.3"},
         {**shared, L.C_NO: 2, L.C_COMP_URL: "https://a.de/y", L.C_COMP_SCORE: -0.0123, L.C_COMP_POS: ""},
@@ -293,7 +293,7 @@ def test_semicolon_csv_uses_decimal_comma_in_positions_settings_and_scores(tmp_p
     assert frames["uebersicht.csv"][L.C_POSITION].tolist() == ["4,3", "12", ""]
     assert frames["potentielle_content_luecken.csv"][L.C_POSITION].tolist() == ["7,5"]
     rows = frames["kannibalisierungsgefahr.csv"]
-    assert rows[L.C_COMP_POS].tolist() == ["4,3", "", "17,5"] and rows[L.C_POSITION].tolist() == ["4,3"] * 3
+    assert rows[L.C_COMP_POS].tolist() == ["4,3", "", "17,5"]
     assert rows[L.C_COMP_SCORE].tolist() == ["0,842", "-0,0123", ""]
     readme = frames["lesehilfe.csv"].set_index(L.R_ENTRY)[L.R_TEXT]
     assert readme["Schwelle"] == "0,8123"

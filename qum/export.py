@@ -113,7 +113,7 @@ _COLUMN_HELP = {
     L.C_NO: "Laufende Nummer der URL innerhalb der Query. Jede konkurrierende URL hat eine eigene Zeile.",
     L.C_COMP_URL: (
         "Eine der konkurrierenden eigenen URLs: Seiten, die die Schwelle erreichen und nah an der besten liegen oder "
-        "weiter dahinter, und eigene URLs, die bis sichtbar_bis_position ranken. Jede Seite einmal, nach Score sortiert, "
+        "weiter dahinter, eigene URLs, die bis sichtbar_bis_position ranken, und immer die rankende URL der Query. Jede Seite einmal, nach Score sortiert, "
         "Seiten ohne Score (nicht im Frog-Export) zuletzt nach Position. Nach dieser Spalte filtern zeigt, bei welchen "
         "Queries eine Seite mit anderen konkurriert."
     ),

@@ -41,7 +41,7 @@ Für die Modelle mit API-Key legst du im Secrets-Panel (Schlüssel-Symbol links)
 Schritt 8 lädt eine Excel-Datei mit vier Blättern herunter, auf Wunsch zusätzlich ein ZIP mit einer CSV je Blatt:
 
 - **Übersicht:** eine Zeile je Query mit den drei am besten passenden URLs und ihren Scores, dem Abstand zur Schwelle (positiv = passt), der eigenen Rankingposition und dem Urteil.
-- **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen oder mehrere eigene URLs ranken, mit einer Zeile je konkurrierender URL samt Score, Abstand zur besten URL und Position, dazu Rankingposition, rankende URL und Einordnung (wie dringend: sehr hoch, hoch, mittel, niedrig, sehr niedrig oder offen).
+- **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen oder mehrere eigene URLs ranken, mit einer Zeile je konkurrierender URL samt Score, Abstand zur besten URL und eigener Position (die rankende URL immer dabei) und der Einordnung (wie dringend: sehr hoch, hoch, mittel, niedrig, sehr niedrig oder offen).
 - **Potentielle Content-Lücken:** genau die Queries mit dem Urteil Content-Lücke, die sichersten zuerst, mit SERPs nach Thema gebündelt.
 - **Chunk auf anderer Seite:** Queries, deren bester Textabschnitt auf einer anderen Seite steht als die Seite, die insgesamt am besten passt.
 - **Lesehilfe:** erklärt jedes Blatt, jede Spalte, jedes Urteil und nennt die Einstellungen des Laufs.

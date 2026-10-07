@@ -11,9 +11,9 @@ CASE_COLUMNS = [
     L.C_POSITION, L.C_RANK_URL, L.C_STAGE, L.C_REASON, L.C_PRIORITY,
 ]
 # Blatt Kannibalisierungsgefahr (Langformat): eine Zeile je Query und konkurrierender URL, die Query steht in jeder Zeile
+# Jede Zeile zeigt nur die Position ihrer eigenen URL; die rankende URL der Query steht immer als eigene Zeile darin
 COLUMNS = [
-    L.C_QUERY, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_GAP_TO_BEST, L.C_COMP_POS, L.C_COMP_CHUNK,
-    L.C_POSITION, L.C_RANK_URL, L.C_PRIORITY,
+    L.C_QUERY, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_GAP_TO_BEST, L.C_COMP_POS, L.C_COMP_CHUNK, L.C_PRIORITY,
 ]
 # dringendste zuerst; je Query gilt die dringendste Einordnung ihrer Fälle
 _URGENCY = [L.PRIO_VERY_HIGH, L.PRIO_HIGH, L.PRIO_MID, L.PRIO_LOW, L.PRIO_VERY_LOW, L.PRIO_OPEN]
@@ -126,6 +126,23 @@ def cannibal_cases(
     return pd.DataFrame(rows, columns=CASE_COLUMNS)
 
 
+def _with_ranking_url(group, result, scores, u_index) -> pd.DataFrame:
+    """Hängt die rankende URL der Query als Zeile an, wenn sie unter den konkurrierenden URLs fehlt (sie passt nicht
+    oder steht nicht im Frog-Export). So geht ihr Ranking nicht verloren, obwohl das Blatt nur Positionen je Zeile zeigt."""
+    ranking_url, position = group[L.C_RANK_URL].iloc[0], group[L.C_POSITION].iloc[0]
+    if not ranking_url or normalize_url(ranking_url) in set(group[L.C_COMP_URL].map(normalize_url)):
+        return group
+    j = u_index.get(normalize_url(ranking_url))
+    score = None if j is None else round(float(scores[j]), 4)
+    row = group.iloc[0].to_dict() | {
+        L.C_COMP_URL: ranking_url if j is None else result.urls[j],
+        L.C_COMP_SCORE: score,
+        L.C_GAP_TO_BEST: None if j is None else round(float(scores.max()) - float(scores[j]), 4) + 0.0,
+        L.C_COMP_POS: position,
+    }
+    return pd.concat([group, pd.DataFrame([row])], ignore_index=True)
+
+
 def find_cannibalization(
     result, lead, threshold, rankings=None, good_position=10, margin=0.01, visible_position=20, gap_position=0,
     include_chunk=True,
@@ -149,6 +166,7 @@ def find_cannibalization(
     groups = []
     for query, group in cases.groupby(L.C_QUERY, sort=False):
         urgency = min(group[L.C_PRIORITY], key=_URGENCY.index)
+        group = _with_ranking_url(group, result, lead[q_index[query]], u_index)
         ordered = group.assign(
             _score=group[L.C_COMP_SCORE].astype(float).fillna(-np.inf),
             _position=pd.to_numeric(group[L.C_COMP_POS].replace("", np.nan), errors="coerce").fillna(np.inf),
