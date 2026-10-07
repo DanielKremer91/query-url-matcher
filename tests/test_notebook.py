@@ -992,3 +992,9 @@ def test_step_3_explains_both_input_files():
     source = next(s for s in _code_cells() if s.startswith("#@title Schritt 3"))
     for text in ("**Queries-Datei:**", "**Frog-Export:**", "Custom Extraction", "Configuration → Custom → Custom Extraction", "Address"):
         assert text in source, text
+
+
+def test_step_7c_explains_both_cluster_sliders_with_examples():
+    source = next(s for s in _code_cells() if s.startswith("#@title Schritt 7c"))
+    for text in ("**serp_ueberschneidung:**", "6 von 10 URLs", "**cluster_dichte:**", "verhindert Ketten", "A und E fallen raus"):
+        assert text in source, text
