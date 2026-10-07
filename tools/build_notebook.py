@@ -414,7 +414,7 @@ print(f"✅ Schritt 7b fertig: Schwelle {threshold:.4f}. Weiter mit Schritt 7c: 
 
 STEP7C = '''#@title Schritt 7c: Urteile bilden { display-mode: "form" }
 #@markdown **▶ Starten. Die Werte darunter kannst du für den ersten Lauf auf den Voreinstellungen lassen.**
-#@markdown Die Zelle entscheidet mit der Schwelle aus Schritt 7b je Query, ob eine deiner Seiten schon passt, und bildet daraus die Urteile (passende Seite, Kannibalisierung, Content-Lücke). Willst du nur die Feineinstellungen ändern, starte nur diese Zelle erneut.
+#@markdown Die Zelle entscheidet mit der Schwelle aus Schritt 7b je Query, ob eine deiner Seiten schon passt, und bildet daraus die Urteile (passende Seite, Kannibalisierung, Content-Lücke). Willst du nur die Feineinstellungen ändern, starte nur diese Zelle erneut. Welches Urteil wann entsteht, zeigt die Übersicht über Schritt 7a.
 #@markdown **rankt_gut_bis_position:** Bis zu dieser Position gilt eine Query als gut rankend. Davon hängt das Urteil ab: "In Ordnung" oder "Kannibalisierungs-Risiko" bei gutem Ranking, "Bestehende Seite nutzen" oder "Content-Lücke" bei schwachem.
 rankt_gut_bis_position = 10 #@param {type:"integer"}
 #@markdown **abstand_fast_gleich:** Score-Unterschied, bis zu dem zwei Seiten als gleich gut gelten (0.01 = ein Hundertstel). Liegt die rankende Seite höchstens so weit hinter der besten, lautet das Urteil "In Ordnung". Liegen zwei passende Seiten so nah beieinander, gibt es einen Kannibalisierungs-Hinweis.
@@ -553,6 +553,23 @@ colab.download("query_url_matcher_mit_paaren.xlsx")
 print(f"✅ Schritt 9 fertig: {len(pairs)} Paare bewertet, Export mit Blatt 'Paare' als query_url_matcher_mit_paaren.xlsx heruntergeladen.")
 '''
 
+VERDICT_GUIDE = '''## So entstehen die Urteile (Schritt 7a bis 7c)
+
+Für jede Query prüft das Tool zwei Dinge: Passt eine deiner Seiten semantisch, erreicht ihr Score also die Schwelle aus Schritt 7b? Und rankt die Query heute schon gut (Rankings aus Schritt 5 oder 6)? Daraus ergibt sich das Urteil:
+
+| | Eine eigene Seite passt semantisch | Keine Seite passt |
+|---|---|---|
+| **Rankt gut** (Voreinstellung: bis Position 10) | **In Ordnung**, wenn die rankende Seite die beste ist oder fast gleich gut. **Kannibalisierungs-Risiko**, wenn eine andere eigene Seite deutlich besser passt. | **Rankt trotz schwachem Match**: beobachten und die Schwelle prüfen |
+| **Rankt schwach oder gar nicht** | **Bestehende Seite nutzen**: ausbauen und intern stärken statt neu bauen | **Content-Lücke**: Kandidat für eine neue Seite |
+
+- **Ohne Rankings** gibt es nur zwei Urteile: **Passende Seite vorhanden** oder **Content-Lücke**.
+- **Kannibalisierungs-Risiko** gibt es auch, wenn die rankende Seite selbst die Schwelle nicht erreicht, eine andere eigene Seite aber schon, oder wenn die rankende URL nicht im Frog-Export steht.
+- **Mit SERPs aus Schritt 6** wird aus einer Content-Lücke **Vor Neuerstellung prüfen**, wenn ein Keyword mit stark überlappender SERP schon eine passende Seite hat.
+- Unabhängig vom Urteil meldet das Tool im Blatt „Kannibalisierung", wenn zwei eigene Seiten fast gleich gut passen oder mehrere eigene Seiten für dieselbe Query ranken.
+
+Alle Urteile sind Hinweise zum Prüfen, keine Entscheidungen.
+'''
+
 CELLS = [
     ("markdown", INTRO),
     ("code", STEP2),
@@ -560,6 +577,7 @@ CELLS = [
     ("code", STEP4),
     ("code", STEP5),
     ("code", STEP6),
+    ("markdown", VERDICT_GUIDE),
     ("code", STEP7A),
     ("code", STEP7B),
     ("code", STEP7C),

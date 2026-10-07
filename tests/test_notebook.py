@@ -998,3 +998,15 @@ def test_step_7c_explains_both_cluster_sliders_with_examples():
     source = next(s for s in _code_cells() if s.startswith("#@title Schritt 7c"))
     for text in ("**serp_ueberschneidung:**", "6 von 10 URLs", "**cluster_dichte:**", "verhindert Ketten", "A und E fallen raus"):
         assert text in source, text
+
+
+def test_verdict_guide_sits_before_step_7a_and_covers_every_verdict():
+    from qum import labels as L
+
+    kinds = [(kind, source.splitlines()[0]) for kind, source in CELLS]
+    guide_index = next(i for i, (kind, first) in enumerate(kinds) if kind == "markdown" and "So entstehen die Urteile" in first)
+    assert kinds[guide_index + 1][1].startswith("#@title Schritt 7a")
+    guide = CELLS[guide_index][1]
+    for verdict in (L.V_OK, L.V_RISK, L.V_WATCH, L.V_USE, L.V_GAP, L.V_MATCH, L.V_CHECK):
+        assert verdict in guide, verdict
+    assert "| **Rankt gut**" in guide
