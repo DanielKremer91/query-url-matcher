@@ -254,6 +254,9 @@ elif not loaded["url_norm"].isin(known_urls).any():
     rankings, rankings_source = None, None
 else:
     rankings, rankings_source = loaded, "Datei"
+    hint = ingest.unmatched_hint(rankings, content.urls)
+    if hint:
+        print(hint)
     print(f"✅ Schritt 5 fertig: {len(rankings)} Ranking-Zeilen, davon {covered} zu deinen Queries. Weiter mit Schritt 6 oder 7a.")
 if rankings is None:
     print("ℹ️ Die Ranking-Datei wurde nicht übernommen, das Notebook bleibt im reinen Matching. Weiter mit Schritt 7a oder lade eine andere Datei hoch.")
@@ -308,6 +311,9 @@ if serps is not None and rankings_source != "Datei":
     else:
         rankings, rankings_source = derived, "SERPs"
         print(f"ℹ️ Keine eigene Ranking-Datei: {len(rankings)} eigene Rankings aus den SERPs übernommen.")
+        hint = ingest.unmatched_hint(rankings, content.urls)
+        if hint:
+            print(hint)
 if serps is not None:
     per_keyword = serps.groupby("query_norm")["url_norm"].nunique().median()
     if per_keyword < 5:

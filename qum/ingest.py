@@ -278,3 +278,28 @@ def load_serps(df, keyword_col=None, url_col=None, position_col=None, type_col=N
 def own_rankings_from_serps(serps: pd.DataFrame, own_hosts: set) -> pd.DataFrame:
     mask = serps["url"].map(host_of).isin(own_hosts)
     return serps.loc[mask, ["query_norm", "url", "url_norm", "position"]].reset_index(drop=True)
+
+
+def unmatched_ranking_urls(rankings: pd.DataFrame, content_urls) -> tuple:
+    """Ranking-Zeilen der eigenen Domain(s), deren URL nicht im Frog-Export steht: (Zahl der Zeilen, URLs in Reihenfolge).
+    Typische Ursachen: der Crawl deckt die Seiten nicht ab, oder der Ranking-Export enthält veraltete oder verkürzte URLs."""
+    own_hosts = {host_of(u) for u in content_urls}
+    known = {normalize_url(u) for u in content_urls}
+    own = rankings[rankings["url"].map(host_of).isin(own_hosts)]
+    missing = own[~own["url_norm"].isin(known)]
+    return len(missing), list(dict.fromkeys(missing["url"]))
+
+
+def unmatched_hint(rankings: pd.DataFrame, content_urls, examples=3) -> str | None:
+    """Hinweiszeile für Schritt 5 und 6, wenn eigene Ranking-URLs nicht im Frog-Export stehen, sonst None."""
+    rows, urls = unmatched_ranking_urls(rankings, content_urls)
+    if not rows:
+        return None
+    shown = ", ".join(urls[:examples]) + (" …" if len(urls) > examples else "")
+    return (
+        f"⚠️ {rows} Ranking-Zeilen deiner Domain ({len(urls)} URLs) stehen nicht im Frog-Export, zum Beispiel: {shown}. "
+        "Mögliche Ursachen: Der Crawl deckt diese Seiten nicht ab, oder der Ranking-Export enthält veraltete oder "
+        "verkürzte URLs (Ahrefs zeigt teils nur den Breadcrumb-Pfad, der zu keiner echten Seite führt). Diese URLs "
+        "bekommen keinen Score und stehen im Blatt Kannibalisierungsgefahr ohne Score. Prüfe sie, bevor du die "
+        "Ergebnisse weitergibst."
+    )

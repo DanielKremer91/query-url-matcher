@@ -444,3 +444,32 @@ def test_load_content_finds_extraction_next_to_content_type():
     table = ingest.load_content(df)
     assert table.content_column == "Main Content 1"
     assert table.contents == ["Seitentext"]
+
+
+# --- Ranking-URLs der eigenen Domain, die nicht im Frog-Export stehen ---------------------------------------------
+
+
+def test_unmatched_ranking_urls_counts_rows_and_lists_urls_of_the_own_domain():
+    content = ["https://toom.de/selbermachen/a/", "https://toom.de/selbermachen/b/"]
+    table = pd.DataFrame({
+        "Keyword": ["k1", "k2", "k3", "k4", "k5"],
+        "URL": ["https://www.toom.de/selbermachen/a", "https://toom.de/bauen-renovieren/treppen",
+                "https://toom.de/bauen-renovieren/treppen", "https://toom.de/wand-decke", "https://obi.de/x"],
+        "Position": [1, 2, 3, 4, 5],
+    })
+    rows, urls = ingest.unmatched_ranking_urls(ingest.load_rankings(table), content)
+    assert rows == 3  # www-Schreibweise von a zählt als vorhanden, obi.de ist nicht die eigene Domain
+    assert urls == ["https://toom.de/bauen-renovieren/treppen", "https://toom.de/wand-decke"]
+
+
+def test_unmatched_ranking_urls_is_empty_when_everything_is_crawled():
+    table = pd.DataFrame({"Keyword": ["k"], "URL": ["https://toom.de/a/"], "Position": [1]})
+    assert ingest.unmatched_ranking_urls(ingest.load_rankings(table), ["https://toom.de/a"]) == (0, [])
+
+
+def test_unmatched_hint_names_count_examples_and_causes():
+    table = pd.DataFrame({"Keyword": list("abcde"), "URL": [f"https://toom.de/x{i}" for i in range(5)], "Position": [1] * 5})
+    hint = ingest.unmatched_hint(ingest.load_rankings(table), ["https://toom.de/a"])
+    assert hint.startswith("⚠️ 5 Ranking-Zeilen deiner Domain (5 URLs) stehen nicht im Frog-Export")
+    assert "https://toom.de/x0, https://toom.de/x1, https://toom.de/x2 …" in hint and "Breadcrumb" in hint
+    assert ingest.unmatched_hint(ingest.load_rankings(table.iloc[:1]), ["https://toom.de/x0"]) is None

@@ -1279,3 +1279,23 @@ def test_smoke_cannibalisation_sheet_has_a_chunk_column_except_for_the_whole_url
     nb.run(8)
     header = [cell.value for cell in load_workbook(tmp_path / "query_url_matcher.xlsx")["Kannibalisierungsgefahr"][1]]
     assert (L.C_COMP_CHUNK in header) is has_chunk
+
+
+def test_smoke_step_5_warns_about_ranking_urls_missing_from_the_frog_export(nb, capsys):
+    _load(nb)
+    ranking = ("Keyword;URL;Position\n"
+               "getreidefreies trockenfutter hund;https://www.tierbedarf.example/hundefutter/getreidefreies-hundefutter;3\n"
+               "hundeleine;https://www.tierbedarf.example/alte-seite;5\n")
+    nb.uploads.append(("rankings.csv", ranking.encode()))
+    capsys.readouterr()
+    nb.run(5)
+    out = capsys.readouterr().out
+    assert "⚠️ 1 Ranking-Zeilen deiner Domain (1 URLs) stehen nicht im Frog-Export, zum Beispiel: https://www.tierbedarf.example/alte-seite." in out
+    assert "✅ Schritt 5 fertig" in out
+
+
+def test_smoke_step_5_stays_quiet_when_all_ranking_urls_are_crawled(nb, capsys):
+    _load(nb)
+    capsys.readouterr()
+    nb.run(5, "rankings.csv")
+    assert "stehen nicht im Frog-Export" not in capsys.readouterr().out
