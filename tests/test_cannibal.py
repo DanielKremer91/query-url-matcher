@@ -419,14 +419,15 @@ def test_sheet_sorts_queries_by_urgency():
     # "niedrig-dringend": beste Seite rankt, Konkurrenz deutlich dahinter (sehr niedrig);
     # "sehr-dringend": eng beieinander, rankt auf 15 (sehr hoch); "dringend": eng, rankt nicht (hoch)
     rankings = _rankings([("niedrig-dringend", U1, U1, 3.0), ("sehr-dringend", U1, U1, 15.0), ("x", U1, U1, 1.0)])
-    df = _sheet(["niedrig-dringend", "dringend", "sehr-dringend"],
-                [[0.9, 0.7, 0.1], [0.8, 0.8, 0.1], [0.8, 0.8, 0.1]], rankings)
-    assert list(dict.fromkeys(df[L.C_QUERY])) == ["sehr-dringend", "dringend", "niedrig-dringend"]
-    assert list(dict.fromkeys(df[L.C_PRIORITY])) == [L.PRIO_VERY_HIGH, L.PRIO_HIGH, L.PRIO_VERY_LOW]
+    rankings = pd.concat([rankings, _rankings([("mittel-dringend", U2, U2, 30.0)])])
+    df = _sheet(["niedrig-dringend", "mittel-dringend", "dringend", "sehr-dringend"],
+                [[0.9, 0.7, 0.1], [0.9, 0.7, 0.1], [0.8, 0.8, 0.1], [0.8, 0.8, 0.1]], rankings)
+    assert list(dict.fromkeys(df[L.C_QUERY])) == ["sehr-dringend", "dringend", "mittel-dringend"]
+    assert list(dict.fromkeys(df[L.C_PRIORITY])) == [L.PRIO_VERY_HIGH, L.PRIO_HIGH, L.PRIO_MID]
 
 
 def test_within_the_same_urgency_the_closest_competition_comes_first():
-    df = _sheet(["weit", "eng"], [[0.9, 0.7, 0.1], [0.9, 0.85, 0.1]])  # ohne Rankings: beide offen
+    df = _sheet(["weit", "eng"], [[0.9, 0.82, 0.1], [0.9, 0.89, 0.1]], margin=0.1)  # ohne Rankings: beide offen
     assert list(dict.fromkeys(df[L.C_QUERY])) == ["eng", "weit"]
     assert df[L.C_NO].tolist() == [1, 2, 1, 2]
 
@@ -473,3 +474,24 @@ def test_a_ranking_url_outside_the_export_is_listed_last_without_score():
     df = _sheet(["q"], [[0.9, 0.7, 0.1]], rankings)
     assert df[L.C_COMP_URL].tolist() == [U1, U2, ALT]
     assert pd.isna(df[L.C_COMP_SCORE].tolist()[2]) and df[L.C_COMP_CHUNK].tolist()[2] == ""
+
+
+# --- Weitere Seiten deutlich hinter der besten: nur, wenn eine schwächere Seite rankt -----------------------------
+
+
+def test_pages_clearly_behind_the_best_are_not_listed_when_the_best_ranks_or_nothing_ranks():
+    # infrarotkabine vs sauna: die beste Seite rankt auf 9, die anderen liegen 0.04 und mehr dahinter
+    assert _sheet(["q"], [[0.9, 0.86, 0.85]], _rankings([("q", U1, U1, 9.0)])).empty
+    assert _sheet(["q"], [[0.9, 0.86, 0.85]], _rankings([("andere", U1, U1, 1.0)])).empty  # rankt gar nicht
+    assert _sheet(["q"], [[0.9, 0.86, 0.85]]).empty  # ohne Rankings
+
+
+def test_pages_clearly_behind_the_best_stay_when_a_weaker_page_ranks():
+    df = _sheet(["q"], [[0.9, 0.86, 0.1]], _rankings([("q", U2, U2, 9.0)]))
+    assert df[L.C_COMP_URL].tolist() == [U1, U2] and set(df[L.C_PRIORITY]) == {L.PRIO_MID}
+
+
+def test_very_low_never_appears_in_the_sheet():
+    from qum import export
+
+    assert f"'{L.PRIO_VERY_LOW}'" not in export._COLUMN_HELP[L.C_PRIORITY]

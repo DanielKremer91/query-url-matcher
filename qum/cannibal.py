@@ -166,6 +166,10 @@ def find_cannibalization(
     groups = []
     for query, group in cases.groupby(L.C_QUERY, sort=False):
         urgency = min(group[L.C_PRIORITY], key=_URGENCY.index)
+        # weitere Seiten nur deutlich hinter der besten und keine schwächere Seite rankt: kein Fall fürs Blatt
+        # (Entscheidung Daniel: sonst stehen Seiten drin, die mehr als den Abstand "fast gleich" dahinter liegen)
+        if set(group[L.C_STAGE]) == {L.STAGE_POSSIBLE} and urgency in (L.PRIO_VERY_LOW, L.PRIO_OPEN):
+            continue
         group = _with_ranking_url(group, result, lead[q_index[query]], u_index)
         ordered = group.assign(
             _score=group[L.C_COMP_SCORE].astype(float).fillna(-np.inf),

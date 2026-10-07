@@ -153,7 +153,7 @@ def test_help_texts_describe_the_rules():
     assert "nicht im Frog-Export" in export.VERDICT_HELP[L.V_OK]
     for verdict in (L.V_OK, L.V_WATCH):
         assert "im Blatt Kannibalisierungsgefahr" in export.VERDICT_HELP[verdict]
-    for value in (L.PRIO_VERY_HIGH, L.PRIO_HIGH, L.PRIO_MID, L.PRIO_LOW, L.PRIO_VERY_LOW, L.PRIO_OPEN):
+    for value in (L.PRIO_VERY_HIGH, L.PRIO_HIGH, L.PRIO_MID, L.PRIO_LOW, L.PRIO_OPEN):
         assert f"'{value}'" in export._COLUMN_HELP[L.C_PRIORITY], value
     assert "enau eine Seite passt klar" in export.VERDICT_HELP[L.V_MATCH]
     assert "keine Rankings geladen" in export.VERDICT_HELP[L.V_MATCH]

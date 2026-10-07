@@ -108,7 +108,8 @@ _COLUMN_HELP = {
         f"'{L.PRIO_HIGH}' schlechter oder kein Ranking, abgrenzen, zusammenführen oder Hauptseite festlegen; "
         f"'{L.PRIO_MID}' Top-Ranking (bis rankt_gut_bis_position) einer anderen als der besten Seite, prüfen, ob Google "
         f"die richtige gewählt hat; '{L.PRIO_LOW}' Top-Ranking der besten Seite, beobachten. Liegen die weiteren Seiten "
-        f"deutlich dahinter: '{L.PRIO_MID}', wenn eine andere als die beste Seite rankt, sonst '{L.PRIO_VERY_LOW}'. "
+        f"deutlich dahinter (mehr als der Abstand 'fast gleich'), steht die Query nur im Blatt, wenn eine andere als "
+        f"die beste Seite rankt: dann '{L.PRIO_MID}'. "
         f"'{L.PRIO_OPEN}': keine Rankings geladen, nur semantisch geprüft."
     ),
     L.C_NO: "Laufende Nummer der URL innerhalb der Query. Jede konkurrierende URL hat eine eigene Zeile.",

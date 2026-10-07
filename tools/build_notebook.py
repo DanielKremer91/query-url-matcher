@@ -41,7 +41,7 @@ Für die Modelle mit API-Key legst du im Secrets-Panel (Schlüssel-Symbol links)
 Schritt 8 lädt eine Excel-Datei mit vier Blättern herunter, auf Wunsch zusätzlich ein ZIP mit einer CSV je Blatt:
 
 - **Übersicht:** eine Zeile je Query mit den drei am besten passenden URLs und ihren Scores, dem Abstand zur Schwelle (positiv = passt), der eigenen Rankingposition und dem Urteil.
-- **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen oder mehrere eigene URLs ranken, mit einer Zeile je konkurrierender URL samt Score, Abstand zur besten URL und eigener Position (die rankende URL immer dabei) und der Einordnung (wie dringend: sehr hoch, hoch, mittel, niedrig, sehr niedrig oder offen).
+- **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen oder mehrere eigene URLs ranken, mit einer Zeile je konkurrierender URL samt Score, Abstand zur besten URL und eigener Position (die rankende URL immer dabei) und der Einordnung (wie dringend: sehr hoch, hoch, mittel, niedrig oder offen).
 - **Potentielle Content-Lücken:** genau die Queries mit dem Urteil Content-Lücke, die sichersten zuerst, mit SERPs nach Thema gebündelt.
 - **Chunk auf anderer Seite:** Queries, deren bester Textabschnitt auf einer anderen Seite steht als die Seite, die insgesamt am besten passt.
 - **Lesehilfe:** erklärt jedes Blatt, jede Spalte, jedes Urteil und nennt die Einstellungen des Laufs.
@@ -577,7 +577,7 @@ Ohne Rankings weiß das Tool nicht, ob eine Seite schon funktioniert. „In Ordn
 
 ### Blatt „Kannibalisierungsgefahr“ (unabhängig vom Urteil)
 
-Hier steht jede Query, bei der weitere eigene Seiten die Schwelle erreichen oder mehrere eigene URLs bis Position 20 ranken, auch wenn das Urteil „In Ordnung“ lautet. Je konkurrierender URL eine Zeile, bei Chunk und Kombi mit ihrem passenden Textabschnitt. Die Spalte **Einordnung** sagt, wie dringend der Fall ist; das Blatt ist danach sortiert, die dringendsten Fälle oben:
+Hier steht jede Query, bei der mehrere eigene Seiten fast gleich gut passen (höchstens 0.01 auseinander), eine passende Seite besser ist als die rankende oder mehrere eigene URLs bis Position 20 ranken, auch wenn das Urteil „In Ordnung“ lautet. Liegen weitere Seiten deutlich hinter der besten, steht die Query nur drin, wenn eine dieser schwächeren Seiten rankt. Je konkurrierender URL eine Zeile, bei Chunk und Kombi mit ihrem passenden Textabschnitt. Die Spalte **Einordnung** sagt, wie dringend der Fall ist; das Blatt ist danach sortiert, die dringendsten Fälle oben:
 
 | Einordnung | wann |
 |---|---|
@@ -585,7 +585,6 @@ Hier steht jede Query, bei der weitere eigene Seiten die Schwelle erreichen oder
 | **hoch** | wie oben, aber Ranking schlechter als 20 oder gar keins |
 | **mittel** | Top 10 mit einer anderen als der besten Seite, oder eine schwächere Seite rankt |
 | **niedrig** | Top 10 mit der besten Seite: beobachten, Google kann wechseln |
-| **sehr niedrig** | weitere Seiten liegen deutlich hinter der besten, und keine schwächere rankt |
 | **offen** | keine Rankings geladen |
 
 Das Blatt „Potentielle Content-Lücken“ enthält genau die Queries mit dem Urteil „Content-Lücke“, die sichersten zuerst (Spalte „Abstand zur Schwelle“). Das Blatt „Chunk auf anderer Seite“ zeigt, wo der beste Textabschnitt auf einer anderen Seite steht als die insgesamt beste Seite.

@@ -1129,8 +1129,9 @@ def test_verdict_guide_explains_the_cannibalisation_sheet_and_its_urgency():
 
     guide = next(source for kind, source in CELLS if kind == "markdown" and "So entstehen die Urteile" in source)
     assert "Blatt „Kannibalisierungsgefahr“ (unabhängig vom Urteil)" in guide
-    for value in (L.PRIO_VERY_HIGH, L.PRIO_HIGH, L.PRIO_MID, L.PRIO_LOW, L.PRIO_VERY_LOW, L.PRIO_OPEN):
+    for value in (L.PRIO_VERY_HIGH, L.PRIO_HIGH, L.PRIO_MID, L.PRIO_LOW, L.PRIO_OPEN):
         assert f"| **{value}** |" in guide, value
+    assert f"| **{L.PRIO_VERY_LOW}** |" not in guide
     assert "**ja**" not in guide and "**möglich**" not in guide and "Chunk auf anderer Seite" in guide
 
 
