@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 from . import labels as L
@@ -56,7 +57,7 @@ def find_cannibalization(
     result, lead, threshold, rankings=None, good_position=10, margin=0.01, visible_position=20
 ) -> pd.DataFrame:
     """Stufe Gefahr: jedes Urteil Kannibalisierungsgefahr und bei gutem Ranking jede andere passende Seite, die besser
-    oder fast gleich gut ist als die rankende.
+    oder fast gleich gut ist als die rankende. Stufe Möglich: sonst weitere Seiten, die die Schwelle erreichen.
     Stufe Bereits sichtbar: mehrere eigene URLs ranken bis visible_position."""
     assessments = assess(result, lead, threshold, rankings, good_position, margin)
     u_index = {normalize_url(u): j for j, u in enumerate(result.urls)}
@@ -67,7 +68,11 @@ def find_cannibalization(
         position_of = {r.url_norm: format_position(r.position) for r in own}
         pages = [(result.urls[j], lead[i, j], position_of.get(normalize_url(result.urls[j]), "")) for j in a.close]
         reason = _danger_reason(a, lead[i], margin)
-        if reason == L.REASON_CLOSE:
+        fitting = [int(j) for j in np.argsort(-lead[i], kind="stable") if lead[i, j] >= threshold]
+        if reason is None and len(fitting) >= 2:
+            further = [(result.urls[j], lead[i, j], position_of.get(normalize_url(result.urls[j]), "")) for j in fitting]
+            rows.append(_row(query, L.STAGE_POSSIBLE, L.REASON_FURTHER, further))
+        elif reason == L.REASON_CLOSE:
             rows.append(_row(query, L.STAGE_DANGER, reason, pages))
         elif reason is not None:
             score = None if a.ranking_j is None else lead[i, a.ranking_j]
@@ -85,8 +90,13 @@ def find_cannibalization(
 
 
 def annotate(decisions: pd.DataFrame, cannibal: pd.DataFrame) -> pd.DataFrame:
-    """Kopie der Übersicht mit der Spalte Kannibalisierungsgefahr: "ja", wenn die Query im Blatt steht."""
-    flagged = set(cannibal[L.C_QUERY])
+    """Kopie der Übersicht mit der Spalte Kannibalisierungsgefahr: "ja" bei Stufe Gefahr oder Bereits sichtbar,
+    "möglich" nur bei Stufe Möglich, sonst "nein"."""
+    possible = cannibal[L.C_STAGE] == L.STAGE_POSSIBLE
+    flagged = set(cannibal.loc[~possible, L.C_QUERY])
+    maybe = set(cannibal.loc[possible, L.C_QUERY])
     out = decisions.copy()
-    out[L.C_CANNIBAL] = [L.YES if query in flagged else L.NO for query in out[L.C_QUERY]]
+    out[L.C_CANNIBAL] = [
+        L.YES if query in flagged else L.MAYBE if query in maybe else L.NO for query in out[L.C_QUERY]
+    ]
     return out

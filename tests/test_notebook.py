@@ -1108,15 +1108,17 @@ def test_smoke_decisions_carry_the_cannibalisation_column(nb, capsys):
     nb.run("7b", schwelle_waehlen=MEDIAN)
     nb.run("7c")
     decisions, cannibal = nb.ns["decisions"], nb.ns["cannibal"]
-    assert set(decisions[L.C_CANNIBAL]) <= {L.YES, L.NO}
-    flagged = set(decisions.loc[decisions[L.C_CANNIBAL] == L.YES, L.C_QUERY])
+    assert set(decisions[L.C_CANNIBAL]) <= {L.YES, L.MAYBE, L.NO}
+    flagged = set(decisions.loc[decisions[L.C_CANNIBAL] != L.NO, L.C_QUERY])
     assert flagged == set(cannibal[L.C_QUERY])
     assert "über alle Urteile" in capsys.readouterr().out
 
 
-def test_verdict_guide_says_every_field_can_carry_a_cannibalisation_hint():
+def test_verdict_guide_says_the_cannibalisation_column_is_independent_of_the_verdict():
     guide = next(source for kind, source in CELLS if kind == "markdown" and "So entstehen die Urteile" in source)
-    assert "In jedem Feld" in guide and "Spalte „Kannibalisierungsgefahr“" in guide
+    assert "Spalte „Kannibalisierungsgefahr“ (unabhängig vom Urteil)" in guide
+    for value in ("**ja**", "**möglich**", "**nein**"):
+        assert value in guide, value
 
 
 def test_notebook_ends_with_step_8_and_nothing_mentions_step_9_or_pairs():
@@ -1144,21 +1146,23 @@ def _guide():
     return next(source for kind, source in CELLS if kind == "markdown" and "So entstehen die Urteile" in source)
 
 
-def test_verdict_guide_shows_the_three_column_matrix():
+def test_verdict_guide_shows_two_scenarios_without_and_with_rankings():
     from qum import labels as L
 
     guide = _guide()
-    assert "| | Genau eine Seite passt klar | Mehrere Seiten passen fast gleich gut | Keine Seite passt |" in guide
-    rows = {line.split("|")[1].strip(): line for line in guide.splitlines() if line.startswith("| **")}
-    weak_row = "**Rankt schwach, gar nicht oder keine Rankings geladen**"
-    assert set(rows) == {"**Rankt gut** (Voreinstellung: bis Position 10)", weak_row}
-    weak = rows[weak_row].split("|")[2:5]
-    assert [L.V_MATCH in weak[0], L.V_CANNIBAL in weak[1], L.V_GAP in weak[2]] == [True, True, True]
-    assert "Bestehende Seite nutzen" not in guide
-    good = rows["**Rankt gut** (Voreinstellung: bis Position 10)"].split("|")[2:5]
-    assert L.V_OK in good[0] and L.V_WATCH in good[0] and L.V_WATCH in good[2] and L.V_CANNIBAL not in good[0]
-    assert "Kannibalisierungsgefahr „ja“" in good[1]
-    assert "Spalte „Kannibalisierungsgefahr“" in guide and "Übersicht" in guide
+    without = guide.index("### Ohne Rankings")
+    with_rankings = guide.index("### Mit Rankings")
+    column = guide.index("### Spalte „Kannibalisierungsgefahr“")
+    assert without < with_rankings < column
+    for verdict in (L.V_MATCH, L.V_CANNIBAL, L.V_GAP):
+        assert verdict in guide[without:with_rankings], verdict
+    for verdict in (L.V_OK, L.V_WATCH):
+        assert verdict in guide[with_rankings:column], verdict
+    assert L.V_WATCH not in guide[without:with_rankings]
+    assert "„In Ordnung“ gibt es deshalb nur mit Rankings" in guide[without:with_rankings]
+    assert "wie ohne Rankings" in guide[with_rankings:column]
+    assert "nicht im Frog-Export" in guide[with_rankings:column]
+    assert "Bestehende Seite nutzen" not in guide and "Übersicht" in guide
 
 
 def test_step_6_says_serps_only_group_the_gaps_into_topics():

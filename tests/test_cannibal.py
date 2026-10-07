@@ -56,9 +56,9 @@ def test_close_but_below_threshold_is_not_listed():
 
 
 def test_margin_is_adjustable_and_its_boundary_counts_as_close():
-    assert _run(["q"], [[0.80, 0.785, 0.1]]).empty
-    assert len(_run(["q"], [[0.80, 0.79, 0.1]])) == 1
-    assert len(_run(["q"], [[0.80, 0.70, 0.1]], margin=0.15)) == 1
+    assert _run(["q"], [[0.80, 0.785, 0.1]])[L.C_STAGE].tolist() == [L.STAGE_POSSIBLE]
+    assert _run(["q"], [[0.80, 0.79, 0.1]])[L.C_STAGE].tolist() == [L.STAGE_DANGER]
+    assert _run(["q"], [[0.80, 0.70, 0.1]], margin=0.15)[L.C_STAGE].tolist() == [L.STAGE_DANGER]
     assert _urls(_run(["q"], [[0.80, 0.78, 0.1]], margin=0.02).iloc[0]) == [(U1, 0.8, ""), (U2, 0.78, "")]
 
 
@@ -110,9 +110,9 @@ def test_ok_with_an_almost_as_good_page_lists_the_ranking_url_first():
     assert _urls(df.iloc[0]) == [(U1, 0.842, "3"), (U2, 0.848, "31")]
 
 
-def test_ok_without_a_close_page_is_not_listed():
+def test_ok_without_a_close_page_is_only_a_possible_danger():
     rankings = _rankings([("q", U1, U1, 3.0)])
-    assert _run(["q"], [[0.85, 0.80, 0.1]], rankings, threshold=0.8).empty
+    assert _run(["q"], [[0.85, 0.80, 0.1]], rankings, threshold=0.8)[L.C_STAGE].tolist() == [L.STAGE_POSSIBLE]
 
 
 def test_more_than_three_urls_are_counted_in_the_reason():
@@ -207,8 +207,8 @@ def test_settings_are_the_same_as_for_the_verdicts():
     rankings = _rankings([("q", U1, U1, 12.0)])
     result = make_result(["q"], [U1, U2, U3], [[0.70, 0.90, 0.1]])
     lead = result.lead("chunk")
-    # mit rankt gut bis 15 ist es eine Kannibalisierungsgefahr wegen der rankenden Seite, sonst nur "nutzen"
-    assert find_cannibalization(result, lead, 0.6, rankings).empty
+    # mit rankt gut bis 15 ist es eine Gefahr wegen der rankenden Seite, sonst nur eine mögliche
+    assert find_cannibalization(result, lead, 0.6, rankings)[L.C_STAGE].tolist() == [L.STAGE_POSSIBLE]
     df = find_cannibalization(result, lead, 0.6, rankings, good_position=15)
     assert df[L.C_REASON].tolist() == [L.REASON_BETTER]
 
@@ -244,4 +244,52 @@ def test_one_word_for_cannibalisation():
     assert L.V_CANNIBAL == "Kannibalisierungsgefahr"
     assert export.SHEET_CANNIBAL == "Kannibalisierungsgefahr"
     assert L.C_CANNIBAL == "Kannibalisierungsgefahr"
-    assert [L.STAGE_DANGER, L.STAGE_VISIBLE] == ["Gefahr", "Bereits sichtbar"]
+    assert [L.STAGE_DANGER, L.STAGE_POSSIBLE, L.STAGE_VISIBLE] == ["Gefahr", "Möglich", "Bereits sichtbar"]
+
+
+# --- Stufe Möglich: weitere passende Seiten, deutlich hinter der besten -----------------------------------------
+
+
+def test_possible_stage_for_further_fitting_pages_far_behind_without_rankings():
+    df = _run(["q"], [[0.9, 0.7, 0.65]])
+    assert df[L.C_STAGE].tolist() == [L.STAGE_POSSIBLE]
+    assert df[L.C_REASON].tolist() == [L.REASON_FURTHER]
+    assert _urls(df.iloc[0]) == [(U1, 0.9, ""), (U2, 0.7, ""), (U3, 0.65, "")]
+
+
+def test_possible_stage_when_ranking_well_with_the_best_page_and_another_fits_far_behind():
+    rankings = _rankings([("q", U1, U1, 3.0)])
+    df = _run(["q"], [[0.9, 0.7, 0.1]], rankings)
+    assert df[L.C_STAGE].tolist() == [L.STAGE_POSSIBLE]
+    assert _urls(df.iloc[0]) == [(U1, 0.9, "3"), (U2, 0.7, "")]
+
+
+def test_no_possible_stage_with_one_fitting_page_or_when_already_in_danger():
+    assert _run(["q"], [[0.9, 0.5, 0.1]]).empty
+    df = _run(["q"], [[0.9, 0.895, 0.7]])
+    assert df[L.C_STAGE].tolist() == [L.STAGE_DANGER]
+
+
+def test_possible_and_visible_stages_can_both_apply():
+    rankings = _rankings([("q", U1, U1, 3.0), ("q", U2, U2, 12.0)])
+    df = _run(["q"], [[0.9, 0.7, 0.1]], rankings)
+    assert df[L.C_STAGE].tolist() == [L.STAGE_POSSIBLE, L.STAGE_VISIBLE]
+
+
+def test_possible_stage_counts_further_pages_beyond_three():
+    df = _run(["q"], [[0.9, 0.7, 0.7, 0.7, 0.7]], urls=(U1, U2, U3, U4, U5))
+    assert df[L.C_REASON].tolist() == [f"{L.REASON_FURTHER} … und 2 weitere"]
+
+
+def test_annotate_grades_yes_possible_no():
+    rankings = _rankings([("sichtbar", U1, U1, 3.0), ("sichtbar", U2, U2, 9.0)])
+    queries = ["gefahr", "moeglich", "nein", "sichtbar", "moeglich-und-sichtbar"]
+    scores = [[0.8, 0.8, 0.1], [0.9, 0.7, 0.1], [0.9, 0.1, 0.1], [0.9, 0.1, 0.1], [0.9, 0.7, 0.1]]
+    rankings = pd.concat([rankings, _rankings([("moeglich-und-sichtbar", U1, U1, 2.0),
+                                               ("moeglich-und-sichtbar", U3, U3, 8.0)])])
+    result = make_result(queries, [U1, U2, U3], scores)
+    lead = result.lead("chunk")
+    decisions = build_decisions(result, lead, 0.6, rankings)
+    out = annotate(decisions, find_cannibalization(result, lead, 0.6, rankings))
+    assert out[L.C_CANNIBAL].tolist() == [L.YES, L.MAYBE, L.NO, L.YES, L.YES]
+    assert L.MAYBE == "möglich" and L.STAGE_POSSIBLE == "Möglich"

@@ -70,7 +70,11 @@ _COLUMN_HELP = {
         "steht nicht im Frog-Export und wurde nicht verglichen. Leer ohne Rankings."
     ),
     L.C_VERDICT: "Einordnung der Query, siehe die Urteile weiter oben in dieser Lesehilfe.",
-    L.C_CANNIBAL: f"'{L.YES}', wenn die Query im Blatt Kannibalisierungsgefahr steht, unabhängig vom Urteil, sonst '{L.NO}'.",
+    L.C_CANNIBAL: (
+        f"'{L.YES}': die Query steht im Blatt Kannibalisierungsgefahr mit der Stufe Gefahr oder Bereits sichtbar. "
+        f"'{L.MAYBE}': nur mit der Stufe Möglich, weitere Seiten passen, liegen aber deutlich dahinter. "
+        f"'{L.NO}': keine weitere Seite erreicht die Schwelle. Unabhängig vom Urteil."
+    ),
     # Kannibalisierungsgefahr
     L.C_STAGE: "Stufe der Kannibalisierungsgefahr, siehe die Stufen weiter oben in dieser Lesehilfe.",
     L.C_REASON: "Warum die Query hier steht. Konkurrieren mehr als drei URLs, steht die Zahl der weiteren am Ende.",
@@ -99,6 +103,10 @@ _STAGE_HELP = {
         "Mehrere eigene Seiten passen semantisch fast gleich gut, oder bei gutem Ranking passt eine andere eigene Seite "
         "besser als die rankende (oder die rankende URL steht nicht im Frog-Export). In den Rankings ist das noch nicht "
         "sichtbar, Google kann die rankende Seite aber wechseln."
+    ),
+    L.STAGE_POSSIBLE: (
+        "Weitere eigene Seiten erreichen die Schwelle, liegen aber deutlich hinter der besten (mehr als der Abstand "
+        "'fast gleich'). Kein akuter Konflikt, aber Seiten, die man beim Ausbau im Blick behalten sollte."
     ),
     L.STAGE_VISIBLE: "Mehrere eigene Seiten ranken bereits für die Query (bis zur Position aus sichtbar_bis_position).",
 }

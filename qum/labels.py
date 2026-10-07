@@ -62,6 +62,7 @@ V_CANNIBAL = "Kannibalisierungsgefahr"
 V_WATCH = "Rankt trotz schwachem Match"
 
 STAGE_DANGER = "Gefahr"
+STAGE_POSSIBLE = "Möglich"
 STAGE_VISIBLE = "Bereits sichtbar"
 
 REASON_BETTER = "Eine andere Seite passt deutlich besser als die rankende"
@@ -69,11 +70,13 @@ REASON_BETTER_PLAIN = "Eine andere Seite passt besser als die rankende"
 REASON_NOT_IN_EXPORT = "Rankende URL steht nicht im Frog-Export und wurde nicht verglichen"
 REASON_OK_CLOSE = "Rankende Seite passt, eine weitere passt fast gleich gut"
 REASON_CLOSE = "Mehrere Seiten passen fast gleich gut"
+REASON_FURTHER = "Weitere Seiten erreichen die Schwelle, liegen aber deutlich hinter der besten"
 REASON_RANKING = "Mehrere eigene Seiten ranken für die Query"
 
 # Werte der Spalten "Rankende URL = beste URL?" und Kannibalisierungsgefahr
 YES = "ja"
 NO = "nein"
+MAYBE = "möglich"
 CMP_CLOSE = "fast gleich gut"
 CMP_NOT_RANKING = "rankt nicht"
 CMP_NOT_IN_EXPORT = "nicht im Frog-Export"

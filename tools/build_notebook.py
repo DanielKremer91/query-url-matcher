@@ -40,8 +40,8 @@ Für die Modelle mit API-Key legst du im Secrets-Panel (Schlüssel-Symbol links)
 
 Schritt 8 lädt eine Excel-Datei mit vier Blättern herunter, auf Wunsch zusätzlich ein ZIP mit einer CSV je Blatt:
 
-- **Übersicht:** eine Zeile je Query mit den drei am besten passenden URLs und ihren Scores, der eigenen Rankingposition, dem Urteil und der Spalte Kannibalisierungsgefahr (ja oder nein).
-- **Kannibalisierungsgefahr:** Queries, bei denen mehrere eigene Seiten konkurrieren, mit bis zu drei URLs samt Score und Position.
+- **Übersicht:** eine Zeile je Query mit den drei am besten passenden URLs und ihren Scores, der eigenen Rankingposition, dem Urteil und der Spalte Kannibalisierungsgefahr (ja, möglich oder nein).
+- **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen, mit Stufe (Gefahr, Möglich, Bereits sichtbar), Grund und bis zu drei URLs samt Score und Position.
 - **Potentielle Content-Lücken:** Queries ohne ausreichend passende Seite, mit SERPs nach Thema gebündelt.
 - **Lesehilfe:** erklärt jedes Blatt, jede Spalte, jedes Urteil und nennt die Einstellungen des Laufs.
 
@@ -509,7 +509,8 @@ new_pages = None if serps is None else count_new_pages(gaps)
 counts = decisions[L.C_VERDICT].value_counts()
 for verdict, count in counts.items():
     print(f"   {count:>5} × {verdict}")
-print(f"   {cannibal[L.C_QUERY].nunique():>5} Queries im Blatt Kannibalisierungsgefahr (über alle Urteile, Spalte „Kannibalisierungsgefahr“ = ja)")
+hints = decisions[L.C_CANNIBAL].value_counts()
+print(f"   Spalte Kannibalisierungsgefahr (über alle Urteile): {hints.get(L.YES, 0)} × ja, {hints.get(L.MAYBE, 0)} × möglich")
 uncalibrated = " (Schwelle nicht kalibriert)" if threshold_source == "median" and not luecke_unter_score else ""
 pages = "" if new_pages is None else f", zusammen {new_pages} neue Seiten (eine je Thema, Lücken ohne Thema einzeln)"
 print(f"   {len(gaps):>5} potentielle Content-Lücken{uncalibrated}{pages}")
@@ -527,8 +528,8 @@ print("✅ Schritt 7c fertig. Weiter mit Schritt 8 (Export).")
 
 STEP8 = '''#@title Schritt 8: Export { display-mode: "form" }
 #@markdown Die Excel-Datei hat vier Blätter:
-#@markdown **Übersicht:** eine Zeile je Query mit den drei besten URLs, ihren Scores, der Rankingposition, dem Urteil und Kannibalisierungsgefahr ja oder nein.
-#@markdown **Kannibalisierungsgefahr:** Queries, bei denen mehrere eigene Seiten konkurrieren, mit bis zu drei URLs samt Score und Position.
+#@markdown **Übersicht:** eine Zeile je Query mit den drei besten URLs, ihren Scores, der Rankingposition, dem Urteil und Kannibalisierungsgefahr ja, möglich oder nein.
+#@markdown **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen, mit Stufe (Gefahr, Möglich, Bereits sichtbar), Grund und bis zu drei URLs samt Score und Position.
 #@markdown **Potentielle Content-Lücken:** Queries, deren beste Seite unter der Lücken-Schwelle aus Schritt 7c liegt, mit SERPs nach Thema gebündelt.
 #@markdown **Lesehilfe:** erklärt Blätter, Spalten, Urteile und Stufen und nennt die Einstellungen des Laufs.
 #@markdown Das Trennzeichen gilt nur für die zusätzliche CSV-ZIP (eine CSV je Blatt).
@@ -550,17 +551,36 @@ print(f"✅ Schritt 8 fertig: {len(sheets)} Blätter exportiert.")
 
 VERDICT_GUIDE = '''## So entstehen die Urteile (Schritt 7a bis 7c)
 
-Für jede Query prüft das Tool zwei Dinge: Wie viele deiner Seiten passen semantisch, erreichen also mit ihrem Score die Schwelle aus Schritt 7b? Und rankt die Query heute schon gut (Rankings aus Schritt 5 oder 6)? „Fast gleich gut“ heißt: Mehrere Seiten passen und liegen höchstens um den Abstand „fast gleich“ (Voreinstellung 0.01) unter dem besten Score. Sonst passt genau eine Seite klar.
+Eine Seite **passt**, wenn ihr Score die Schwelle aus Schritt 7b erreicht. **Fast gleich gut** heißt: Sie liegt höchstens um den Abstand „fast gleich“ (Voreinstellung 0.01) unter dem besten Score. Je nachdem, ob Rankings geladen sind (Schritt 5 oder 6), urteilt das Tool in einem von zwei Szenarien.
 
-| | Genau eine Seite passt klar | Mehrere Seiten passen fast gleich gut | Keine Seite passt |
-|---|---|---|---|
-| **Rankt gut** (Voreinstellung: bis Position 10) | **In Ordnung**, wenn die rankende Seite die Schwelle erreicht, sonst **Rankt trotz schwachem Match** | wie links, dazu Kannibalisierungsgefahr „ja“ | **Rankt trotz schwachem Match**: beobachten und die Schwelle prüfen |
-| **Rankt schwach, gar nicht oder keine Rankings geladen** | **Passende Seite vorhanden**: ausbauen und intern stärken statt neu bauen | **Kannibalisierungsgefahr**: mehrere eigene Seiten konkurrieren, bevor eine davon rankt | **Content-Lücke**: Kandidat für eine neue Seite |
+### Ohne Rankings: Das Tool urteilt nur semantisch
 
-- Bei gutem Ranking richtet sich das Urteil nach der rankenden Seite. Passt eine andere eigene Seite besser oder fast gleich gut, steht in der Übersicht trotzdem Kannibalisierungsgefahr „ja“: Heute rankt die richtige Seite, Google kann aber wechseln.
-- Steht die rankende URL nicht im Frog-Export, kann das Tool sie nicht prüfen. Das Urteil ist dann **In Ordnung**, die Spalte „Rankende URL = beste URL?“ zeigt „nicht im Frog-Export“.
-- **In jedem Feld** steht in der Übersicht neben dem Urteil die Spalte „Kannibalisierungsgefahr“: „ja“, wenn die Query im Blatt „Kannibalisierungsgefahr“ steht. Das ist auch der Fall, wenn mehrere eigene Seiten für dieselbe Query ranken (Stufe „Bereits sichtbar“).
-- Das Blatt „Potentielle Content-Lücken“ hat eigene Einstellungen in Schritt 7c. Seine Zahl kann deshalb von der Zahl der Urteile „Content-Lücke“ abweichen.
+| Wie viele deiner Seiten passen? | Urteil |
+|---|---|
+| Genau eine passt klar | **Passende Seite vorhanden**: ausbauen und intern stärken statt neu bauen |
+| Mehrere passen fast gleich gut | **Kannibalisierungsgefahr**: mehrere eigene Seiten konkurrieren um die Query |
+| Keine passt | **Content-Lücke**: Kandidat für eine neue Seite |
+
+Ohne Rankings weiß das Tool nicht, ob eine Seite schon funktioniert. „In Ordnung“ gibt es deshalb nur mit Rankings.
+
+### Mit Rankings: Das Tool geht von Google aus
+
+| Ranking der Query | Urteil |
+|---|---|
+| **Rankt gut** (Voreinstellung: bis Position 10) und die rankende Seite passt | **In Ordnung** |
+| **Rankt gut**, aber die rankende Seite passt nicht | **Rankt trotz schwachem Match**: prüfen, ob eine andere Seite die richtige wäre, oder die Schwelle prüfen |
+| **Rankt gut** mit einer URL, die nicht im Frog-Export steht | **In Ordnung**: nicht prüfbar, die Spalte „Rankende URL = beste URL?“ zeigt „nicht im Frog-Export“ |
+| **Rankt schwach oder gar nicht** | wie ohne Rankings: **Passende Seite vorhanden**, **Kannibalisierungsgefahr** oder **Content-Lücke** |
+
+### Spalte „Kannibalisierungsgefahr“ (unabhängig vom Urteil)
+
+In der Übersicht steht neben jedem Urteil, ob weitere eigene Seiten um die Query konkurrieren:
+
+- **ja**: Eine andere passende Seite ist besser oder fast gleich gut. Bei gutem Ranking auch dann, wenn heute die richtige Seite rankt, denn Google kann wechseln. Ebenso, wenn mehrere eigene URLs schon für die Query ranken (Stufe „Bereits sichtbar“).
+- **möglich**: Weitere Seiten passen, liegen aber deutlich hinter der besten (Stufe „Möglich“).
+- **nein**: Keine weitere Seite passt.
+
+Welche URLs es sind, steht im Blatt „Kannibalisierungsgefahr“. Das Blatt „Potentielle Content-Lücken“ hat eigene Einstellungen in Schritt 7c, seine Zahl kann deshalb von der Zahl der Urteile „Content-Lücke“ abweichen.
 
 Alle Urteile sind Hinweise zum Prüfen, keine Entscheidungen.
 '''

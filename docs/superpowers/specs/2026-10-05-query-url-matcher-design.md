@@ -98,20 +98,21 @@ Vorschläge werden einmal auf 4 Nachkommastellen gerundet. Die Wahl steht in den
 
 Eine URL „passt", wenn ihr Leit-Score mindestens die Schwelle erreicht. „Fast gleich gut" heißt: Mehrere URLs passen und liegen höchstens um den Abstand „fast gleich" (Default 0,01, einstellbar) unter dem besten Leit-Score. Verglichen werden die auf 4 Nachkommastellen gerundeten Leit-Scores; ein negativer Abstand ist ein Fehler. Passt genau eine URL und liegen alle anderen passenden weiter dahinter, passt sie „klar". „Rankt gut" heißt: beste eigene Position ≤ 10 (einstellbar).
 
-| | genau eine Seite passt klar | mehrere Seiten passen fast gleich gut | keine Seite passt |
-|---|---|---|---|
-| rankt gut | rankende Seite erreicht die Schwelle oder fehlt im Frog-Export: in Ordnung, sonst rankt trotz schwachem Match | wie links, Kannibalisierungsgefahr „ja“ | rankt trotz schwachem Match |
-| rankt schwach, gar nicht oder keine Rankings geladen | passende Seite vorhanden | Kannibalisierungsgefahr | Content-Lücke |
+Zwei Szenarien (so erklärt im Notebook vor Schritt 7a):
 
-Prüfreihenfolge: zuerst „keine Seite passt", dann gutes Ranking, dann die Zahl der fast gleich guten Seiten. Bei gutem Ranking richtet sich das Urteil nach der rankenden Seite (Entscheidung Daniel, 2026-10-07: bei TOOM waren die so gemeldeten Fälle Hub-Seiten, die das Modell knapp vorzieht, während Google die richtige Detailseite rankt). Passt eine andere eigene Seite besser oder fast gleich gut, steht trotzdem Kannibalisierungsgefahr „ja“, weil Google die rankende Seite wechseln kann.
+- **Ohne Rankings, und mit Rankings für Queries, die schwach oder gar nicht ranken (semantisch):** genau eine Seite passt klar → passende Seite vorhanden; mehrere passen fast gleich gut → Kannibalisierungsgefahr; keine passt → Content-Lücke.
+- **Mit Rankings und gutem Ranking (von Google aus):** die rankende Seite erreicht die Schwelle oder fehlt im Frog-Export (nicht prüfbar) → in Ordnung; sonst → rankt trotz schwachem Match (auch wenn keine Seite passt).
+
+Prüfreihenfolge: zuerst „keine Seite passt", dann gutes Ranking, dann die Zahl der fast gleich guten Seiten. Bei gutem Ranking richtet sich das Urteil nach der rankenden Seite (Entscheidung Daniel, 2026-10-07: bei TOOM waren die so gemeldeten Fälle Hub-Seiten, die das Modell knapp vorzieht, während Google die richtige Detailseite rankt). Passt eine andere eigene Seite besser oder fast gleich gut, steht trotzdem Kannibalisierungsgefahr „ja“, weil Google die rankende Seite wechseln kann. Passen weitere Seiten nur deutlich dahinter, steht „möglich“ (Entscheidung Daniel, 2026-10-07: auch dann einen Hinweis, aber abgestuft).
 
 Die Übersicht nennt immer die wirklich beste URL nach Leit-Score, auch bei „in Ordnung"; die rankende URL wird nicht eingesetzt. Wie die rankende URL zur besten steht, zeigt die Spalte „Rankende URL = beste URL?" (Abschnitt 11).
 
 ## 8. Kannibalisierungsgefahr
 
-Eigenes Blatt mit zwei Stufen:
+Eigenes Blatt mit drei Stufen:
 
 - **Gefahr:** jede Query mit dem Urteil „Kannibalisierungsgefahr" und jede gut rankende Query, bei der eine andere passende Seite besser oder fast gleich gut ist als die rankende (Urteil „in Ordnung" oder „rankt trotz schwachem Match"). Gründe: „deutlich besser" (die beste Seite liegt mehr als einen positiven Abstand vor der rankenden), „besser" (Abstand 0 oder die rankende Seite erreicht die Schwelle nicht), „nicht verglichen" (rankende URL fehlt im Frog-Export), „Rankende Seite passt, eine weitere passt fast gleich gut" (in Ordnung) und „Mehrere Seiten passen fast gleich gut" (schwaches, fehlendes oder kein Ranking). Funktioniert auch ohne Rankings.
+- **Möglich:** keine Gefahr, aber zwei oder mehr Seiten erreichen die Schwelle; die weiteren liegen mehr als den Abstand „fast gleich" hinter der besten. Grund „Weitere Seiten erreichen die Schwelle, liegen aber deutlich hinter der besten". URLs nach Leit-Score sortiert.
 - **Bereits sichtbar:** zwei oder mehr eigene URLs ranken für die Query mit Position ≤ 20 (einstellbar).
 
 Eine Zeile je Query und Stufe mit bis zu drei URLs in eigenen Spalten (URL, Score, Position). Stufe Gefahr: nach Leit-Score sortiert, die rankende URL zuerst, wenn der Grund sie betrifft. Bereits sichtbar: nach Position sortiert. Score ist der Leit-Score (leer, wenn die URL nicht im Frog-Export steht), Position die eigene Position für die Query (leer, wenn sie dafür nicht rankt). Konkurrieren mehr als drei URLs, endet der Grund mit „… und n weitere".
@@ -168,7 +169,7 @@ Vier Blätter in dieser Reihenfolge:
 - „Vorsprung vor zweitbester URL": Leit-Score der besten minus Leit-Score der zweitbesten URL, vier Nachkommastellen, leer bei nur einer URL. Er zeigt, wie klar die beste Seite vorn liegt, weil kurze Queries absolut niedrig scoren, und ändert kein Urteil.
 - „Rankingposition" und „Rankende URL": bestes eigenes Ranking für die Query, auf jeder Position, leer ohne Ranking.
 - „Rankende URL = beste URL?": „ja", „fast gleich gut" (die rankende URL passt und liegt im Abstand „fast gleich"), „nein", „rankt nicht" (Rankings geladen, aber keines für die Query), „nicht im Frog-Export", leer ohne Rankings.
-- „Kannibalisierungsgefahr": „ja", wenn die Query im Blatt Kannibalisierungsgefahr steht, sonst „nein".
+- „Kannibalisierungsgefahr": „ja" bei Stufe Gefahr oder Bereits sichtbar, „möglich", wenn die Query nur mit Stufe Möglich im Blatt steht, sonst „nein".
 
 Die Query steht in den ersten drei Blättern in der ersten Spalte. Urteile sind farbig hinterlegt.
 
@@ -184,7 +185,7 @@ Die Query steht in den ersten drei Blättern in der ersten Spalte. Urteile sind 
 | `qum/match.py` | drei Scores, die drei besten URLs je Query und die Vorschau in Schritt 4, Ränge für den Modellvergleich |
 | `qum/threshold.py` | Vorschläge der Schwelle (kalibriert, Median), Beispielpaare |
 | `qum/verdict.py` | Urteile und die Ranking-Spalten der Übersicht |
-| `qum/cannibal.py` | Blatt Kannibalisierungsgefahr mit beiden Stufen, Spalte Kannibalisierungsgefahr der Übersicht |
+| `qum/cannibal.py` | Blatt Kannibalisierungsgefahr mit drei Stufen, Spalte Kannibalisierungsgefahr der Übersicht |
 | `qum/serp.py` | Clustering, Thema je Query |
 | `qum/gaps.py` | Blatt Potentielle Content-Lücken, Zahl neuer Seiten |
 | `qum/export.py` | vier Blätter, Lesehilfe, Excel und CSV-ZIP |
@@ -194,7 +195,7 @@ Jedes Modul ist ohne Notebook und ohne echtes Modell testbar.
 
 ## 13. Tests
 
-`pytest`, ohne Netzwerk und ohne Modell-Download (ein Test-Embedder liefert feste Vektoren). Abgedeckt: verrutschte Zeilen, Encodings, Spaltenerkennung, Chunk-Grenzen, Ansteuerung je Modell (Prefix nur bei e5), Methode der Gesamt-URL, Kombi-Gewicht, jede Zelle der Urteilstabelle, Spalten und Werte der Übersicht, beide Stufen der Kannibalisierungsgefahr, das Blatt der potentiellen Content-Lücken mit seinen Einstellungen, Ketteneffekt und Dichte beim Clustering, Export-Blätter und die Abdeckung jeder Spalte in der Lesehilfe. Ein Test prüft, dass die Code-Zellen des Notebooks gültiges Python sind.
+`pytest`, ohne Netzwerk und ohne Modell-Download (ein Test-Embedder liefert feste Vektoren). Abgedeckt: verrutschte Zeilen, Encodings, Spaltenerkennung, Chunk-Grenzen, Ansteuerung je Modell (Prefix nur bei e5), Methode der Gesamt-URL, Kombi-Gewicht, jede Zelle der Urteilstabelle, Spalten und Werte der Übersicht, alle drei Stufen der Kannibalisierungsgefahr, das Blatt der potentiellen Content-Lücken mit seinen Einstellungen, Ketteneffekt und Dichte beim Clustering, Export-Blätter und die Abdeckung jeder Spalte in der Lesehilfe. Ein Test prüft, dass die Code-Zellen des Notebooks gültiges Python sind.
 
 Vor der Übergabe: ein echter Durchlauf in Colab mit `multilingual-e5-large` und einem kleinen Datensatz.
 

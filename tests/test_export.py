@@ -80,7 +80,7 @@ def test_readme_lists_all_four_sheets_all_verdicts_and_both_stages():
     readme = _readme()
     assert _entries(readme, "Blatt") == [export.SHEET_OVERVIEW, export.SHEET_CANNIBAL, export.SHEET_GAPS, export.SHEET_README]
     assert _entries(readme, "Urteil") == [L.V_MATCH, L.V_GAP, L.V_OK, L.V_CANNIBAL, L.V_WATCH]
-    assert _entries(readme, "Stufe") == [L.STAGE_DANGER, L.STAGE_VISIBLE]
+    assert _entries(readme, "Stufe") == [L.STAGE_DANGER, L.STAGE_POSSIBLE, L.STAGE_VISIBLE]
 
 
 def test_readme_explains_every_column_of_every_sheet_once_in_sheet_order():
@@ -147,6 +147,9 @@ def test_help_texts_describe_the_rules():
     for verdict in (L.V_OK, L.V_WATCH):
         assert "Kannibalisierungsgefahr 'ja'" in export.VERDICT_HELP[verdict]
     assert "fast gleich gut" in export._STAGE_HELP[L.STAGE_DANGER]
+    assert "deutlich" in export._STAGE_HELP[L.STAGE_POSSIBLE]
+    for value in (L.YES, L.MAYBE, L.NO):
+        assert f"'{value}'" in export._COLUMN_HELP[L.C_CANNIBAL], value
     assert "enau eine Seite passt klar" in export.VERDICT_HELP[L.V_MATCH]
     assert "keine Rankings geladen" in export.VERDICT_HELP[L.V_MATCH]
     assert not hasattr(L, "V_USE")
