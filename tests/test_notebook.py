@@ -986,3 +986,9 @@ def test_step_9_explains_what_it_is_for_in_plain_words():
              "Die Felder unten bleiben normalerweise leer."]
     positions = [next(i for i, hint in enumerate(hints) if text in hint) for text in order]
     assert positions == sorted(positions) and positions[0] == 1
+
+
+def test_step_3_explains_both_input_files():
+    source = next(s for s in _code_cells() if s.startswith("#@title Schritt 3"))
+    for text in ("**Queries-Datei:**", "**Frog-Export:**", "Custom Extraction", "Configuration → Custom → Custom Extraction", "Address"):
+        assert text in source, text

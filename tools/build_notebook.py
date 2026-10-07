@@ -99,6 +99,8 @@ print(f"✅ Schritt 2 fertig: Modell {spec.model_id} ist bereit. Weiter mit Schr
 
 STEP3 = '''#@title Schritt 3: Queries und Frog-Export hochladen { display-mode: "form" }
 #@markdown **▶ Klicke links auf das Play-Symbol. Unter der Zelle erscheint dann nacheinander der Knopf „Dateien auswählen": zuerst für die Queries, danach für den Frog-Export.**
+#@markdown **Queries-Datei:** CSV oder Excel mit einer Spalte „Keyword" oder „Query", eine Suchanfrage (oder ein Prompt) pro Zeile. Eine Datei ohne Kopfzeile geht auch. Weitere Spalten, etwa Suchvolumen, stören nicht.
+#@markdown **Frog-Export:** Screaming Frog liefert den Seitentext über eine Custom Extraction. ① Configuration → Custom → Custom Extraction: eine Regel anlegen, die den Hauptinhalt als Text ausliest (Extract Text, z. B. XPath `//main` oder `//article`, oder per Custom JavaScript), und ihr einen Namen mit „Content" geben, z. B. „Main Content". ② Seiten crawlen. ③ Im Tab „Custom Extraction" auf Export klicken (CSV oder Excel). Gebraucht werden nur die Spalten Address und die Content-Spalte.
 #@markdown **Die Felder unten bleiben normalerweise leer.** Nur wenn die Zelle mit ❌ „…-Spalte nicht erkannt" abbricht, trägst du den Namen aus der Meldung ein und startest die Zelle erneut.
 query_spalte = "" #@param {type:"string"}
 url_spalte = "" #@param {type:"string"}

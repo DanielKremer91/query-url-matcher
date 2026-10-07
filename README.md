@@ -28,7 +28,7 @@ Führst du einen früheren Schritt erneut aus, setzt das Notebook alles zurück,
 | Datei | Pflicht | Inhalt |
 |---|---|---|
 | Queries | ja | CSV oder Excel, eine Query pro Zeile |
-| Screaming-Frog-Export | ja | URL und Main Content (auch Custom Extraction, z. B. Spalte „Main Content Extractor 1") |
+| Screaming-Frog-Export | ja | URL und Main Content: Custom Extraction mit dem Hauptinhalt als Text (Configuration → Custom → Custom Extraction, Name mit „Content", z. B. „Main Content"), Export aus dem Tab „Custom Extraction" |
 | Eigene Rankings | optional | Keyword, URL, Position |
 | Top-10-SERPs | optional | Ahrefs-Export mit Keyword, URL, Position, Type |
 
