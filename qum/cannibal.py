@@ -72,12 +72,12 @@ def _own_rankings(rankings) -> dict:
 
 
 def find_cannibalization(
-    result, lead, threshold, rankings=None, good_position=10, margin=0.01, visible_position=20
+    result, lead, threshold, rankings=None, good_position=10, margin=0.01, visible_position=20, gap_position=0
 ) -> pd.DataFrame:
     """Stufe Gefahr: jedes Urteil Kannibalisierungsgefahr und bei gutem Ranking jede andere passende Seite, die besser
     oder fast gleich gut ist als die rankende. Stufe Möglich: sonst weitere Seiten, die die Schwelle erreichen.
     Stufe Kannibalisierung bereits sichtbar: mehrere eigene URLs ranken bis visible_position."""
-    assessments = assess(result, lead, threshold, rankings, good_position, margin)
+    assessments = assess(result, lead, threshold, rankings, good_position, margin, gap_position)
     u_index = {normalize_url(u): j for j, u in enumerate(result.urls)}
     by_query = _own_rankings(rankings)
     rows = []

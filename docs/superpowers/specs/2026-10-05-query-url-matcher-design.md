@@ -102,6 +102,7 @@ Zwei Szenarien (so erklärt im Notebook vor Schritt 7a):
 
 - **Ohne Rankings, und mit Rankings für Queries, die schwach oder gar nicht ranken (semantisch):** genau eine Seite passt klar → passende Seite vorhanden; mehrere passen fast gleich gut → Kannibalisierungsgefahr; keine passt → Content-Lücke.
 - **Mit Rankings und gutem Ranking (von Google aus):** die rankende Seite erreicht die Schwelle oder fehlt im Frog-Export (nicht prüfbar) → in Ordnung; sonst → rankt trotz schwachem Match (auch wenn keine Seite passt).
+- **Keine Content-Lücke bei Ranking bis Position 20:** Passt keine Seite, rankt aber eine eigene Seite bis `luecke_nur_ohne_ranking_bis_position` (Voreinstellung 20, 0 = aus), lautet das Urteil „rankt trotz schwachem Match" statt Content-Lücke. Dieselbe Einstellung gilt für das Lücken-Blatt (Entscheidung Daniel, 2026-10-07, nach „fenster streichen": Position 13 mit genau der passenden Seite).
 
 Prüfreihenfolge: zuerst „keine Seite passt", dann gutes Ranking, dann die Zahl der fast gleich guten Seiten. Bei gutem Ranking richtet sich das Urteil nach der rankenden Seite (Entscheidung Daniel, 2026-10-07: bei TOOM waren die so gemeldeten Fälle Hub-Seiten, die das Modell knapp vorzieht, während Google die richtige Detailseite rankt). Passt eine andere eigene Seite besser oder fast gleich gut, steht trotzdem Kannibalisierungsgefahr „ja“, weil Google die rankende Seite wechseln kann. Passen weitere Seiten nur deutlich dahinter, steht „möglich“ (Entscheidung Daniel, 2026-10-07: auch dann einen Hinweis, aber abgestuft).
 
@@ -131,7 +132,7 @@ Das Clustering dient nur dem Blatt „Potentielle Content-Lücken": Die Cluster-
 Das Blatt hat eigene Einstellungen in Schritt 7c, seine Zahl kann deshalb von der Zahl der Urteile „Content-Lücke" abweichen:
 
 - `luecke_unter_score` (Default 0 = Schwelle aus Schritt 7b): Eine Query ist eine potentielle Lücke, wenn ihr bester Leit-Score darunter liegt. Erlaubt sind 0 oder Werte zwischen 0 und 1.
-- `luecke_nur_ohne_ranking_bis_position` (Default 0 = aus): Bei einem Wert über 0 zählen nur Queries ohne eigenes Ranking bis zu dieser Position (kein Ranking oder schlechter). Ohne Rankings wird der Wert mit einer Hinweiszeile ignoriert.
+- `luecke_nur_ohne_ranking_bis_position` (Default 20, 0 = aus): Es zählen nur Queries ohne eigenes Ranking bis zu dieser Position (kein Ranking oder schlechter); gilt auch für das Urteil Content-Lücke (Abschnitt 7). Ohne Rankings wird der Wert ignoriert, mit einer Hinweiszeile nur, wenn er von 0 oder 20 abweicht.
 
 Schritt 7c nennt die Zahl der potentiellen Lücken und, mit SERPs, die Zahl der neuen Seiten; die Lesehilfe nennt die Zahl der neuen Seiten in der Zeile zum Blatt.
 

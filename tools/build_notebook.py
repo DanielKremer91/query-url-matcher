@@ -432,8 +432,8 @@ sichtbar_bis_position = 20 #@param {type:"integer"}
 #@markdown **Potentielle Content-Lücken:** Das Blatt „Potentielle Content-Lücken“ hat eigene Einstellungen. Seine Zahl kann deshalb von der Zahl der Urteile „Content-Lücke“ abweichen.
 #@markdown **luecke_unter_score:** Eine Query gilt als potentielle Lücke, wenn der Score ihrer besten Seite unter diesem Wert liegt. 0 = Schwelle aus Schritt 7b. Sonst ein Wert zwischen 0 und 1. Niedriger ist strenger: Bei 0.75 zählen nur Queries, zu denen kaum eine Seite passt (weniger, aber sicherere Lücken). Höher ist großzügiger: Bei 0.8 zählen auch knappe Fälle. Wähle den Wert im Bereich deiner Scores, Schritt 7a zeigt Beispiele (bei e5 meist zwischen 0.75 und 0.9, bei anderen Modellen deutlich anders).
 luecke_unter_score = 0.0 #@param {type:"number"}
-#@markdown **luecke_nur_ohne_ranking_bis_position:** 0 = aus. Bei zum Beispiel 10 zählen nur Queries, für die keine eigene Seite bis Position 10 rankt (kein Ranking oder schlechter als Position 10). Ohne Rankings wird der Wert ignoriert.
-luecke_nur_ohne_ranking_bis_position = 0 #@param {type:"integer"}
+#@markdown **luecke_nur_ohne_ranking_bis_position:** Voreinstellung 20: Eine Query ist keine Lücke, wenn eine eigene Seite bis Position 20 rankt, auch wenn keine Seite die Schwelle erreicht. Google hält die Seite dann für relevant, das Urteil lautet „Rankt trotz schwachem Match“ (ausbauen statt neu bauen). Gilt für das Urteil und für das Blatt „Potentielle Content-Lücken“. 0 = aus. Ohne Rankings wird der Wert ignoriert.
+luecke_nur_ohne_ranking_bis_position = 20 #@param {type:"integer"}
 #@markdown **Clustering (nur mit Schritt 6):** Das Tool fasst Keywords mit ähnlichen Google-Ergebnissen zu Themen zusammen. Die beiden Regler ändern nur die Spalte Thema im Blatt „Potentielle Content-Lücken“: Lücken mit gleichem Thema zählen als eine neue Seite, nicht als mehrere.
 #@markdown **serp_ueberschneidung:** Ab wie viel Prozent gleicher Top-10-URLs zwei Keywords als verwandt gelten. Beispiel: „fassade streichen" und „hausfassade streichen" teilen 6 von 10 URLs, also 60 %. Bei 50 % sind sie verwandt, Google behandelt sie als dieselbe Suchintention. Hat ein Keyword weniger als 10 Treffer, zählt die kürzere Liste.
 serp_ueberschneidung = 50 #@param {type:"slider", min:10, max:100, step:5}
@@ -470,13 +470,15 @@ if luecke_nur_ohne_ranking_bis_position < 0:
     colab.stop(f"luecke_nur_ohne_ranking_bis_position darf nicht negativ sein. 0 schaltet die Bedingung aus.{kept}")
 colab.invalidate(globals(), *colab.DECISION_STATE)
 print(f"Schwelle aus Schritt 7b: {threshold:.4f} ({threshold_label}).")
-new_decisions = build_decisions(result, lead, threshold, rankings, rankt_gut_bis_position, weight, abstand_fast_gleich)
+gap_position = luecke_nur_ohne_ranking_bis_position if rankings is not None else 0
+new_decisions = build_decisions(
+    result, lead, threshold, rankings, rankt_gut_bis_position, weight, abstand_fast_gleich, gap_position
+)
 new_cannibal = find_cannibalization(
-    result, lead, threshold, rankings, rankt_gut_bis_position, abstand_fast_gleich, sichtbar_bis_position
+    result, lead, threshold, rankings, rankt_gut_bis_position, abstand_fast_gleich, sichtbar_bis_position, gap_position
 )
 new_decisions = annotate(new_decisions, new_cannibal)
-gap_position = luecke_nur_ohne_ranking_bis_position if rankings is not None else 0
-if luecke_nur_ohne_ranking_bis_position > 0 and rankings is None:
+if luecke_nur_ohne_ranking_bis_position not in (0, 20) and rankings is None:  # nur melden, wenn bewusst geändert
     print("ℹ️ luecke_nur_ohne_ranking_bis_position wird ignoriert: Es sind keine Rankings geladen.")
 new_topics = None if serps is None else topics(result.queries, serps, serp_ueberschneidung / 100, cluster_dichte / 100)
 new_gaps = find_gaps(result, lead, threshold, rankings, new_topics, luecke_unter_score, gap_position)
@@ -574,7 +576,8 @@ Ohne Rankings weiß das Tool nicht, ob eine Seite schon funktioniert. „In Ordn
 | **Rankt gut**, die rankende Seite passt, aber eine andere passt besser | **In Ordnung**, dazu Kannibalisierungsgefahr „ja“ und „Rankende URL = beste URL?“ = „nein“ |
 | **Rankt gut**, aber die rankende Seite passt nicht | **Rankt trotz schwachem Match**: Passt eine andere Seite, steht Kannibalisierungsgefahr „ja“ (prüfen, ob sie die richtige wäre), sonst die Schwelle prüfen |
 | **Rankt gut** mit einer URL, die nicht im Frog-Export steht | **In Ordnung**: nicht prüfbar, die Spalte „Rankende URL = beste URL?“ zeigt „nicht im Frog-Export“ |
-| **Rankt schwach oder gar nicht** | wie ohne Rankings: **Passende Seite vorhanden**, **Kannibalisierungsgefahr** oder **Content-Lücke** |
+| **Rankt schwach** (bis Position 20, einstellbar mit luecke_nur_ohne_ranking_bis_position) und keine Seite passt | **Rankt trotz schwachem Match**: keine Lücke, Google hält die Seite für relevant, also ausbauen statt neu bauen |
+| **Rankt schwach oder gar nicht**, sonst | wie ohne Rankings: **Passende Seite vorhanden**, **Kannibalisierungsgefahr** oder **Content-Lücke** |
 
 ### Spalte „Kannibalisierungsgefahr“ (unabhängig vom Urteil)
 

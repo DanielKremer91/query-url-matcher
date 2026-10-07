@@ -14,13 +14,16 @@ def _rankings(rows):
     return pd.DataFrame(rows, columns=["query_norm", "url", "url_norm", "position"])
 
 
-def _row(scores, ranking=None, threshold=0.8, margin=0.01, good_position=10, urls=(U1, U2, U3)):
+def _row(scores, ranking=None, threshold=0.8, margin=0.01, good_position=10, urls=(U1, U2, U3), gap_position=0):
     """Eine Query "q". ranking: None (keine Rankings geladen), [] (geladen, aber nicht für q) oder [(url, position)]."""
     rankings = None if ranking is None else _rankings([("q", url, url, float(pos)) for url, pos in ranking])
     if ranking == []:
         rankings = _rankings([("andere query", U1, U1, 1.0)])
     result = make_result(["q"], list(urls), [scores])
-    return build_decisions(result, result.lead("chunk"), threshold, rankings, good_position=good_position, margin=margin).iloc[0]
+    return build_decisions(
+        result, result.lead("chunk"), threshold, rankings, good_position=good_position, margin=margin,
+        gap_position=gap_position,
+    ).iloc[0]
 
 
 # --- Die Urteilstabelle, Zelle für Zelle -------------------------------------------------------------------------
@@ -214,3 +217,25 @@ def test_query_matching_is_case_insensitive():
     rankings = _rankings([("hunde futter", U1, U1, 2.0)])
     result = make_result(["Hunde  Futter"], [U1], [[0.9]])
     assert build_decisions(result, result.lead("chunk"), 0.6, rankings).iloc[0][L.C_VERDICT] == L.V_OK
+
+
+# --- Keine Content-Lücke, wenn eine eigene Seite bis gap_position rankt ----------------------------------------
+
+
+def test_nothing_fits_but_ranking_up_to_the_gap_position_is_a_weak_match_not_a_gap():
+    assert _row([0.5, 0.4, 0.3], ranking=[(U1, 13)], gap_position=20)[L.C_VERDICT] == L.V_WATCH
+    assert _row([0.5, 0.4, 0.3], ranking=[(U1, 20)], gap_position=20)[L.C_VERDICT] == L.V_WATCH
+
+
+def test_nothing_fits_and_ranking_beyond_the_gap_position_or_not_at_all_is_a_gap():
+    assert _row([0.5, 0.4, 0.3], ranking=[(U1, 21)], gap_position=20)[L.C_VERDICT] == L.V_GAP
+    assert _row([0.5, 0.4, 0.3], ranking=[], gap_position=20)[L.C_VERDICT] == L.V_GAP
+    assert _row([0.5, 0.4, 0.3], gap_position=20)[L.C_VERDICT] == L.V_GAP  # ohne Rankings
+
+
+def test_gap_position_zero_switches_the_rule_off():
+    assert _row([0.5, 0.4, 0.3], ranking=[(U1, 13)], gap_position=0)[L.C_VERDICT] == L.V_GAP
+
+
+def test_gap_position_only_matters_when_nothing_fits():
+    assert _row([0.9, 0.7, 0.1], ranking=[(U1, 13)], gap_position=20)[L.C_VERDICT] == L.V_MATCH

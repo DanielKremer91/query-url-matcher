@@ -64,11 +64,13 @@ class Assessment:
     ranks_well: bool
 
 
-def assess(result, lead, threshold, rankings=None, good_position=10, margin=0.01) -> list:
+def assess(result, lead, threshold, rankings=None, good_position=10, margin=0.01, gap_position=0) -> list:
     """Urteil je Query. Prüfreihenfolge: nichts passt, dann gutes Ranking, dann eine oder mehrere passende Seiten.
 
     Bei gutem Ranking zählt die rankende Seite: erreicht sie die Schwelle oder steht sie nicht im Frog-Export (nicht
     prüfbar), ist es in Ordnung, sonst rankt sie trotz schwachem Match. Konkurrierende Seiten meldet cannibal.py.
+    Passt keine Seite, ist es keine Content-Lücke, solange eine eigene Seite bis gap_position rankt (0 = aus): Google
+    hält sie dann für relevant, das Urteil lautet "Rankt trotz schwachem Match".
     """
     check_margin(margin)
     u_index = {normalize_url(u): j for j, u in enumerate(result.urls)}
@@ -80,7 +82,8 @@ def assess(result, lead, threshold, rankings=None, good_position=10, margin=0.01
         ranking_j = u_index.get(hit.url_norm) if hit is not None else None
         ranks_well = hit is not None and hit.position <= good_position
         if not close:
-            verdict = L.V_WATCH if ranks_well else L.V_GAP
+            ranks_somewhat = hit is not None and gap_position > 0 and hit.position <= gap_position
+            verdict = L.V_WATCH if ranks_well or ranks_somewhat else L.V_GAP
         elif ranks_well:
             fits = ranking_j is None or lead[i, ranking_j] >= threshold
             verdict = L.V_OK if fits else L.V_WATCH
@@ -105,10 +108,12 @@ def _compare(a: Assessment, best_j, rankings_loaded) -> str:
     return L.NO
 
 
-def build_decisions(result, lead, threshold, rankings=None, good_position=10, weight=0.7, margin=0.01) -> pd.DataFrame:
+def build_decisions(
+    result, lead, threshold, rankings=None, good_position=10, weight=0.7, margin=0.01, gap_position=0
+) -> pd.DataFrame:
     """Übersicht ohne die Spalte Kannibalisierungsgefahr, die setzt cannibal.annotate."""
     out = best_matches(result, lead, weight)
-    assessments = assess(result, lead, threshold, rankings, good_position, margin)
+    assessments = assess(result, lead, threshold, rankings, good_position, margin, gap_position)
     best_j = lead.argmax(axis=1)
     out[L.C_POSITION] = [format_position(a.hit.position) if a.hit is not None else "" for a in assessments]
     out[L.C_RANK_URL] = [a.hit.url if a.hit is not None else "" for a in assessments]

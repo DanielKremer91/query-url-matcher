@@ -123,7 +123,10 @@ VERDICT_HELP = {
         "Genau eine Seite passt klar: Sie erreicht die Schwelle und liegt deutlich vor allen anderen. Die Query rankt "
         "schwach, gar nicht, oder es sind keine Rankings geladen. Diese Seite ausbauen und intern stärken statt neu bauen."
     ),
-    L.V_GAP: "Keine Seite erreicht die Schwelle. Die Query rankt nicht gut, oder es sind keine Rankings geladen.",
+    L.V_GAP: (
+        "Keine Seite erreicht die Schwelle, und keine eigene Seite rankt bis zur Position aus "
+        "luecke_nur_ohne_ranking_bis_position (Voreinstellung 20), oder es sind keine Rankings geladen."
+    ),
     L.V_OK: (
         "Die Query rankt gut, und die rankende Seite erreicht die Schwelle. Steht die rankende URL nicht im Frog-Export, "
         "kann das Tool sie nicht prüfen und wertet ebenfalls 'In Ordnung'. Passt eine andere eigene Seite besser oder "
@@ -137,7 +140,9 @@ VERDICT_HELP = {
     L.V_WATCH: (
         "Die Query rankt gut, aber die rankende Seite erreicht die Schwelle nicht. Passt eine andere eigene Seite, steht "
         "in der Spalte Kannibalisierungsgefahr 'ja': prüfen, welche Seite die richtige ist. Passt gar keine Seite, die "
-        "Schwelle prüfen."
+        "Schwelle prüfen. Ebenso, wenn keine Seite passt, aber eine eigene Seite bis zur Position aus "
+        "luecke_nur_ohne_ranking_bis_position rankt (Voreinstellung 20): Google hält sie für relevant, also ausbauen "
+        "statt neu bauen."
     ),
 }
 
