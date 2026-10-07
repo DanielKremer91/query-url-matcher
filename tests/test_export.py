@@ -63,8 +63,8 @@ def test_every_sheet_has_query_first_except_readme_and_summary():
 
 
 def test_every_label_column_has_a_help_text():
-    # C_SIDE und C_SCORE gehören nur zu den Prüfbeispielen in Schritt 7, nicht zum Export
-    columns = [v for k, v in vars(L).items() if k.startswith("C_") and k not in ("C_SIDE", "C_SCORE")]
+    # C_SIDE und C_SCORE gehören nur zu den Prüfbeispielen in Schritt 7, C_SCORE_2 nur zur Vorschau in Schritt 4
+    columns = [v for k, v in vars(L).items() if k.startswith("C_") and k not in ("C_SIDE", "C_SCORE", "C_SCORE_2")]
     assert columns
     for column in columns:
         assert column in export._COLUMN_HELP, column

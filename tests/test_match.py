@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import pytest
 
 from qum import labels as L
@@ -155,3 +156,62 @@ def test_run_matching_labels_each_embedding_pass(capsys):
     assert "✅ Queries: 1 von 1 eingebettet" in out
     assert "✅ Chunks: 5 von 5 eingebettet" in out
     assert "✅ Ganze Seiten: 1 von 1 eingebettet" in out
+
+
+def test_best_matches_columns_in_overview_order():
+    from qum.match import MATCH_COLUMNS, best_matches
+
+    result = make_result(["q"], ["u1", "u2", "u3"], [[0.5, 0.9, 0.7]])
+    df = best_matches(result, result.lead("chunk"))
+    assert list(df.columns) == MATCH_COLUMNS == [
+        L.C_QUERY, L.C_BEST_URL, L.C_CHUNK, L.C_S_CHUNK, L.C_S_FULL, L.C_S_COMBI, L.C_LEAD_GAP,
+        L.C_SECOND_URL, L.C_S_CHUNK_2, L.C_S_FULL_2, L.C_S_COMBI_2,
+        L.C_THIRD_URL, L.C_S_CHUNK_3, L.C_S_FULL_3, L.C_S_COMBI_3,
+    ]
+    assert [L.C_SECOND_URL, L.C_S_CHUNK_2, L.C_THIRD_URL, L.C_S_COMBI_3] == [
+        "Zweitbeste URL", "Score Chunk 2", "Drittbeste URL", "Score Kombi 3",
+    ]
+
+
+def test_best_matches_orders_the_three_best_urls_by_the_lead_score():
+    from qum.match import best_matches
+
+    result = make_result(["q"], ["u1", "u2", "u3", "u4"], [[0.5, 0.9, 0.7, 0.1]], [[0.9, 0.1, 0.5, 0.2]])
+    row = best_matches(result, result.lead("chunk"), weight=0.5).iloc[0]
+    assert [row[L.C_BEST_URL], row[L.C_SECOND_URL], row[L.C_THIRD_URL]] == ["u2", "u3", "u1"]
+    assert row[L.C_CHUNK] == "Text u2"
+    assert [row[L.C_S_CHUNK], row[L.C_S_FULL], row[L.C_S_COMBI]] == [0.9, 0.1, 0.5]
+    assert [row[L.C_S_CHUNK_2], row[L.C_S_FULL_2], row[L.C_S_COMBI_2]] == [0.7, 0.5, 0.6]
+    assert [row[L.C_S_CHUNK_3], row[L.C_S_FULL_3], row[L.C_S_COMBI_3]] == [0.5, 0.9, 0.7]
+    assert row[L.C_LEAD_GAP] == 0.2
+    full = best_matches(result, result.lead("full"), weight=0.5).iloc[0]
+    assert [full[L.C_BEST_URL], full[L.C_SECOND_URL], full[L.C_THIRD_URL]] == ["u1", "u3", "u4"]
+    assert full[L.C_CHUNK] == "Text u1"
+    assert full[L.C_LEAD_GAP] == 0.4
+
+
+def test_best_matches_leaves_cells_empty_with_fewer_than_three_urls():
+    from qum.match import best_matches
+
+    two = best_matches(make_result(["q"], ["u1", "u2"], [[0.5, 0.9]]), np.array([[0.5, 0.9]])).iloc[0]
+    assert two[L.C_SECOND_URL] == "u1" and two[L.C_THIRD_URL] == ""
+    assert all(pd.isna(two[c]) for c in (L.C_S_CHUNK_3, L.C_S_FULL_3, L.C_S_COMBI_3))
+    one = best_matches(make_result(["q"], ["u1"], [[0.5]]), np.array([[0.5]])).iloc[0]
+    assert one[L.C_SECOND_URL] == "" and pd.isna(one[L.C_LEAD_GAP]) and pd.isna(one[L.C_S_CHUNK_2])
+
+
+def test_best_matches_lead_gap_is_rounded_per_query():
+    from qum.match import best_matches
+
+    result = make_result(["a", "b"], ["u1", "u2"], [[0.91234, 0.6], [0.3, 0.2]])
+    assert best_matches(result, result.lead("chunk"))[L.C_LEAD_GAP].tolist() == [0.3123, 0.1]
+
+
+@pytest.mark.parametrize("basis, first, second", [("chunk", 0.9, 0.7), ("full", 0.9, 0.5), ("combined", 0.66, 0.62)])
+def test_preview_shows_the_lead_score_of_the_best_and_second_best_url(basis, first, second):
+    from qum.match import best_matches, preview
+
+    result = make_result(["q"], ["u1", "u2", "u3"], [[0.5, 0.9, 0.7]], [[0.9, 0.1, 0.5]])
+    df = preview(best_matches(result, result.lead(basis, 0.6), 0.6), basis)
+    assert list(df.columns) == [L.C_QUERY, L.C_BEST_URL, L.C_SCORE, L.C_SECOND_URL, L.C_SCORE_2]
+    assert [df.iloc[0][L.C_SCORE], df.iloc[0][L.C_SCORE_2]] == [first, second]

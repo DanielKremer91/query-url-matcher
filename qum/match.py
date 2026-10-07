@@ -81,6 +81,50 @@ def run_matching(queries, urls, contents, embedder, chunk_size, chunk_overlap) -
     return MatchResult(list(queries), list(urls), chunks, chunk_scores, full_scores, best, methods)
 
 
+MATCH_COLUMNS = [
+    L.C_QUERY, L.C_BEST_URL, L.C_CHUNK, L.C_S_CHUNK, L.C_S_FULL, L.C_S_COMBI, L.C_LEAD_GAP,
+    L.C_SECOND_URL, L.C_S_CHUNK_2, L.C_S_FULL_2, L.C_S_COMBI_2,
+    L.C_THIRD_URL, L.C_S_CHUNK_3, L.C_S_FULL_3, L.C_S_COMBI_3,
+]
+# je Platz (beste, zweitbeste, drittbeste URL): URL-Spalte und die drei Score-Spalten
+_PLACES = [
+    (L.C_BEST_URL, L.C_S_CHUNK, L.C_S_FULL, L.C_S_COMBI),
+    (L.C_SECOND_URL, L.C_S_CHUNK_2, L.C_S_FULL_2, L.C_S_COMBI_2),
+    (L.C_THIRD_URL, L.C_S_CHUNK_3, L.C_S_FULL_3, L.C_S_COMBI_3),
+]
+# Bewertungsgrundlage -> Spalte ihres Scores für die beste und die zweitbeste URL
+_LEAD_COLUMNS = {
+    "chunk": (L.C_S_CHUNK, L.C_S_CHUNK_2),
+    "full": (L.C_S_FULL, L.C_S_FULL_2),
+    "combined": (L.C_S_COMBI, L.C_S_COMBI_2),
+}
+
+
+def best_matches(result: MatchResult, lead: np.ndarray, weight: float = 0.7) -> pd.DataFrame:
+    """Je Query die drei URLs mit dem höchsten Leit-Score und ihre drei Scores. Fehlende Plätze bleiben leer."""
+    scores = (result.chunk_scores, result.full_scores, result.combined(weight))
+    rows = []
+    for i, query in enumerate(result.queries):
+        order = np.argsort(-lead[i], kind="stable")
+        row = {L.C_QUERY: query}
+        for place, (url_col, *score_cols) in enumerate(_PLACES):
+            j = order[place] if place < len(order) else None
+            row[url_col] = "" if j is None else result.urls[j]
+            for column, matrix in zip(score_cols, scores):
+                row[column] = None if j is None else round(float(matrix[i, j]), 4)
+        row[L.C_CHUNK] = result.best_chunk(i, order[0])
+        row[L.C_LEAD_GAP] = round(float(lead[i, order[0]] - lead[i, order[1]]), 4) if len(order) > 1 else None
+        rows.append(row)
+    return pd.DataFrame(rows, columns=MATCH_COLUMNS)
+
+
+def preview(matches: pd.DataFrame, basis: str) -> pd.DataFrame:
+    """Kurzansicht für Schritt 4: beste und zweitbeste URL mit ihrem Leit-Score."""
+    first, second = _LEAD_COLUMNS[basis]
+    out = matches[[L.C_QUERY, L.C_BEST_URL, first, L.C_SECOND_URL, second]]
+    return out.set_axis([L.C_QUERY, L.C_BEST_URL, L.C_SCORE, L.C_SECOND_URL, L.C_SCORE_2], axis=1)
+
+
 def ranks(scores: np.ndarray) -> np.ndarray:
     return (-scores).argsort(axis=1, kind="stable").argsort(axis=1, kind="stable") + 1
 

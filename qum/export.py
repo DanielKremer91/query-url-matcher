@@ -45,6 +45,14 @@ _COLUMN_HELP = {
         "Ein großer Vorsprung heißt: eine Seite sticht klar heraus, auch wenn der absolute Score niedrig ist. "
         "Negativ, wenn eine andere Seite knapp davor liegt."
     ),
+    L.C_SECOND_URL: "Die Seite mit dem zweithöchsten Score für die Query, nach der gewählten Bewertungsgrundlage.",
+    L.C_S_CHUNK_2: "Chunk-Score der zweitbesten URL.",
+    L.C_S_FULL_2: "Gesamt-URL-Score der zweitbesten URL.",
+    L.C_S_COMBI_2: "Kombi-Score der zweitbesten URL.",
+    L.C_THIRD_URL: "Die Seite mit dem dritthöchsten Score für die Query, nach der gewählten Bewertungsgrundlage.",
+    L.C_S_CHUNK_3: "Chunk-Score der drittbesten URL.",
+    L.C_S_FULL_3: "Gesamt-URL-Score der drittbesten URL.",
+    L.C_S_COMBI_3: "Kombi-Score der drittbesten URL.",
     L.C_GAP_TO_BEST: "Abstand dieses Treffers zum besten Treffer der Query (0 = bester Treffer).",
     L.C_R_CHUNK: "Rang der Seite nach Chunk-Score für diese Query. 1 = beste URL für diese Query unter allen URLs.",
     L.C_R_FULL: "Rang der Seite nach Gesamt-URL-Score für diese Query. 1 = beste URL für diese Query unter allen URLs.",
