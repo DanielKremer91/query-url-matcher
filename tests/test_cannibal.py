@@ -197,9 +197,9 @@ def test_every_cannibalisation_verdict_and_every_competing_page_at_good_ranking_
     ]
     # gutes Ranking: das Urteil folgt der rankenden Seite, die Gefahr steht trotzdem im Blatt
     sheet = find_cannibalization(result, lead, 0.8, rankings)
-    assert list(dict.fromkeys(sheet[L.C_QUERY])) == [
+    assert set(sheet[L.C_QUERY]) == {
         "ok-nah", "deutlich", "nah-schwach", "nah-ohne-ranking", "knapp-unter", "nicht-im-export",
-    ]
+    }
     flagged = set(decisions.loc[decisions[L.C_VERDICT] == L.V_CANNIBAL, L.C_QUERY])
     assert flagged <= set(cannibal.loc[cannibal[L.C_STAGE] == L.STAGE_DANGER, L.C_QUERY])
     assert dict(zip(cannibal[L.C_QUERY], cannibal[L.C_REASON])) == {
@@ -371,9 +371,10 @@ def _sheet(queries, scores, rankings=None, threshold=0.6, urls=(U1, U2, U3), **k
 def test_sheet_columns_without_stage_and_reason():
     df = _sheet(["q"], [[0.8, 0.8, 0.1]])
     assert list(df.columns) == COLUMNS == [
-        L.C_QUERY, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_GAP_TO_BEST, L.C_COMP_POS,
+        L.C_QUERY, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_GAP_TO_BEST, L.C_COMP_POS, L.C_COMP_CHUNK,
         L.C_POSITION, L.C_RANK_URL, L.C_PRIORITY,
     ]
+    assert L.C_COMP_CHUNK == "Relevanter Chunk der URL"
 
 
 def test_sheet_merges_the_cases_of_a_query_each_url_once_by_score():
@@ -408,3 +409,39 @@ def test_sheet_urls_without_score_come_last_by_position():
 
 def test_sheet_is_empty_without_competition():
     assert _sheet(["q"], [[0.9, 0.1, 0.1]]).empty
+
+
+# --- Reihenfolge: die dringendsten Fälle zuerst, darin die engste Konkurrenz zuerst -------------------------------
+
+
+def test_sheet_sorts_queries_by_urgency():
+    # "niedrig-dringend": beste Seite rankt, Konkurrenz deutlich dahinter (sehr niedrig);
+    # "sehr-dringend": eng beieinander, rankt auf 15 (sehr hoch); "dringend": eng, rankt nicht (hoch)
+    rankings = _rankings([("niedrig-dringend", U1, U1, 3.0), ("sehr-dringend", U1, U1, 15.0), ("x", U1, U1, 1.0)])
+    df = _sheet(["niedrig-dringend", "dringend", "sehr-dringend"],
+                [[0.9, 0.7, 0.1], [0.8, 0.8, 0.1], [0.8, 0.8, 0.1]], rankings)
+    assert list(dict.fromkeys(df[L.C_QUERY])) == ["sehr-dringend", "dringend", "niedrig-dringend"]
+    assert list(dict.fromkeys(df[L.C_PRIORITY])) == [L.PRIO_VERY_HIGH, L.PRIO_HIGH, L.PRIO_VERY_LOW]
+
+
+def test_within_the_same_urgency_the_closest_competition_comes_first():
+    df = _sheet(["weit", "eng"], [[0.9, 0.7, 0.1], [0.9, 0.85, 0.1]])  # ohne Rankings: beide offen
+    assert list(dict.fromkeys(df[L.C_QUERY])) == ["eng", "weit"]
+    assert df[L.C_NO].tolist() == [1, 2, 1, 2]
+
+
+# --- Chunk je URL -----------------------------------------------------------------------------------------------
+
+
+def test_each_url_row_shows_its_best_chunk_for_the_query():
+    rankings = _rankings([("q", U1, U1, 3.0), ("q", ALT, ALT, 8.0)])
+    df = _sheet(["q"], [[0.9, 0.7, 0.1]], rankings)
+    chunks = dict(zip(df[L.C_COMP_URL], df[L.C_COMP_CHUNK]))
+    assert chunks[U1] == f"Text {U1}" and chunks[U2] == f"Text {U2}"
+    assert chunks[ALT] == ""  # nicht im Frog-Export
+
+
+def test_chunk_column_can_be_left_out_for_the_whole_url_basis():
+    df = _sheet(["q"], [[0.8, 0.8, 0.1]], include_chunk=False)
+    assert L.C_COMP_CHUNK not in df.columns
+    assert list(df.columns) == [c for c in COLUMNS if c != L.C_COMP_CHUNK]

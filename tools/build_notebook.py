@@ -469,7 +469,8 @@ new_decisions = build_decisions(
     result, lead, threshold, rankings, rankt_gut_bis_position, weight, abstand_fast_gleich, gap_position
 )
 new_cannibal = find_cannibalization(
-    result, lead, threshold, rankings, rankt_gut_bis_position, abstand_fast_gleich, sichtbar_bis_position, gap_position
+    result, lead, threshold, rankings, rankt_gut_bis_position, abstand_fast_gleich, sichtbar_bis_position, gap_position,
+    include_chunk=basis != "full",  # bei Gesamt-URL ohne Chunk-Spalte
 )
 new_elsewhere = chunk_elsewhere(result, rankings)
 if luecke_nur_ohne_ranking_bis_position not in (0, 20) and rankings is None:  # nur melden, wenn bewusst geändert
@@ -576,7 +577,7 @@ Ohne Rankings weiß das Tool nicht, ob eine Seite schon funktioniert. „In Ordn
 
 ### Blatt „Kannibalisierungsgefahr“ (unabhängig vom Urteil)
 
-Hier steht jede Query, bei der weitere eigene Seiten die Schwelle erreichen oder mehrere eigene URLs bis Position 20 ranken, auch wenn das Urteil „In Ordnung“ lautet. Je konkurrierender URL eine Zeile. Die Spalte **Einordnung** sagt, wie dringend der Fall ist:
+Hier steht jede Query, bei der weitere eigene Seiten die Schwelle erreichen oder mehrere eigene URLs bis Position 20 ranken, auch wenn das Urteil „In Ordnung“ lautet. Je konkurrierender URL eine Zeile, bei Chunk und Kombi mit ihrem passenden Textabschnitt. Die Spalte **Einordnung** sagt, wie dringend der Fall ist; das Blatt ist danach sortiert, die dringendsten Fälle oben:
 
 | Einordnung | wann |
 |---|---|

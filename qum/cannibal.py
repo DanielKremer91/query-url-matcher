@@ -12,7 +12,7 @@ CASE_COLUMNS = [
 ]
 # Blatt Kannibalisierungsgefahr (Langformat): eine Zeile je Query und konkurrierender URL, die Query steht in jeder Zeile
 COLUMNS = [
-    L.C_QUERY, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_GAP_TO_BEST, L.C_COMP_POS,
+    L.C_QUERY, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_GAP_TO_BEST, L.C_COMP_POS, L.C_COMP_CHUNK,
     L.C_POSITION, L.C_RANK_URL, L.C_PRIORITY,
 ]
 # dringendste zuerst; je Query gilt die dringendste Einordnung ihrer Fälle
@@ -127,13 +127,26 @@ def cannibal_cases(
 
 
 def find_cannibalization(
-    result, lead, threshold, rankings=None, good_position=10, margin=0.01, visible_position=20, gap_position=0
+    result, lead, threshold, rankings=None, good_position=10, margin=0.01, visible_position=20, gap_position=0,
+    include_chunk=True,
 ) -> pd.DataFrame:
     """Blatt Kannibalisierungsgefahr: je Query alle konkurrierenden URLs aus allen Fällen (passende Seiten nah an der
     besten, weitere passende Seiten, mehrere rankende Seiten), jede URL einmal, nach Score sortiert (ohne Score nach
-    Position). Einordnung: die dringendste der Fälle der Query."""
+    Position). Einordnung: die dringendste der Fälle der Query. Queries nach Dringlichkeit sortiert, darin die engste
+    Konkurrenz zuerst (kleinster Abstand der zweiten URL zur besten). include_chunk=False (Grundlage Gesamt-URL)
+    lässt die Chunk-Spalte weg."""
     cases = cannibal_cases(result, lead, threshold, rankings, good_position, margin, visible_position, gap_position)
-    rows = []
+    q_index = {query: i for i, query in enumerate(result.queries)}
+    u_index = {normalize_url(u): j for j, u in enumerate(result.urls)}
+
+    def chunk_of(query, url):
+        j = u_index.get(normalize_url(url))
+        if j is None:
+            return ""
+        i = q_index[query]
+        return result.chunks[j][int(result.best_chunk_idx[i, j])]
+
+    groups = []
     for query, group in cases.groupby(L.C_QUERY, sort=False):
         urgency = min(group[L.C_PRIORITY], key=_URGENCY.index)
         ordered = group.assign(
@@ -142,7 +155,14 @@ def find_cannibalization(
             _key=group[L.C_COMP_URL].map(normalize_url),
         ).sort_values(["_score", "_position"], ascending=[False, True], kind="stable")
         ordered = ordered.drop_duplicates("_key")  # www- und Frog-Schreibweise derselben Seite nur einmal
-        for number, row in enumerate(ordered.to_dict("records"), start=1):
-            rows.append({column: row[column] for column in COLUMNS} | {L.C_NO: number, L.C_PRIORITY: urgency})
-    return pd.DataFrame(rows, columns=COLUMNS)
+        group_rows = [
+            {column: row.get(column) for column in COLUMNS}
+            | {L.C_NO: number, L.C_PRIORITY: urgency, L.C_COMP_CHUNK: chunk_of(query, row[L.C_COMP_URL])}
+            for number, row in enumerate(ordered.to_dict("records"), start=1)
+        ]
+        gaps = [r[L.C_GAP_TO_BEST] for r in group_rows[1:] if r[L.C_GAP_TO_BEST] is not None and not pd.isna(r[L.C_GAP_TO_BEST])]
+        groups.append((_URGENCY.index(urgency), min(gaps, default=np.inf), group_rows))
+    groups.sort(key=lambda g: (g[0], g[1]))  # stabil: gleich dringend und gleich eng behält die Query-Reihenfolge
+    columns = COLUMNS if include_chunk else [c for c in COLUMNS if c != L.C_COMP_CHUNK]
+    return pd.DataFrame([row for _, _, group_rows in groups for row in group_rows], columns=columns)
 

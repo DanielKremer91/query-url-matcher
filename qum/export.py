@@ -99,7 +99,8 @@ _COLUMN_HELP = {
     L.C_VERDICT: "Einordnung der Query, siehe die Urteile weiter oben in dieser Lesehilfe.",
     # Kannibalisierungsgefahr
     L.C_PRIORITY: (
-        f"Wie dringend der Fall ist, je Query (steht in jeder Zeile). Konkurrieren Seiten eng (höchstens der Abstand "
+        f"Wie dringend der Fall ist, je Query (steht in jeder Zeile). Das Blatt ist danach sortiert, die dringendsten "
+        f"Fälle zuerst, bei gleicher Einordnung die engste Konkurrenz zuerst. Konkurrieren Seiten eng (höchstens der Abstand "
         f"'fast gleich' hinter der besten, oder eine andere passende Seite ist besser als die rankende) oder ranken mehrere "
         f"eigene URLs bis sichtbar_bis_position, zählt das beste eigene Ranking: '{L.PRIO_VERY_HIGH}' knapp hinter den "
         f"Top-Rankings bis sichtbar_bis_position (Voreinstellung 20), fast oben, die Konkurrenz bremst vermutlich; "
@@ -120,6 +121,10 @@ _COLUMN_HELP = {
     L.C_GAP_TO_BEST: (
         "Score der semantisch besten URL der Query minus Score dieser URL. 0 bei der besten URL selbst; höchstens der "
         "Abstand 'fast gleich' aus Schritt 7c heißt praktisch gleichauf. Leer, wenn die URL nicht im Frog-Export steht."
+    ),
+    L.C_COMP_CHUNK: (
+        "Der Textblock dieser URL, der zur Query am besten passt. Fehlt bei der Bewertungsgrundlage Gesamt-URL; leer, "
+        "wenn die URL nicht im Frog-Export steht."
     ),
     L.C_COMP_POS: "Eigene Position dieser URL für die Query. Leer, wenn sie dafür nicht rankt.",
     # Potentielle Content-Lücken
@@ -218,7 +223,7 @@ def build_sheets(overview, cannibal, gaps, settings, threshold_source=None, new_
     new_pages: Zahl neuer Seiten aus den Lücken, nur mit SERPs (sonst None)."""
     sheets = {
         SHEET_OVERVIEW: overview[OVERVIEW_COLUMNS],
-        SHEET_CANNIBAL: cannibal[CANNIBAL_COLUMNS],
+        SHEET_CANNIBAL: cannibal[[c for c in CANNIBAL_COLUMNS if c in cannibal.columns]],  # ohne Chunk bei Gesamt-URL
         SHEET_GAPS: gaps[GAP_COLUMNS],
         SHEET_ELSEWHERE: (pd.DataFrame(columns=ELSEWHERE_COLUMNS) if elsewhere is None else elsewhere)[ELSEWHERE_COLUMNS],
     }

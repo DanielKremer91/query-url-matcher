@@ -1268,3 +1268,17 @@ def test_smoke_step_8_colours_the_lead_with_the_margin_of_step_7c(nb, tmp_path):
         colour = sheet.cell(row=row, column=column).fill.fgColor.rgb[-6:]
         if value is not None and value <= 0.05:
             assert colour == "F8CBAD", (row, value)
+
+
+@pytest.mark.parametrize("basis, has_chunk", [("Chunk", True), ("Kombi", True), ("Gesamt-URL", False)])
+def test_smoke_cannibalisation_sheet_has_a_chunk_column_except_for_the_whole_url_basis(nb, tmp_path, basis, has_chunk):
+    from openpyxl import load_workbook
+
+    from qum import labels as L
+
+    nb.run(3, "queries.csv", "frog_export.csv")
+    nb.run(4, bewertungsgrundlage=basis)
+    _verdicts(nb)
+    nb.run(8)
+    header = [cell.value for cell in load_workbook(tmp_path / "query_url_matcher.xlsx")["Kannibalisierungsgefahr"][1]]
+    assert (L.C_COMP_CHUNK in header) is has_chunk

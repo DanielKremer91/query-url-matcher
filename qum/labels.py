@@ -36,6 +36,7 @@ C_NO = "Nr."
 C_COMP_URL = "Konkurrierende URL"
 C_COMP_SCORE = "Score der URL"
 C_GAP_TO_BEST = "Abstand zur besten URL"
+C_COMP_CHUNK = "Relevanter Chunk der URL"
 C_COMP_POS = "Position der URL"
 
 # Prüfbeispiele um die Schwelle (Schritt 7a und 7b, nicht im Export)
