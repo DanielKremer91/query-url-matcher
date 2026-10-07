@@ -21,6 +21,7 @@ from .normalize import normalize_url
 CONFIGS = {
     "paraphrase": ("paraphrase-mpnet", {}),
     "e5": ("e5-large", {}),
+    "e5-ohne-prefix": ("e5-large", {"query_prefix": "", "passage_prefix": ""}),  # e5 nicht so angesteuert wie trainiert
     "openai": ("openai", {}),
     "openai-prefix": ("openai", {"query_prefix": "query: ", "passage_prefix": "passage: "}),
 }

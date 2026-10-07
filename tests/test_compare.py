@@ -32,8 +32,15 @@ def test_evaluate_without_usable_pairs_raises():
         evaluate([("x", "https://a.de/weg")], URLS, CONTENTS, FakeEmbedder(), 5, 1)
 
 
-def test_configs_cover_the_four_variants():
-    assert list(CONFIGS) == ["paraphrase", "e5", "openai", "openai-prefix"]
+def test_configs_cover_the_five_variants():
+    assert list(CONFIGS) == ["paraphrase", "e5", "e5-ohne-prefix", "openai", "openai-prefix"]
+
+
+def test_e5_without_prefix_drops_the_trained_prefixes():
+    trained, plain = spec_for("e5"), spec_for("e5-ohne-prefix")
+    assert (trained.query_prefix, trained.passage_prefix) == ("query: ", "passage: ")
+    assert (plain.query_prefix, plain.passage_prefix) == ("", "")
+    assert plain.model_id == trained.model_id
 
 
 def test_openai_prefix_variant_only_exists_here():
