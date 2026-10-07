@@ -159,7 +159,7 @@ chunk_groesse = 0 #@param {type:"integer"}
 chunk_overlap = 0 #@param {type:"integer"}
 #@markdown **bewertungsgrundlage:** Je Query und Seite gibt es drei Cosinus-Werte. Der gewählte entscheidet, ob eine Seite als "passend" gilt (mit der Schwelle aus Schritt 7b), welche Seite die beste, zweitbeste und drittbeste ist und wie sortiert wird. Im Export stehen immer alle drei.
 #@markdown **Chunk** (Empfehlung): Query gegen den besten Textabschnitt der Seite. Findet Seiten, die die Query in einem Abschnitt beantworten, auch wenn die Seite breiter ist.
-#@markdown **Gesamt-URL:** Query gegen die Seite als Ganzes. Bevorzugt Seiten, die sich komplett um das Thema drehen.
+#@markdown **Gesamt-URL:** Query gegen die Seite als Ganzes (ist die Seite zu lang für das Modell: Durchschnitt über alle Abschnitte). Bevorzugt Seiten, die sich komplett um das Thema drehen.
 #@markdown **Kombi:** Mischung aus beiden, der Anteil des Chunk-Werts steht im Regler darunter.
 bewertungsgrundlage = "Chunk" #@param ["Chunk", "Gesamt-URL", "Kombi"]
 #@markdown **kombi_gewicht_chunk (nur relevant bei Kombi):** Anteil des Chunk-Werts am Kombi-Score (0.7 = 70 % Chunk, 30 % Gesamt-URL). Bei Chunk oder Gesamt-URL bestimmt er nur die Spalten „Score Kombi“ im Export, nicht das Urteil.

@@ -53,7 +53,7 @@ R_ENTRY = "Eintrag"
 R_TEXT = "Erklärung"
 
 FULLTEXT = "Volltext"
-CHUNK_MEAN = "Mittelwert der Chunks"
+CHUNK_MEAN = "Mittelwert der Chunk-Scores"
 
 V_MATCH = "Passende Seite vorhanden"
 V_GAP = "Content-Lücke"

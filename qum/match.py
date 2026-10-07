@@ -58,7 +58,7 @@ def run_matching(queries, urls, contents, embedder, chunk_size, chunk_overlap) -
     n_q, n_u = len(queries), len(urls)
     chunk_scores = np.zeros((n_q, n_u), dtype=np.float32)
     best = np.zeros((n_q, n_u), dtype=int)
-    full_vecs = np.zeros((n_u, c.shape[1]), dtype=np.float32)
+    full_scores = np.zeros((n_q, n_u), dtype=np.float32)
     methods, as_fulltext = [], []
     for u in range(n_u):
         lo, hi = offsets[u], offsets[u + 1]
@@ -66,17 +66,19 @@ def run_matching(queries, urls, contents, embedder, chunk_size, chunk_overlap) -
         best[:, u] = block.argmax(axis=1)
         chunk_scores[:, u] = block.max(axis=1)
         if hi - lo == 1:
-            full_vecs[u] = c[lo]
+            full_scores[:, u] = block[:, 0]
             methods.append(L.FULLTEXT)
         elif embedder.fits_context(contents[u]):
             as_fulltext.append(u)
             methods.append(L.FULLTEXT)
         else:
-            full_vecs[u] = c[lo:hi].mean(axis=0)
+            # Durchschnitt der Chunk-Scores, nicht der Chunk-Vektoren: ein neu normierter Mittelwert-Vektor behält nur das
+            # gemeinsame Thema der Seite und liegt deshalb oft über jedem einzelnen Chunk, was lange Seiten bevorzugt
+            full_scores[:, u] = block.mean(axis=1)
             methods.append(L.CHUNK_MEAN)
     if as_fulltext:
-        full_vecs[as_fulltext] = _embed(embedder, [" ".join(contents[u].split()) for u in as_fulltext], "passage", L.P_PAGES)
-    full_scores = q @ l2_normalize(full_vecs).T
+        pages = _embed(embedder, [" ".join(contents[u].split()) for u in as_fulltext], "passage", L.P_PAGES)
+        full_scores[:, as_fulltext] = q @ l2_normalize(pages).T
 
     return MatchResult(list(queries), list(urls), chunks, chunk_scores, full_scores, best, methods)
 

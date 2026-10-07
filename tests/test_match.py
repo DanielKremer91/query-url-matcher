@@ -38,23 +38,17 @@ def test_full_method_uses_fulltext_when_it_fits():
     assert passages[-1] == [" ".join(CONTENTS[0].split())]
 
 
-def test_chunk_mean_is_normalised():
+def test_chunk_mean_is_the_mean_of_the_chunk_scores_and_never_above_the_best_chunk():
     embedder = FakeEmbedder()
     result = run_matching(["hundefutter getreidefrei"], URLS, CONTENTS, embedder, 5, 1)
 
-    # Manually embed query and chunks to verify normalization
     q = embedder.embed(["hundefutter getreidefrei"], "query")[0]
     chunk_vecs = embedder.embed(result.chunks[0], "passage")
-    mean = chunk_vecs.mean(axis=0)
-    normalized_mean = mean / np.linalg.norm(mean)
-
-    # Full score should equal query dot normalized mean
-    expected = q @ normalized_mean
-    assert np.isclose(result.full_scores[0, 0], expected, atol=1e-5)
-
-    # Should be strictly greater than un-normalized
-    un_normalized = q @ mean
-    assert result.full_scores[0, 0] > un_normalized
+    scores = chunk_vecs @ q
+    # Durchschnitt der Chunk-Scores, kein neu normierter Mittelwert-Vektor (der bevorzugte lange Seiten)
+    assert np.isclose(result.full_scores[0, 0], scores.mean(), atol=1e-5)
+    assert result.full_scores[0, 0] <= result.chunk_scores[0, 0] + 1e-6
+    assert L.CHUNK_MEAN == "Mittelwert der Chunk-Scores"
 
 
 def test_full_scores_rows_for_mixed_fulltext_and_chunk_mean():
@@ -84,12 +78,9 @@ def test_full_scores_rows_for_mixed_fulltext_and_chunk_mean():
     expected_0 = q @ full_0
     assert np.isclose(result.full_scores[0, 0], expected_0, atol=1e-5)
 
-    # URL 1: CHUNK_MEAN - mean of chunks, then normalized
-    chunks_1 = result.chunks[1]
-    chunk_vecs_1 = embedder.embed(chunks_1, "passage")
-    mean_1 = chunk_vecs_1.mean(axis=0)
-    normalized_mean_1 = mean_1 / np.linalg.norm(mean_1)
-    expected_1 = q @ normalized_mean_1
+    # URL 1: CHUNK_MEAN - Durchschnitt der Chunk-Scores
+    chunk_vecs_1 = embedder.embed(result.chunks[1], "passage")
+    expected_1 = (chunk_vecs_1 @ q).mean()
     assert np.isclose(result.full_scores[0, 1], expected_1, atol=1e-5)
 
     # URL 2: FULLTEXT - embed full content directly
