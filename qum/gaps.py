@@ -4,7 +4,7 @@ from . import labels as L
 from .normalize import normalize_query
 from .verdict import best_rankings, format_position
 
-COLUMNS = [L.C_QUERY, L.C_BEST_SCORE, L.C_BEST_URL, L.C_POSITION, L.C_TOPIC]
+COLUMNS = [L.C_QUERY, L.C_BEST_SCORE, L.C_BEST_URL, L.C_POSITION, L.C_RANK_URL, L.C_TOPIC]
 
 
 def find_gaps(result, lead, threshold, rankings=None, topics=None, below=0.0, max_position=0) -> pd.DataFrame:
@@ -22,7 +22,8 @@ def find_gaps(result, lead, threshold, rankings=None, topics=None, below=0.0, ma
         if max_position > 0 and hit is not None and hit.position <= max_position:
             continue
         topic = topics[i] if topics is not None and topics[i] else None
-        rows.append((query, round(float(lead[i, j]), 4), result.urls[j], format_position(hit.position) if hit else "", topic))
+        position, ranking_url = (format_position(hit.position), hit.url) if hit is not None else ("", "")
+        rows.append((query, round(float(lead[i, j]), 4), result.urls[j], position, ranking_url, topic))
     df = pd.DataFrame(rows, columns=COLUMNS)
     df[L.C_TOPIC] = df[L.C_TOPIC].astype("Int64")
     return df

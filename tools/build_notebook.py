@@ -41,7 +41,7 @@ Für die Modelle mit API-Key legst du im Secrets-Panel (Schlüssel-Symbol links)
 Schritt 8 lädt eine Excel-Datei mit vier Blättern herunter, auf Wunsch zusätzlich ein ZIP mit einer CSV je Blatt:
 
 - **Übersicht:** eine Zeile je Query mit den drei am besten passenden URLs und ihren Scores, der eigenen Rankingposition, dem Urteil und der Spalte Kannibalisierungsgefahr (ja, möglich oder nein).
-- **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen, mit Stufe (Gefahr, Möglich, Kannibalisierung bereits sichtbar), Grund und bis zu drei URLs samt Score und Position.
+- **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen, mit Stufe (Gefahr, Möglich, Kannibalisierung bereits sichtbar), Grund, Rankingposition und rankender URL der Query und bis zu drei konkurrierenden URLs samt Score und Position.
 - **Potentielle Content-Lücken:** Queries ohne ausreichend passende Seite, mit SERPs nach Thema gebündelt.
 - **Lesehilfe:** erklärt jedes Blatt, jede Spalte, jedes Urteil und nennt die Einstellungen des Laufs.
 
@@ -532,7 +532,7 @@ print("✅ Schritt 7c fertig. Weiter mit Schritt 8 (Export).")
 STEP8 = '''#@title Schritt 8: Export { display-mode: "form" }
 #@markdown Die Excel-Datei hat vier Blätter:
 #@markdown **Übersicht:** eine Zeile je Query mit den drei besten URLs, ihren Scores, der Rankingposition, dem Urteil und Kannibalisierungsgefahr ja, möglich oder nein.
-#@markdown **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen, mit Stufe (Gefahr, Möglich, Kannibalisierung bereits sichtbar), Grund und bis zu drei URLs samt Score und Position.
+#@markdown **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen, mit Stufe (Gefahr, Möglich, Kannibalisierung bereits sichtbar), Grund, Rankingposition und rankender URL der Query und bis zu drei konkurrierenden URLs samt Score und Position.
 #@markdown **Potentielle Content-Lücken:** Queries, deren beste Seite unter der Lücken-Schwelle aus Schritt 7c liegt, mit SERPs nach Thema gebündelt.
 #@markdown **Lesehilfe:** erklärt Blätter, Spalten, Urteile und Stufen und nennt die Einstellungen des Laufs.
 #@markdown Das Trennzeichen gilt nur für die zusätzliche CSV-ZIP (eine CSV je Blatt).

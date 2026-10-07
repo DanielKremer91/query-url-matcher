@@ -61,8 +61,8 @@ Eine Excel-Datei mit vier Blättern:
 | Blatt | Inhalt |
 |---|---|
 | Übersicht | eine Zeile je Query: die drei am besten passenden URLs mit Chunk-, Gesamt-URL- und Kombi-Score, Vorsprung vor der zweitbesten URL, beste eigene Rankingposition und rankende URL, ob die rankende URL die beste ist, das Urteil und Kannibalisierungsgefahr ja, möglich oder nein |
-| Kannibalisierungsgefahr | Queries, bei denen weitere eigene Seiten passen, mit Stufe (Gefahr, Möglich oder Kannibalisierung bereits sichtbar), Grund und bis zu drei URLs samt Score und Position |
-| Potentielle Content-Lücken | Queries, deren beste Seite unter der Lücken-Schwelle liegt (eigene Einstellungen in Schritt 7c), mit bester URL, Rankingposition und, mit SERPs, dem Thema; Lücken mit gleichem Thema ergeben eine neue Seite |
+| Kannibalisierungsgefahr | Queries, bei denen weitere eigene Seiten passen, mit Stufe (Gefahr, Möglich oder Kannibalisierung bereits sichtbar), Grund, Rankingposition und rankender URL der Query und bis zu drei konkurrierenden URLs samt Score und Position |
+| Potentielle Content-Lücken | Queries, deren beste Seite unter der Lücken-Schwelle liegt (eigene Einstellungen in Schritt 7c), mit bester URL, Rankingposition, rankender URL und, mit SERPs, dem Thema; Lücken mit gleichem Thema ergeben eine neue Seite |
 | Lesehilfe | Bedeutung jedes Blatts, jeder Spalte, jedes Urteils und beider Stufen, dazu die Einstellungen des Laufs |
 
 Auf Wunsch zusätzlich ein ZIP mit einer CSV je Blatt: mit Semikolon und Dezimalkomma für deutsches Excel oder mit Komma und Dezimalpunkt.

@@ -262,7 +262,7 @@ def _text_number_sheets():
     overview[L.C_POSITION] = ["4.3", "12", ""]
     gaps[L.C_POSITION] = ["7.5"]
     cannibal = pd.DataFrame(
-        [["a", L.STAGE_DANGER, L.REASON_BETTER, "https://a.de/x.html", 0.842, "4.3", "https://a.de/y", -0.0123, "",
+        [["a", L.STAGE_DANGER, L.REASON_BETTER, "4.3", "https://a.de/x.html", "https://a.de/x.html", 0.842, "4.3", "https://a.de/y", -0.0123, "",
           "https://a.de/z", None, "17.5"]],
         columns=CANNIBAL_COLUMNS,
     )
@@ -317,4 +317,5 @@ def test_topic_is_written_as_a_whole_number_or_left_empty(tmp_path):
     assert _csv_frames(tmp_path / "out.zip", ";")["potentielle_content_luecken.csv"][L.C_TOPIC].tolist() == ["3", "", "3"]
     export.write_excel(tmp_path / "out.xlsx", sheets)
     sheet = load_workbook(tmp_path / "out.xlsx")[export.SHEET_GAPS]
-    assert [sheet.cell(row=r, column=5).value for r in (2, 3, 4)] == [3, None, 3]
+    column = GAP_COLUMNS.index(L.C_TOPIC) + 1
+    assert [sheet.cell(row=r, column=column).value for r in (2, 3, 4)] == [3, None, 3]

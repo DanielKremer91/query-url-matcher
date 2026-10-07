@@ -32,7 +32,7 @@ def _urls(row):
 def test_columns_and_empty_result():
     df = _run(["q"], [[0.9, 0.5, 0.1]])
     assert list(df.columns) == COLUMNS == [
-        L.C_QUERY, L.C_STAGE, L.C_REASON,
+        L.C_QUERY, L.C_STAGE, L.C_REASON, L.C_POSITION, L.C_RANK_URL,
         L.C_URL_1, L.C_SCORE_1, L.C_POS_1, L.C_URL_2, L.C_SCORE_2, L.C_POS_2, L.C_URL_3, L.C_SCORE_3, L.C_POS_3,
     ]
     assert [L.C_URL_1, L.C_SCORE_2, L.C_POS_3] == ["URL 1", "Score 2", "Position 3"]
@@ -293,3 +293,17 @@ def test_annotate_grades_yes_possible_no():
     out = annotate(decisions, find_cannibalization(result, lead, 0.6, rankings))
     assert out[L.C_CANNIBAL].tolist() == [L.YES, L.MAYBE, L.NO, L.YES, L.YES]
     assert L.MAYBE == "möglich" and L.STAGE_POSSIBLE == "Möglich"
+
+
+def test_every_row_shows_the_querys_best_own_ranking():
+    rankings = _rankings([("q", U2, U2, 12.0), ("q", U1, U1, 4.0), ("ohne", U3, U3, 50.0)])
+    df = _run(["q", "nicht-rankend"], [[0.65, 0.9, 0.1], [0.8, 0.8, 0.1]], rankings)
+    rows = {(q, s): (p, u) for q, s, p, u in zip(df[L.C_QUERY], df[L.C_STAGE], df[L.C_POSITION], df[L.C_RANK_URL])}
+    assert rows[("q", L.STAGE_DANGER)] == ("4", U1)
+    assert rows[("q", L.STAGE_VISIBLE)] == ("4", U1)
+    assert rows[("nicht-rankend", L.STAGE_DANGER)] == ("", "")
+
+
+def test_ranking_columns_are_empty_without_rankings():
+    df = _run(["q"], [[0.8, 0.8, 0.1]])
+    assert df[L.C_POSITION].tolist() == [""] and df[L.C_RANK_URL].tolist() == [""]

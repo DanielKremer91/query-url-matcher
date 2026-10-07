@@ -159,8 +159,8 @@ Vier Blätter in dieser Reihenfolge:
 | Blatt | Spalten |
 |---|---|
 | Übersicht | Query · Beste URL · Relevanter Chunk · Score Chunk · Score Gesamt-URL · Score Kombi · Vorsprung vor zweitbester URL · Zweitbeste URL · Score Chunk 2 · Score Gesamt-URL 2 · Score Kombi 2 · Drittbeste URL · Score Chunk 3 · Score Gesamt-URL 3 · Score Kombi 3 · Rankingposition · Rankende URL · Rankende URL = beste URL? · Urteil · Kannibalisierungsgefahr |
-| Kannibalisierungsgefahr | Query · Stufe · Grund · URL 1 · Score 1 · Position 1 · URL 2 · Score 2 · Position 2 · URL 3 · Score 3 · Position 3 (Abschnitt 8) |
-| Potentielle Content-Lücken | Query · Bester Score · Beste URL · Rankingposition · Thema (Abschnitt 9) |
+| Kannibalisierungsgefahr | Query · Stufe · Grund · Rankingposition · Rankende URL · URL 1 · Score 1 · Position 1 · URL 2 · Score 2 · Position 2 · URL 3 · Score 3 · Position 3 (Abschnitt 8) |
+| Potentielle Content-Lücken | Query · Bester Score · Beste URL · Rankingposition · Rankende URL · Thema (Abschnitt 9) |
 | Lesehilfe | Hinweise (Einordnung, Score-Band, Herkunft der Schwelle), alle vier Blätter, alle Urteile, beide Stufen, jede Spalte, alle Einstellungen des Laufs |
 
 Übersicht, eine Zeile je Query:

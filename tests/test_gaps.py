@@ -23,7 +23,7 @@ def _gaps(rankings=None, topics=None, **kwargs):
 
 def test_columns():
     df = _gaps()
-    assert list(df.columns) == COLUMNS == [L.C_QUERY, L.C_BEST_SCORE, L.C_BEST_URL, L.C_POSITION, L.C_TOPIC]
+    assert list(df.columns) == COLUMNS == [L.C_QUERY, L.C_BEST_SCORE, L.C_BEST_URL, L.C_POSITION, L.C_RANK_URL, L.C_TOPIC]
     assert [L.C_BEST_SCORE, L.C_TOPIC] == ["Bester Score", "Thema"]
 
 
@@ -33,6 +33,8 @@ def test_default_uses_the_threshold_from_step_7b():
     assert df[L.C_BEST_SCORE].tolist() == [0.78, 0.6, 0.1]
     assert df[L.C_BEST_URL].tolist() == [U1, U2, U1]
     assert df[L.C_POSITION].tolist() == ["4", "35", ""]
+    ranking_urls = df[L.C_RANK_URL].tolist()
+    assert ranking_urls[2] == "" and all(ranking_urls[:2])
 
 
 def test_own_score_limit_replaces_the_threshold():
@@ -50,6 +52,7 @@ def test_ranking_condition_is_ignored_without_rankings():
     df = _gaps(None, max_position=10)
     assert df[L.C_QUERY].tolist() == ["knapp", "schwach", "leer"]
     assert df[L.C_POSITION].tolist() == ["", "", ""]
+    assert df[L.C_RANK_URL].tolist() == ["", "", ""]
 
 
 def test_topic_is_the_serp_cluster_and_empty_without_cluster():
