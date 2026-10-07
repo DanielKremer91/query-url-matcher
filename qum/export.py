@@ -48,6 +48,11 @@ _COLUMN_HELP = {
     L.C_S_CHUNK: "Cosinus-Ähnlichkeit zwischen Query und dem am besten passenden Textblock der besten URL.",
     L.C_S_FULL: "Cosinus-Ähnlichkeit zwischen Query und dem gesamten Main Content der besten URL.",
     L.C_S_COMBI: "Gewichtete Mischung aus Chunk-Score und Gesamt-URL-Score der besten URL.",
+    L.C_TO_THRESHOLD: (
+        "Score der besten URL minus Schwelle aus Schritt 7b. Positiv: die Seite passt, negativ: wie weit sie davon "
+        "entfernt ist. Lesbarer als der Score selbst, weil die Scores je nach Modell in ganz anderen Bereichen liegen "
+        "(bei e5 fast immer zwischen 0.75 und 0.9)."
+    ),
     L.C_LEAD_GAP: (
         "Score der besten URL minus Score der zweitbesten URL, nach der gewählten Bewertungsgrundlage. "
         "Ein großer Vorsprung heißt: eine Seite sticht klar heraus, auch wenn der absolute Score niedrig ist. "
@@ -77,10 +82,12 @@ _COLUMN_HELP = {
     ),
     # Kannibalisierungsgefahr
     L.C_PRIORITY: (
-        f"Wie dringend, je nach eigenem Ranking der Query (Top-Ranking = bis rankt_gut_bis_position). '{L.PRIO_HIGH}': "
-        f"die Seiten stehen sich vermutlich im Weg, handeln (abgrenzen, zusammenführen, Hauptseite festlegen). "
-        f"'{L.PRIO_MID}': prüfen, ob Google die richtige Seite gewählt hat. '{L.PRIO_LOW}': beobachten, heute "
-        f"funktioniert es, Google kann aber wechseln. '{L.PRIO_OPEN}': nur semantisch geprüft."
+        f"Wie dringend der Fall ist (Top-Ranking = bis rankt_gut_bis_position). Stufe Gefahr oder Kannibalisierung "
+        f"bereits sichtbar: '{L.PRIO_HIGH}' ohne Top-Ranking, die Seiten stehen sich vermutlich im Weg, handeln "
+        f"(abgrenzen, zusammenführen, Hauptseite festlegen); '{L.PRIO_MID}' bei Top-Ranking einer anderen als der besten "
+        f"Seite, prüfen, ob Google die richtige gewählt hat; '{L.PRIO_LOW}' bei Top-Ranking der besten Seite, beobachten. "
+        f"Stufe Möglich (Konkurrenz deutlich dahinter): '{L.PRIO_MID}', wenn eine andere als die beste Seite rankt, egal "
+        f"auf welcher Position, sonst '{L.PRIO_LOW}'. '{L.PRIO_OPEN}': keine Rankings geladen, nur semantisch geprüft."
     ),
     L.C_STAGE: "Stufe der Kannibalisierungsgefahr, siehe die Stufen weiter oben in dieser Lesehilfe.",
     L.C_REASON: "Warum die Query hier steht. Konkurrieren mehr als drei URLs, steht die Zahl der weiteren am Ende.",

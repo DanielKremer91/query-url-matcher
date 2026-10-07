@@ -165,7 +165,10 @@ def test_negative_margin_is_rejected():
 def test_overview_columns_in_order():
     result = make_result(["q"], [U1], [[0.8]])
     df = build_decisions(result, result.lead("chunk"), 0.6)
-    assert OVERVIEW_COLUMNS == MATCH_COLUMNS + [L.C_POSITION, L.C_RANK_URL, L.C_RANK_IS_BEST, L.C_VERDICT, L.C_CANNIBAL]
+    assert OVERVIEW_COLUMNS == MATCH_COLUMNS[:6] + [L.C_TO_THRESHOLD] + MATCH_COLUMNS[6:] + [
+        L.C_POSITION, L.C_RANK_URL, L.C_RANK_IS_BEST, L.C_VERDICT, L.C_CANNIBAL,
+    ]
+    assert MATCH_COLUMNS[5] == L.C_S_COMBI and L.C_TO_THRESHOLD == "Abstand zur Schwelle"
     assert list(df.columns) == OVERVIEW_COLUMNS[:-1]  # die Spalte Kannibalisierungsgefahr setzt cannibal.annotate
     assert [L.C_POSITION, L.C_RANK_URL, L.C_RANK_IS_BEST] == ["Rankingposition", "Rankende URL", "Rankende URL = beste URL?"]
 
@@ -239,3 +242,9 @@ def test_gap_position_zero_switches_the_rule_off():
 
 def test_gap_position_only_matters_when_nothing_fits():
     assert _row([0.9, 0.7, 0.1], ranking=[(U1, 13)], gap_position=20)[L.C_VERDICT] == L.V_MATCH
+
+
+def test_distance_to_the_threshold_is_the_best_lead_score_minus_the_threshold():
+    assert _row([0.7, 0.9, 0.8])[L.C_TO_THRESHOLD] == 0.1
+    assert _row([0.5, 0.4, 0.3])[L.C_TO_THRESHOLD] == -0.3
+    assert _row([0.80004, 0.4, 0.3])[L.C_TO_THRESHOLD] == 0.0

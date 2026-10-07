@@ -321,32 +321,45 @@ def _priority(scores, ranking, **kwargs):
 
 
 def test_priority_values():
-    assert [L.PRIO_HIGH, L.PRIO_MID, L.PRIO_LOW, L.PRIO_OPEN] == [
-        "hoch: kein Top-Ranking", "mittel: Top-Ranking mit anderer Seite", "niedrig: Top-Ranking mit passender Seite",
-        "offen: ohne Rankings",
-    ]
+    assert [L.PRIO_HIGH, L.PRIO_MID, L.PRIO_LOW, L.PRIO_OPEN] == ["hoch", "mittel", "niedrig", "offen"]
 
 
 def test_priority_without_rankings_is_open():
     assert _priority([0.8, 0.8, 0.1], None) == [[L.STAGE_DANGER, L.PRIO_OPEN]]
+    assert _priority([0.9, 0.7, 0.1], None) == [[L.STAGE_POSSIBLE, L.PRIO_OPEN]]
 
 
-def test_priority_without_a_top_ranking_is_high():
+# Stufe Gefahr und Kannibalisierung bereits sichtbar: nach Top-Ranking
+def test_danger_without_a_top_ranking_is_high():
     assert _priority([0.8, 0.8, 0.1], [(U1, 25)]) == [[L.STAGE_DANGER, L.PRIO_HIGH]]
     assert _priority([0.8, 0.8, 0.1], []) == [[L.STAGE_DANGER, L.PRIO_HIGH]]  # Rankings geladen, Query rankt nicht
 
 
-def test_priority_with_a_top_ranking_of_the_best_page_is_low():
+def test_danger_with_a_top_ranking_of_the_best_page_is_low():
     assert _priority([0.805, 0.8, 0.1], [(U1, 3)]) == [[L.STAGE_DANGER, L.PRIO_LOW]]
-    assert _priority([0.9, 0.7, 0.1], [(U1, 3)]) == [[L.STAGE_POSSIBLE, L.PRIO_LOW]]
 
 
-def test_priority_with_a_top_ranking_of_another_page_is_medium():
+def test_danger_with_a_top_ranking_of_another_page_is_medium():
     assert _priority([0.8, 0.805, 0.1], [(U1, 3)]) == [[L.STAGE_DANGER, L.PRIO_MID]]  # knapp hinter der besten
     assert _priority([0.65, 0.9, 0.1], [(U1, 3)]) == [[L.STAGE_DANGER, L.PRIO_MID]]
     assert _priority([0.9, 0.1, 0.1], [(ALT, 2)]) == [[L.STAGE_DANGER, L.PRIO_MID]]  # nicht im Frog-Export
 
 
-def test_priority_of_the_visible_stage_follows_the_best_own_ranking():
+def test_visible_stage_follows_the_best_own_ranking():
     assert _priority([0.9, 0.1, 0.1], [(U1, 3), (U2, 15)]) == [[L.STAGE_VISIBLE, L.PRIO_LOW]]
     assert _priority([0.9, 0.1, 0.1], [(U1, 14), (U2, 15)]) == [[L.STAGE_VISIBLE, L.PRIO_HIGH]]
+
+
+# Stufe Möglich: weitere Seiten liegen deutlich dahinter, entscheidend ist, ob eine schwächere Seite rankt
+def test_possible_with_the_best_page_ranking_at_any_position_is_low():
+    assert _priority([0.9, 0.7, 0.1], [(U1, 3)]) == [[L.STAGE_POSSIBLE, L.PRIO_LOW]]
+    assert _priority([0.9, 0.7, 0.1], [(U1, 11)]) == [[L.STAGE_POSSIBLE, L.PRIO_LOW]]  # sauna selber bauen
+
+
+def test_possible_without_any_ranking_is_low():
+    assert _priority([0.9, 0.7, 0.1], []) == [[L.STAGE_POSSIBLE, L.PRIO_LOW]]
+
+
+def test_possible_with_a_weaker_page_ranking_is_medium():
+    assert _priority([0.9, 0.7, 0.1], [(U2, 30)]) == [[L.STAGE_POSSIBLE, L.PRIO_MID]]
+    assert _priority([0.9, 0.7, 0.1], [(ALT, 30)]) == [[L.STAGE_POSSIBLE, L.PRIO_MID]]

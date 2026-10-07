@@ -7,7 +7,11 @@ from . import labels as L
 from .match import MATCH_COLUMNS, best_matches
 from .normalize import normalize_query, normalize_url
 
-OVERVIEW_COLUMNS = MATCH_COLUMNS + [L.C_POSITION, L.C_RANK_URL, L.C_RANK_IS_BEST, L.C_VERDICT, L.C_CANNIBAL]
+_AFTER_COMBI = MATCH_COLUMNS.index(L.C_S_COMBI) + 1
+OVERVIEW_COLUMNS = (
+    MATCH_COLUMNS[:_AFTER_COMBI] + [L.C_TO_THRESHOLD] + MATCH_COLUMNS[_AFTER_COMBI:]
+    + [L.C_POSITION, L.C_RANK_URL, L.C_RANK_IS_BEST, L.C_VERDICT, L.C_CANNIBAL]
+)
 
 
 def format_position(position) -> str:
@@ -115,6 +119,7 @@ def build_decisions(
     out = best_matches(result, lead, weight)
     assessments = assess(result, lead, threshold, rankings, good_position, margin, gap_position)
     best_j = lead.argmax(axis=1)
+    out.insert(_AFTER_COMBI, L.C_TO_THRESHOLD, np.round(lead.max(axis=1) - threshold, 4) + 0.0)  # + 0.0: keine -0.0
     out[L.C_POSITION] = [format_position(a.hit.position) if a.hit is not None else "" for a in assessments]
     out[L.C_RANK_URL] = [a.hit.url if a.hit is not None else "" for a in assessments]
     out[L.C_RANK_IS_BEST] = [_compare(a, best_j[i], rankings is not None) for i, a in enumerate(assessments)]

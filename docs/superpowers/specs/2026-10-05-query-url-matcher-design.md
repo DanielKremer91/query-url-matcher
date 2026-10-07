@@ -116,7 +116,7 @@ Eigenes Blatt mit drei Stufen:
 - **Möglich:** keine Gefahr, aber zwei oder mehr Seiten erreichen die Schwelle; die weiteren liegen mehr als den Abstand „fast gleich" hinter der besten. Grund „Weitere Seiten erreichen die Schwelle, liegen aber deutlich hinter der besten". URLs nach Leit-Score sortiert.
 - **Kannibalisierung bereits sichtbar:** zwei oder mehr eigene URLs ranken für die Query mit Position ≤ 20 (einstellbar).
 
-Eine Zeile je Query und Stufe mit bis zu drei URLs in eigenen Spalten (URL, Score, Position). Stufe Gefahr: nach Leit-Score sortiert, die rankende URL zuerst, wenn der Grund sie betrifft. Kannibalisierung bereits sichtbar: nach Position sortiert. Score ist der Leit-Score (leer, wenn die URL nicht im Frog-Export steht), Position die eigene Position für die Query (leer, wenn sie dafür nicht rankt). Konkurrieren mehr als drei URLs, endet der Grund mit „… und n weitere". Die Spalte Einordnung sagt, wie dringend der Fall ist (Entscheidung Daniel, 2026-10-07): „hoch: kein Top-Ranking" (Rankings geladen, beste eigene Position schlechter als rankt_gut_bis_position oder kein Ranking), „mittel: Top-Ranking mit anderer Seite" (die rankende URL ist nicht die beste nach Leit-Score oder fehlt im Frog-Export), „niedrig: Top-Ranking mit passender Seite" (die rankende URL ist die beste), „offen: ohne Rankings".
+Eine Zeile je Query und Stufe mit bis zu drei URLs in eigenen Spalten (URL, Score, Position). Stufe Gefahr: nach Leit-Score sortiert, die rankende URL zuerst, wenn der Grund sie betrifft. Kannibalisierung bereits sichtbar: nach Position sortiert. Score ist der Leit-Score (leer, wenn die URL nicht im Frog-Export steht), Position die eigene Position für die Query (leer, wenn sie dafür nicht rankt). Konkurrieren mehr als drei URLs, endet der Grund mit „… und n weitere". Die Spalte Einordnung sagt, wie dringend der Fall ist (Entscheidung Daniel, 2026-10-07; Werte hoch / mittel / niedrig / offen): ohne Rankings „offen". Stufe Gefahr und Kannibalisierung bereits sichtbar: ohne Top-Ranking „hoch", Top-Ranking der besten URL „niedrig", Top-Ranking einer anderen URL (oder einer URL außerhalb des Frog-Exports) „mittel". Stufe Möglich: „mittel", wenn eine andere als die beste URL rankt, egal auf welcher Position, sonst „niedrig" (Anlass: „sauna selber bauen", beste Seite auf Position 11, Konkurrenz 0,026 dahinter, war zuvor „hoch").
 
 ## 9. SERP-Clustering und potentielle Content-Lücken
 
@@ -159,7 +159,7 @@ Vier Blätter in dieser Reihenfolge:
 
 | Blatt | Spalten |
 |---|---|
-| Übersicht | Query · Beste URL · Relevanter Chunk · Score Chunk · Score Gesamt-URL · Score Kombi · Vorsprung vor zweitbester URL · Zweitbeste URL · Score Chunk 2 · Score Gesamt-URL 2 · Score Kombi 2 · Drittbeste URL · Score Chunk 3 · Score Gesamt-URL 3 · Score Kombi 3 · Rankingposition · Rankende URL · Rankende URL = beste URL? · Urteil · Kannibalisierungsgefahr |
+| Übersicht | Query · Beste URL · Relevanter Chunk · Score Chunk · Score Gesamt-URL · Score Kombi · Abstand zur Schwelle · Vorsprung vor zweitbester URL · Zweitbeste URL · Score Chunk 2 · Score Gesamt-URL 2 · Score Kombi 2 · Drittbeste URL · Score Chunk 3 · Score Gesamt-URL 3 · Score Kombi 3 · Rankingposition · Rankende URL · Rankende URL = beste URL? · Urteil · Kannibalisierungsgefahr |
 | Kannibalisierungsgefahr | Query · URL 1 · Score 1 · Position 1 · URL 2 · Score 2 · Position 2 · URL 3 · Score 3 · Position 3 · Rankingposition · Rankende URL · Stufe · Grund · Einordnung (Abschnitt 8) |
 | Potentielle Content-Lücken | Query · Bester Score · Beste URL · Rankingposition · Rankende URL · Thema (Abschnitt 9) |
 | Lesehilfe | Hinweise (Einordnung, Score-Band, Herkunft der Schwelle), alle vier Blätter, alle Urteile, beide Stufen, jede Spalte, alle Einstellungen des Laufs |
@@ -169,6 +169,7 @@ Vier Blätter in dieser Reihenfolge:
 - Beste, zweitbeste und drittbeste URL nach Leit-Score; „Relevanter Chunk" ist der beste Chunk der besten URL. Gibt es weniger als zwei oder drei URLs, bleiben die Zellen leer.
 - „Vorsprung vor zweitbester URL": Leit-Score der besten minus Leit-Score der zweitbesten URL, vier Nachkommastellen, leer bei nur einer URL. Er zeigt, wie klar die beste Seite vorn liegt, weil kurze Queries absolut niedrig scoren, und ändert kein Urteil.
 - „Rankingposition" und „Rankende URL": bestes eigenes Ranking für die Query, auf jeder Position, leer ohne Ranking.
+- „Abstand zur Schwelle": bester Leit-Score minus Schwelle aus Schritt 7b, 4 Nachkommastellen; positiv heißt passend. Lesbarer als der Score selbst, weil Scores je nach Modell in ganz anderen Bereichen liegen (Entscheidung Daniel, 2026-10-07).
 - „Rankende URL = beste URL?": „ja", „nein" (eine andere Seite hat einen höheren Leit-Score, auch knapp; Entscheidung Daniel, 2026-10-07: Ja-Nein-Frage, die Nähe zeigen Scores und Grund), „rankt nicht" (Rankings geladen, aber keines für die Query), „nicht im Frog-Export", leer ohne Rankings.
 - „Kannibalisierungsgefahr": „ja" bei Stufe Gefahr oder Kannibalisierung bereits sichtbar, „möglich", wenn die Query nur mit Stufe Möglich im Blatt steht, sonst „nein".
 
