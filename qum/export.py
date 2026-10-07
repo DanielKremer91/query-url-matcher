@@ -68,6 +68,7 @@ _COLUMN_HELP = {
     L.C_S_CHUNK: "Cosinus-Ähnlichkeit zwischen Query und dem am besten passenden Textblock der besten URL.",
     L.C_S_FULL: "Cosinus-Ähnlichkeit zwischen Query und dem gesamten Main Content der besten URL.",
     L.C_S_COMBI: "Gewichtete Mischung aus Chunk-Score und Gesamt-URL-Score der besten URL.",
+    L.C_THRESHOLD: "Die Schwelle aus Schritt 7b, mit der dieser Lauf gerechnet hat. Bester Score minus Schwelle ergibt den Abstand.",
     L.C_TO_THRESHOLD: (
         "Score der besten URL minus Schwelle aus Schritt 7b. Positiv: die Seite passt, negativ: wie weit sie davon "
         "entfernt ist. Lesbarer als der Score selbst, weil die Scores je nach Modell in ganz anderen Bereichen liegen "

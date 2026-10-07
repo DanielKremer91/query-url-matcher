@@ -25,7 +25,7 @@ def _gaps(rankings=None, topics=None, threshold=0.8, **kwargs):
 def test_columns():
     df = _gaps()
     assert list(df.columns) == COLUMNS == [
-        L.C_QUERY, L.C_BEST_SCORE, L.C_TO_THRESHOLD, L.C_BEST_URL, L.C_POSITION, L.C_RANK_URL, L.C_TOPIC,
+        L.C_QUERY, L.C_BEST_SCORE, L.C_THRESHOLD, L.C_TO_THRESHOLD, L.C_BEST_URL, L.C_POSITION, L.C_RANK_URL, L.C_TOPIC,
     ]
     assert [L.C_BEST_SCORE, L.C_TOPIC] == ["Bester Score", "Thema"]
 
@@ -35,6 +35,7 @@ def test_without_rankings_every_query_below_the_threshold_is_a_gap_surest_first(
     assert df[L.C_QUERY].tolist() == ["leer", "schwach", "knapp"]
     assert df[L.C_BEST_SCORE].tolist() == [0.1, 0.6, 0.78]
     assert df[L.C_TO_THRESHOLD].tolist() == [-0.7, -0.2, -0.02]
+    assert df[L.C_THRESHOLD].tolist() == [0.8, 0.8, 0.8] and L.C_THRESHOLD == "Schwelle"
     assert df[L.C_BEST_URL].tolist() == [U1, U2, U1]
     assert df[L.C_POSITION].tolist() == ["", "", ""] and df[L.C_RANK_URL].tolist() == ["", "", ""]
 

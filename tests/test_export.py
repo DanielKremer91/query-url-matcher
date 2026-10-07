@@ -295,7 +295,8 @@ def test_semicolon_csv_uses_decimal_comma_in_positions_settings_and_scores(tmp_p
     rows = frames["kannibalisierungsgefahr.csv"]
     assert rows[L.C_COMP_POS].tolist() == ["4,3", "", "17,5"]
     assert rows[L.C_COMP_SCORE].tolist() == ["0,842", "-0,0123", ""]
-    readme = frames["lesehilfe.csv"].set_index(L.R_ENTRY)[L.R_TEXT]
+    readme = frames["lesehilfe.csv"]
+    readme = readme[readme[L.R_AREA] == "Einstellung"].set_index(L.R_ENTRY)[L.R_TEXT]
     assert readme["Schwelle"] == "0,8123"
     assert readme["Datum"] == "2026-10-05" and readme["Modell"] == "multilingual-e5-large"
     assert readme["Rankt gut bis Position"] == "10"

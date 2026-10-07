@@ -4,7 +4,9 @@ import pandas as pd
 from . import labels as L
 from .verdict import assess, format_position
 
-COLUMNS = [L.C_QUERY, L.C_BEST_SCORE, L.C_TO_THRESHOLD, L.C_BEST_URL, L.C_POSITION, L.C_RANK_URL, L.C_TOPIC]
+COLUMNS = [
+    L.C_QUERY, L.C_BEST_SCORE, L.C_THRESHOLD, L.C_TO_THRESHOLD, L.C_BEST_URL, L.C_POSITION, L.C_RANK_URL, L.C_TOPIC,
+]
 
 
 def find_gaps(result, lead, threshold, rankings=None, topics=None, good_position=10, gap_position=0) -> pd.DataFrame:
@@ -20,7 +22,8 @@ def find_gaps(result, lead, threshold, rankings=None, topics=None, good_position
         best = float(lead[i, j])
         position, ranking_url = (format_position(a.hit.position), a.hit.url) if a.hit is not None else ("", "")
         topic = topics[i] if topics is not None and topics[i] else None
-        rows.append((query, round(best, 4), float(np.round(best - threshold, 4)) + 0.0, result.urls[j], position,
+        rows.append((query, round(best, 4), round(float(threshold), 4), float(np.round(best - threshold, 4)) + 0.0,
+                     result.urls[j], position,
                      ranking_url, topic))
     df = pd.DataFrame(rows, columns=COLUMNS)
     df[L.C_TOPIC] = df[L.C_TOPIC].astype("Int64")
