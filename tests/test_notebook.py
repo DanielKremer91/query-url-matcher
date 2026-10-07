@@ -1162,6 +1162,7 @@ def test_verdict_guide_shows_two_scenarios_without_and_with_rankings():
     assert L.V_WATCH not in guide[without:with_rankings]
     assert "„In Ordnung“ gibt es deshalb nur mit Rankings" in guide[without:with_rankings]
     assert "wie ohne Rankings" in guide[with_rankings:column]
+    assert "die rankende Seite passt, aber eine andere passt besser" in guide[with_rankings:column]
     assert "nicht im Frog-Export" in guide[with_rankings:column]
     assert "Bestehende Seite nutzen" not in guide and "Übersicht" in guide
 

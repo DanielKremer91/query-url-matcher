@@ -567,8 +567,9 @@ Ohne Rankings weiß das Tool nicht, ob eine Seite schon funktioniert. „In Ordn
 
 | Ranking der Query | Urteil |
 |---|---|
-| **Rankt gut** (Voreinstellung: bis Position 10) und die rankende Seite passt | **In Ordnung** |
-| **Rankt gut**, aber die rankende Seite passt nicht | **Rankt trotz schwachem Match**: prüfen, ob eine andere Seite die richtige wäre, oder die Schwelle prüfen |
+| **Rankt gut** (Voreinstellung: bis Position 10), die rankende Seite passt und ist die am besten passende | **In Ordnung** |
+| **Rankt gut**, die rankende Seite passt, aber eine andere passt besser | **In Ordnung**, dazu Kannibalisierungsgefahr „ja“ und „Rankende URL = beste URL?“ = „nein“ |
+| **Rankt gut**, aber die rankende Seite passt nicht | **Rankt trotz schwachem Match**: Passt eine andere Seite, steht Kannibalisierungsgefahr „ja“ (prüfen, ob sie die richtige wäre), sonst die Schwelle prüfen |
 | **Rankt gut** mit einer URL, die nicht im Frog-Export steht | **In Ordnung**: nicht prüfbar, die Spalte „Rankende URL = beste URL?“ zeigt „nicht im Frog-Export“ |
 | **Rankt schwach oder gar nicht** | wie ohne Rankings: **Passende Seite vorhanden**, **Kannibalisierungsgefahr** oder **Content-Lücke** |
 
