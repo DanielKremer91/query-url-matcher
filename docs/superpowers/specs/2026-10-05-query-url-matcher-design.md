@@ -42,7 +42,7 @@ Regeln:
 - URL und Content bleiben zeilenweise zusammen. Zeilen ohne Content und doppelte URLs werden übersprungen und gezählt gemeldet.
 - Eigene Rankings und SERPs sind zwei getrennte Uploads. Fehlt die Ranking-Datei, zieht das Notebook die eigenen Rankings aus der SERP-Datei: Zeilen, deren Host im Frog-Export vorkommt. Liegen beide vor, gilt für Positionen die Ranking-Datei.
 - Abgleich von Queries: Kleinschreibung, getrimmt, Mehrfach-Leerzeichen zusammengezogen.
-- Abgleich von URLs: Schema und Host klein, Fragment entfernt, abschließender Schrägstrich vereinheitlicht, Tracking-Parameter (`utm_*`, `gclid`, `fbclid`, `msclkid`, `srsltid`) entfernt.
+- Abgleich von URLs: http und https gleich, Host klein und ohne „www.“ und Standard-Port (www.toom.de = toom.de; andere Subdomains bleiben verschieden), URLs ohne Protokoll werden als https gelesen, Fragment entfernt, abschließender Schrägstrich vereinheitlicht, Tracking-Parameter (`utm_*`, `gclid`, `fbclid`, `msclkid`, `srsltid`) entfernt.
 
 ## 4. Modelle
 

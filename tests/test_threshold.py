@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 
 from qum import labels as L
+from qum.normalize import normalize_url
 from qum.threshold import MIN_PAIRS, calibrated_threshold, calibration_scores, examples_around, median_threshold
 from tests.conftest import make_result
 
@@ -74,7 +75,7 @@ def test_examples_around_threshold():
 def test_proposal_is_rounded_once_to_four_decimals():
     result = make_result(["q1", "q2", "q3"], ["u1"], [[0.812345], [0.7], [0.9]])
     assert median_threshold(result, result.lead("chunk")).value == 0.8123
-    rankings = _rankings([(q, "u1", "u1", 1.0) for q in ["q1", "q2", "q3"]])
+    rankings = _rankings([(q, "u1", normalize_url("u1"), 1.0) for q in ["q1", "q2", "q3"]])
     assert calibrated_threshold(result, result.lead("chunk"), rankings, min_pairs=3).value == 0.7562
 
 

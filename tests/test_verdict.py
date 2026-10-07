@@ -248,3 +248,15 @@ def test_distance_to_the_threshold_is_the_best_lead_score_minus_the_threshold():
     assert _row([0.7, 0.9, 0.8])[L.C_TO_THRESHOLD] == 0.1
     assert _row([0.5, 0.4, 0.3])[L.C_TO_THRESHOLD] == -0.3
     assert _row([0.80004, 0.4, 0.3])[L.C_TO_THRESHOLD] == 0.0
+
+
+def test_ranking_url_with_www_and_without_slash_is_the_same_page():
+    from qum import ingest
+
+    frog = "https://toom.de/treppen/treppen-verkleiden/"
+    table = pd.DataFrame({"Keyword": ["q"], "URL": ["https://www.toom.de/treppen/treppen-verkleiden"], "Position": [2]})
+    rankings = ingest.load_rankings(table)  # wie im Notebook: url_norm aus normalize_url
+    result = make_result(["q"], [frog, U2, U3], [[0.87, 0.865, 0.1]])
+    row = build_decisions(result, result.lead("chunk"), 0.8, rankings).iloc[0]
+    assert row[L.C_RANK_IS_BEST] == L.YES
+    assert row[L.C_VERDICT] == L.V_OK
