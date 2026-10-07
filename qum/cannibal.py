@@ -10,7 +10,10 @@ _PLACES = [
     (L.C_URL_2, L.C_SCORE_2, L.C_POS_2),
     (L.C_URL_3, L.C_SCORE_3, L.C_POS_3),
 ]
-COLUMNS = [L.C_QUERY, L.C_STAGE, L.C_REASON, L.C_POSITION, L.C_RANK_URL] + [column for place in _PLACES for column in place]
+COLUMNS = (
+    [L.C_QUERY] + [column for place in _PLACES for column in place]
+    + [L.C_POSITION, L.C_RANK_URL, L.C_STAGE, L.C_REASON, L.C_PRIORITY]
+)
 
 _RISK_REASON = {
     RISK_CLEAR: L.REASON_BETTER,
@@ -34,7 +37,16 @@ def _danger_reason(a, scores, margin):
     return _RISK_REASON[risk_kind(scores, a.ranking_j, margin)]
 
 
-def _row(query, hit, stage, reason, competing) -> dict:
+def _priority(a, best_j, rankings_loaded) -> str:
+    """Wie dringend: ohne Rankings offen, ohne Top-Ranking hoch, Top-Ranking der besten Seite niedrig, sonst mittel."""
+    if not rankings_loaded:
+        return L.PRIO_OPEN
+    if not a.ranks_well:
+        return L.PRIO_HIGH
+    return L.PRIO_LOW if a.ranking_j is not None and a.ranking_j == best_j else L.PRIO_MID
+
+
+def _row(query, hit, stage, reason, competing, priority) -> dict:
     """hit: beste eigene Ranking-Zeile der Query oder None. competing: (URL, Score oder None, Position als Text) je URL.
     Was über drei URLs hinausgeht, zählt der Grund."""
     if len(competing) > len(_PLACES):
@@ -43,6 +55,7 @@ def _row(query, hit, stage, reason, competing) -> dict:
         L.C_QUERY: query, L.C_STAGE: stage, L.C_REASON: reason,
         L.C_POSITION: format_position(hit.position) if hit is not None else "",
         L.C_RANK_URL: hit.url if hit is not None else "",
+        L.C_PRIORITY: priority,
     }
     for k, (url_col, score_col, pos_col) in enumerate(_PLACES):
         url, score, position = competing[k] if k < len(competing) else ("", None, "")
@@ -73,24 +86,25 @@ def find_cannibalization(
         position_of = {r.url_norm: format_position(r.position) for r in own}
         pages = [(result.urls[j], lead[i, j], position_of.get(normalize_url(result.urls[j]), "")) for j in a.close]
         reason = _danger_reason(a, lead[i], margin)
+        priority = _priority(a, int(lead[i].argmax()), rankings is not None)
         fitting = [int(j) for j in np.argsort(-lead[i], kind="stable") if lead[i, j] >= threshold]
         if reason is None and len(fitting) >= 2:
             further = [(result.urls[j], lead[i, j], position_of.get(normalize_url(result.urls[j]), "")) for j in fitting]
-            rows.append(_row(query, a.hit, L.STAGE_POSSIBLE, L.REASON_FURTHER, further))
+            rows.append(_row(query, a.hit, L.STAGE_POSSIBLE, L.REASON_FURTHER, further, priority))
         elif reason == L.REASON_CLOSE:
-            rows.append(_row(query, a.hit, L.STAGE_DANGER, reason, pages))
+            rows.append(_row(query, a.hit, L.STAGE_DANGER, reason, pages, priority))
         elif reason is not None:
             score = None if a.ranking_j is None else lead[i, a.ranking_j]
             first = (a.hit.url, score, format_position(a.hit.position))
             others = [page for j, page in zip(a.close, pages) if j != a.ranking_j]
-            rows.append(_row(query, a.hit, L.STAGE_DANGER, reason, [first] + others))
+            rows.append(_row(query, a.hit, L.STAGE_DANGER, reason, [first] + others, priority))
         visible = [r for r in own if r.position <= visible_position]
         if len(visible) >= 2:
             competing = [
                 (r.url, lead[i, u_index[r.url_norm]] if r.url_norm in u_index else None, format_position(r.position))
                 for r in visible
             ]
-            rows.append(_row(query, a.hit, L.STAGE_VISIBLE, L.REASON_RANKING, competing))
+            rows.append(_row(query, a.hit, L.STAGE_VISIBLE, L.REASON_RANKING, competing, priority))
     return pd.DataFrame(rows, columns=COLUMNS)
 
 

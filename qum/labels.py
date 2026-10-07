@@ -62,6 +62,11 @@ V_CANNIBAL = "Kannibalisierungsgefahr"
 V_WATCH = "Rankt trotz schwachem Match"
 
 STAGE_DANGER = "Gefahr"
+C_PRIORITY = "Einordnung"
+PRIO_HIGH = "hoch: kein Top-Ranking"
+PRIO_MID = "mittel: Top-Ranking mit anderer Seite"
+PRIO_LOW = "niedrig: Top-Ranking mit passender Seite"
+PRIO_OPEN = "offen: ohne Rankings"
 STAGE_POSSIBLE = "Möglich"
 STAGE_VISIBLE = "Kannibalisierung bereits sichtbar"
 

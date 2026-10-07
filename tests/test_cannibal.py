@@ -32,8 +32,9 @@ def _urls(row):
 def test_columns_and_empty_result():
     df = _run(["q"], [[0.9, 0.5, 0.1]])
     assert list(df.columns) == COLUMNS == [
-        L.C_QUERY, L.C_STAGE, L.C_REASON, L.C_POSITION, L.C_RANK_URL,
+        L.C_QUERY,
         L.C_URL_1, L.C_SCORE_1, L.C_POS_1, L.C_URL_2, L.C_SCORE_2, L.C_POS_2, L.C_URL_3, L.C_SCORE_3, L.C_POS_3,
+        L.C_POSITION, L.C_RANK_URL, L.C_STAGE, L.C_REASON, L.C_PRIORITY,
     ]
     assert [L.C_URL_1, L.C_SCORE_2, L.C_POS_3] == ["URL 1", "Score 2", "Position 3"]
     assert df.empty
@@ -307,3 +308,45 @@ def test_every_row_shows_the_querys_best_own_ranking():
 def test_ranking_columns_are_empty_without_rankings():
     df = _run(["q"], [[0.8, 0.8, 0.1]])
     assert df[L.C_POSITION].tolist() == [""] and df[L.C_RANK_URL].tolist() == [""]
+
+
+# --- Einordnung: wie dringend, je nach eigenem Ranking ------------------------------------------------------------
+
+
+def _priority(scores, ranking, **kwargs):
+    rankings = None if ranking is None else _rankings([("q", url, url, float(pos)) for url, pos in ranking])
+    if ranking == []:
+        rankings = _rankings([("andere query", U1, U1, 1.0)])
+    return _run(["q"], [scores], rankings, **kwargs)[[L.C_STAGE, L.C_PRIORITY]].values.tolist()
+
+
+def test_priority_values():
+    assert [L.PRIO_HIGH, L.PRIO_MID, L.PRIO_LOW, L.PRIO_OPEN] == [
+        "hoch: kein Top-Ranking", "mittel: Top-Ranking mit anderer Seite", "niedrig: Top-Ranking mit passender Seite",
+        "offen: ohne Rankings",
+    ]
+
+
+def test_priority_without_rankings_is_open():
+    assert _priority([0.8, 0.8, 0.1], None) == [[L.STAGE_DANGER, L.PRIO_OPEN]]
+
+
+def test_priority_without_a_top_ranking_is_high():
+    assert _priority([0.8, 0.8, 0.1], [(U1, 25)]) == [[L.STAGE_DANGER, L.PRIO_HIGH]]
+    assert _priority([0.8, 0.8, 0.1], []) == [[L.STAGE_DANGER, L.PRIO_HIGH]]  # Rankings geladen, Query rankt nicht
+
+
+def test_priority_with_a_top_ranking_of_the_best_page_is_low():
+    assert _priority([0.805, 0.8, 0.1], [(U1, 3)]) == [[L.STAGE_DANGER, L.PRIO_LOW]]
+    assert _priority([0.9, 0.7, 0.1], [(U1, 3)]) == [[L.STAGE_POSSIBLE, L.PRIO_LOW]]
+
+
+def test_priority_with_a_top_ranking_of_another_page_is_medium():
+    assert _priority([0.8, 0.805, 0.1], [(U1, 3)]) == [[L.STAGE_DANGER, L.PRIO_MID]]  # knapp hinter der besten
+    assert _priority([0.65, 0.9, 0.1], [(U1, 3)]) == [[L.STAGE_DANGER, L.PRIO_MID]]
+    assert _priority([0.9, 0.1, 0.1], [(ALT, 2)]) == [[L.STAGE_DANGER, L.PRIO_MID]]  # nicht im Frog-Export
+
+
+def test_priority_of_the_visible_stage_follows_the_best_own_ranking():
+    assert _priority([0.9, 0.1, 0.1], [(U1, 3), (U2, 15)]) == [[L.STAGE_VISIBLE, L.PRIO_LOW]]
+    assert _priority([0.9, 0.1, 0.1], [(U1, 14), (U2, 15)]) == [[L.STAGE_VISIBLE, L.PRIO_HIGH]]

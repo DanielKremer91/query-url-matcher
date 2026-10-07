@@ -261,11 +261,12 @@ def _text_number_sheets():
     overview, _, gaps = _frames()
     overview[L.C_POSITION] = ["4.3", "12", ""]
     gaps[L.C_POSITION] = ["7.5"]
-    cannibal = pd.DataFrame(
-        [["a", L.STAGE_DANGER, L.REASON_BETTER, "4.3", "https://a.de/x.html", "https://a.de/x.html", 0.842, "4.3", "https://a.de/y", -0.0123, "",
-          "https://a.de/z", None, "17.5"]],
-        columns=CANNIBAL_COLUMNS,
-    )
+    cannibal = pd.DataFrame([{
+        L.C_QUERY: "a", L.C_URL_1: "https://a.de/x.html", L.C_SCORE_1: 0.842, L.C_POS_1: "4.3",
+        L.C_URL_2: "https://a.de/y", L.C_SCORE_2: -0.0123, L.C_POS_2: "", L.C_URL_3: "https://a.de/z", L.C_SCORE_3: None,
+        L.C_POS_3: "17.5", L.C_POSITION: "4.3", L.C_RANK_URL: "https://a.de/x.html", L.C_STAGE: L.STAGE_DANGER,
+        L.C_REASON: L.REASON_BETTER, L.C_PRIORITY: L.PRIO_MID,
+    }], columns=CANNIBAL_COLUMNS)
     settings = {"Datum": "2026-10-05", "Modell": "multilingual-e5-large", "Schwelle": 0.8123, "Rankt gut bis Position": 10}
     return export.build_sheets(overview, cannibal, gaps, settings)
 

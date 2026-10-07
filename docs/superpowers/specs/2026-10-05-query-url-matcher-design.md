@@ -115,7 +115,7 @@ Eigenes Blatt mit drei Stufen:
 - **Möglich:** keine Gefahr, aber zwei oder mehr Seiten erreichen die Schwelle; die weiteren liegen mehr als den Abstand „fast gleich" hinter der besten. Grund „Weitere Seiten erreichen die Schwelle, liegen aber deutlich hinter der besten". URLs nach Leit-Score sortiert.
 - **Kannibalisierung bereits sichtbar:** zwei oder mehr eigene URLs ranken für die Query mit Position ≤ 20 (einstellbar).
 
-Eine Zeile je Query und Stufe mit bis zu drei URLs in eigenen Spalten (URL, Score, Position). Stufe Gefahr: nach Leit-Score sortiert, die rankende URL zuerst, wenn der Grund sie betrifft. Kannibalisierung bereits sichtbar: nach Position sortiert. Score ist der Leit-Score (leer, wenn die URL nicht im Frog-Export steht), Position die eigene Position für die Query (leer, wenn sie dafür nicht rankt). Konkurrieren mehr als drei URLs, endet der Grund mit „… und n weitere".
+Eine Zeile je Query und Stufe mit bis zu drei URLs in eigenen Spalten (URL, Score, Position). Stufe Gefahr: nach Leit-Score sortiert, die rankende URL zuerst, wenn der Grund sie betrifft. Kannibalisierung bereits sichtbar: nach Position sortiert. Score ist der Leit-Score (leer, wenn die URL nicht im Frog-Export steht), Position die eigene Position für die Query (leer, wenn sie dafür nicht rankt). Konkurrieren mehr als drei URLs, endet der Grund mit „… und n weitere". Die Spalte Einordnung sagt, wie dringend der Fall ist (Entscheidung Daniel, 2026-10-07): „hoch: kein Top-Ranking" (Rankings geladen, beste eigene Position schlechter als rankt_gut_bis_position oder kein Ranking), „mittel: Top-Ranking mit anderer Seite" (die rankende URL ist nicht die beste nach Leit-Score oder fehlt im Frog-Export), „niedrig: Top-Ranking mit passender Seite" (die rankende URL ist die beste), „offen: ohne Rankings".
 
 ## 9. SERP-Clustering und potentielle Content-Lücken
 
@@ -159,7 +159,7 @@ Vier Blätter in dieser Reihenfolge:
 | Blatt | Spalten |
 |---|---|
 | Übersicht | Query · Beste URL · Relevanter Chunk · Score Chunk · Score Gesamt-URL · Score Kombi · Vorsprung vor zweitbester URL · Zweitbeste URL · Score Chunk 2 · Score Gesamt-URL 2 · Score Kombi 2 · Drittbeste URL · Score Chunk 3 · Score Gesamt-URL 3 · Score Kombi 3 · Rankingposition · Rankende URL · Rankende URL = beste URL? · Urteil · Kannibalisierungsgefahr |
-| Kannibalisierungsgefahr | Query · Stufe · Grund · Rankingposition · Rankende URL · URL 1 · Score 1 · Position 1 · URL 2 · Score 2 · Position 2 · URL 3 · Score 3 · Position 3 (Abschnitt 8) |
+| Kannibalisierungsgefahr | Query · URL 1 · Score 1 · Position 1 · URL 2 · Score 2 · Position 2 · URL 3 · Score 3 · Position 3 · Rankingposition · Rankende URL · Stufe · Grund · Einordnung (Abschnitt 8) |
 | Potentielle Content-Lücken | Query · Bester Score · Beste URL · Rankingposition · Rankende URL · Thema (Abschnitt 9) |
 | Lesehilfe | Hinweise (Einordnung, Score-Band, Herkunft der Schwelle), alle vier Blätter, alle Urteile, beide Stufen, jede Spalte, alle Einstellungen des Laufs |
 

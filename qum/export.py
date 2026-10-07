@@ -76,6 +76,12 @@ _COLUMN_HELP = {
         f"'{L.NO}': keine weitere Seite erreicht die Schwelle. Unabhängig vom Urteil."
     ),
     # Kannibalisierungsgefahr
+    L.C_PRIORITY: (
+        f"Wie dringend, je nach eigenem Ranking der Query (Top-Ranking = bis rankt_gut_bis_position). '{L.PRIO_HIGH}': "
+        f"die Seiten stehen sich vermutlich im Weg, handeln (abgrenzen, zusammenführen, Hauptseite festlegen). "
+        f"'{L.PRIO_MID}': prüfen, ob Google die richtige Seite gewählt hat. '{L.PRIO_LOW}': beobachten, heute "
+        f"funktioniert es, Google kann aber wechseln. '{L.PRIO_OPEN}': nur semantisch geprüft."
+    ),
     L.C_STAGE: "Stufe der Kannibalisierungsgefahr, siehe die Stufen weiter oben in dieser Lesehilfe.",
     L.C_REASON: "Warum die Query hier steht. Konkurrieren mehr als drei URLs, steht die Zahl der weiteren am Ende.",
     L.C_URL_1: (
