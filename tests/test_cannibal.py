@@ -193,3 +193,33 @@ def test_risk_with_ranking_url_below_threshold_uses_the_plain_reason():
     lead = result.lead("chunk")
     decisions = build_decisions(result, lead, 0.8, rankings)
     assert find_cannibalization(result, lead, 0.8, decisions, rankings)[L.C_REASON].tolist() == [L.REASON_BETTER_PLAIN]
+
+
+def test_annotate_adds_the_cannibalisation_hint_to_every_decision_row():
+    from qum.cannibal import annotate
+
+    decisions = pd.DataFrame({L.C_QUERY: ["a", "b", "c"], L.C_VERDICT: [L.V_USE, L.V_OK, L.V_GAP]})
+    cannibal = pd.DataFrame(
+        [
+            ("a", L.STAGE_RISK, "x", "https://a.de/1 (Score 0.8) | https://a.de/2 (Score 0.79)"),
+            ("b", L.STAGE_RISK, "x", "https://a.de/3 (Score 0.9)"),
+            ("b", L.STAGE_VISIBLE, "y", "https://a.de/3 (Position 2) | https://a.de/4 (Position 9)"),
+        ],
+        columns=[L.C_QUERY, L.C_STAGE, L.C_REASON, L.C_COMPETING],
+    )
+    out = annotate(decisions, cannibal)
+    assert list(out.columns)[-1] == L.C_CANNIBAL
+    assert out[L.C_CANNIBAL].tolist() == [
+        "Risiko: https://a.de/1 (Score 0.8) | https://a.de/2 (Score 0.79)",
+        "Risiko: https://a.de/3 (Score 0.9); Bereits sichtbar: https://a.de/3 (Position 2) | https://a.de/4 (Position 9)",
+        "",
+    ]
+    assert L.C_CANNIBAL not in decisions.columns
+
+
+def test_annotate_with_empty_cannibalisation_sheet():
+    from qum.cannibal import annotate
+
+    decisions = pd.DataFrame({L.C_QUERY: ["a"], L.C_VERDICT: [L.V_GAP]})
+    out = annotate(decisions, pd.DataFrame(columns=[L.C_QUERY, L.C_STAGE, L.C_REASON, L.C_COMPETING]))
+    assert out[L.C_CANNIBAL].tolist() == [""]

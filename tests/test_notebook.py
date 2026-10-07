@@ -1010,3 +1010,22 @@ def test_verdict_guide_sits_before_step_7a_and_covers_every_verdict():
     for verdict in (L.V_OK, L.V_RISK, L.V_WATCH, L.V_USE, L.V_GAP, L.V_MATCH, L.V_CHECK):
         assert verdict in guide, verdict
     assert "| **Rankt gut**" in guide
+
+
+def test_smoke_decisions_carry_the_cannibalisation_column(nb, capsys):
+    from qum import labels as L
+
+    _load(nb)
+    nb.run(5, "rankings.csv")
+    nb.run("7a")
+    nb.run("7b", schwelle_waehlen=MEDIAN)
+    nb.run("7c")
+    decisions, cannibal = nb.ns["decisions"], nb.ns["cannibal"]
+    flagged = set(decisions.loc[decisions[L.C_CANNIBAL] != "", L.C_QUERY])
+    assert flagged == set(cannibal[L.C_QUERY])
+    assert "über alle Urteile" in capsys.readouterr().out
+
+
+def test_verdict_guide_says_every_field_can_carry_a_cannibalisation_hint():
+    guide = next(source for kind, source in CELLS if kind == "markdown" and "So entstehen die Urteile" in source)
+    assert "In jedem Feld" in guide and "Spalte „Kannibalisierung\"" in guide

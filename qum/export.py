@@ -63,6 +63,10 @@ _COLUMN_HELP = {
     L.C_POSITION: "Beste Position der rankenden URL für die Query im Ranking-Export.",
     L.C_NOTE: "Ergänzender Hinweis, zum Beispiel wenn eine URL im Frog-Export fehlt.",
     L.C_ADVICE: "Fester Hinweis, was zu prüfen ist, kein generierter Text. Entscheiden muss ein Mensch.",
+    L.C_CANNIBAL: (
+        "Kannibalisierungs-Hinweis zu dieser Query, unabhängig vom Urteil: Stufe (Risiko oder Bereits sichtbar) und die "
+        "konkurrierenden eigenen URLs. Leer, wenn es keinen Hinweis gibt. Details im Blatt Kannibalisierung."
+    ),
     L.C_CLUSTER: "Keywords mit gleicher Nummer haben stark überlappende Google-Ergebnisse. 0 = kein Cluster.",
     L.C_CAND: "Bestehende Seite, die ein Keyword mit stark überlappender SERP bereits bedient.",
     L.C_CAND_KW: "Das Nachbar-Keyword mit stark überlappender SERP, bei dem die Kandidaten-Seite passt.",

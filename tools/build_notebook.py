@@ -432,7 +432,7 @@ from datetime import date
 
 from qum import colab, export
 from qum import labels as L
-from qum.cannibal import find_cannibalization
+from qum.cannibal import annotate, find_cannibalization
 from qum.serp import apply_serp, count_new_pages
 from qum.verdict import build_decisions
 
@@ -453,6 +453,7 @@ new_decisions = build_decisions(result, lead, threshold, rankings, rankt_gut_bis
 new_cannibal = find_cannibalization(result, lead, threshold, new_decisions, rankings, abstand_fast_gleich, sichtbar_bis_position)
 if serps is not None:
     new_decisions = apply_serp(new_decisions, result, lead, serps, rankings, serp_ueberschneidung / 100, cluster_dichte / 100)
+new_decisions = annotate(new_decisions, new_cannibal)
 settings = {
     "Datum": date.today().isoformat(),
     "Modell": spec.model_id,
@@ -477,7 +478,7 @@ decisions, cannibal = new_decisions, new_cannibal
 counts = decisions[L.C_VERDICT].value_counts()
 for verdict, count in counts.items():
     print(f"   {count:>5} × {verdict}")
-print(f"   {cannibal[L.C_QUERY].nunique():>5} Queries mit Kannibalisierungs-Hinweis")
+print(f"   {cannibal[L.C_QUERY].nunique():>5} Queries mit Kannibalisierungs-Hinweis (über alle Urteile, Spalte „Kannibalisierung“)")
 uncalibrated = " (Schwelle nicht kalibriert)" if threshold_source == "median" else ""
 print(f"   {count_new_pages(decisions):>5} neue Seiten aus den Content-Lücken{uncalibrated}")
 print()
@@ -565,7 +566,7 @@ Für jede Query prüft das Tool zwei Dinge: Passt eine deiner Seiten semantisch,
 - **Ohne Rankings** gibt es nur zwei Urteile: **Passende Seite vorhanden** oder **Content-Lücke**.
 - **Kannibalisierungs-Risiko** gibt es auch, wenn die rankende Seite selbst die Schwelle nicht erreicht, eine andere eigene Seite aber schon, oder wenn die rankende URL nicht im Frog-Export steht.
 - **Mit SERPs aus Schritt 6** wird aus einer Content-Lücke **Vor Neuerstellung prüfen**, wenn ein Keyword mit stark überlappender SERP schon eine passende Seite hat.
-- Unabhängig vom Urteil meldet das Tool im Blatt „Kannibalisierung", wenn zwei eigene Seiten fast gleich gut passen oder mehrere eigene Seiten für dieselbe Query ranken.
+- **In jedem Feld** kann zusätzlich ein Kannibalisierungs-Hinweis stehen: wenn zwei eigene Seiten fast gleich gut passen oder mehrere eigene Seiten für dieselbe Query ranken. Er steht im Export in der Spalte „Kannibalisierung" neben dem Urteil, Details im Blatt „Kannibalisierung". Gerade bei „Bestehende Seite nutzen" zeigt er Konkurrenz zwischen eigenen Seiten, bevor sie in den Rankings sichtbar wird.
 
 Alle Urteile sind Hinweise zum Prüfen, keine Entscheidungen.
 '''

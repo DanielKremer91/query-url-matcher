@@ -35,6 +35,7 @@ C_GAP_QUERIES = "Queries"
 C_STAGE = "Stufe"
 C_REASON = "Grund"
 C_COMPETING = "Konkurrierende URLs"
+C_CANNIBAL = "Kannibalisierung"
 
 C_PAIR_RANK = "Rang der URL"
 

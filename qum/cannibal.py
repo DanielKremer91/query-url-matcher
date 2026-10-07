@@ -84,3 +84,13 @@ def find_cannibalization(
             competing = [_describe(r.url, score_of(i, r.url_norm), format_position(r.position)) for r in visible]
             rows.append((query, L.STAGE_VISIBLE, L.REASON_RANKING, " | ".join(competing)))
     return pd.DataFrame(rows, columns=[L.C_QUERY, L.C_STAGE, L.C_REASON, L.C_COMPETING])
+
+
+def annotate(decisions: pd.DataFrame, cannibal: pd.DataFrame) -> pd.DataFrame:
+    """Kopie der Urteile mit der Spalte Kannibalisierung: Stufe und konkurrierende URLs je Query, sonst leer."""
+    hints = {}
+    for query, stage, competing in zip(cannibal[L.C_QUERY], cannibal[L.C_STAGE], cannibal[L.C_COMPETING]):
+        hints.setdefault(query, []).append(f"{stage}: {competing}")
+    out = decisions.copy()
+    out[L.C_CANNIBAL] = ["; ".join(hints.get(query, [])) for query in out[L.C_QUERY]]
+    return out
