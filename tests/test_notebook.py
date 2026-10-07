@@ -234,14 +234,24 @@ def test_smoke_full_flow(nb, tmp_path, capsys):
     _verdicts(nb)
     nb.run(8)
     out = capsys.readouterr().out
-    assert "✅ Schritt 8 fertig" in out
+    assert "✅ Schritt 8 fertig: 4 Blätter exportiert." in out
     assert nb.downloads == ["query_url_matcher.xlsx"]
-    assert (tmp_path / "query_url_matcher.xlsx").exists()
+    assert _sheet_names(tmp_path / "query_url_matcher.xlsx") == SHEETS
+    assert nb.ns["new_pages"] is not None
     settings = nb.ns["settings"]
     assert settings["Eigene Rankings"] == "ja, aus Datei"
     for key in ("Kalibrierung bis Position", "SERP-Überschneidung (%)", "Cluster-Dichte (%)"):
         assert key in settings
     assert "Treffer je Query (Top-N)" not in settings
+
+
+SHEETS = ["Übersicht", "Kannibalisierungsgefahr", "Potentielle Content-Lücken", "Lesehilfe"]
+
+
+def _sheet_names(path):
+    from openpyxl import load_workbook
+
+    return load_workbook(path).sheetnames
 
 
 def test_smoke_minimal_flow_without_rankings_and_serps(nb, capsys):
@@ -255,6 +265,8 @@ def test_smoke_minimal_flow_without_rankings_and_serps(nb, capsys):
     assert "per Konstruktion darunter" in out
     assert nb.downloads == ["query_url_matcher.xlsx"]
     assert nb.ns["settings"]["Eigene Rankings"] == "nein"
+    assert _sheet_names(nb.downloads[0]) == SHEETS
+    assert nb.ns["new_pages"] is None
 
 
 def test_smoke_serps_alone_derive_own_rankings_and_refresh(nb, capsys):
@@ -411,7 +423,7 @@ def test_smoke_uncalibrated_threshold_is_flagged_in_counts_and_export(nb, tmp_pa
 
     _load(nb)
     _verdicts(nb)
-    assert "neue Seiten aus den Content-Lücken (Schwelle nicht kalibriert)" in capsys.readouterr().out
+    assert "potentielle Content-Lücken (Schwelle nicht kalibriert)" in capsys.readouterr().out
     nb.run(8)
     assert export.CAVEAT_THRESHOLD["median"] in _readme_notes(tmp_path / "query_url_matcher.xlsx")
 
@@ -420,7 +432,10 @@ def _zip_header(path):
     import zipfile
 
     with zipfile.ZipFile(path) as archive:
-        return archive.read("entscheidung.csv").decode("utf-8-sig").splitlines()[0]
+        assert archive.namelist() == [
+            "uebersicht.csv", "kannibalisierungsgefahr.csv", "potentielle_content_luecken.csv", "lesehilfe.csv",
+        ]
+        return archive.read("uebersicht.csv").decode("utf-8-sig").splitlines()[0]
 
 
 def test_smoke_step_8_csv_zip_uses_semicolon_by_default_and_comma_on_request(nb, tmp_path):
@@ -446,7 +461,7 @@ def test_smoke_threshold_typed_by_hand_is_named_in_export(nb, tmp_path, capsys):
     _load(nb)
     _verdicts(nb, OWN, eigene_schwelle=0.5)
     out = capsys.readouterr().out
-    assert "neue Seiten aus den Content-Lücken" in out and "(Schwelle nicht kalibriert)" not in out
+    assert "potentielle Content-Lücken" in out and "(Schwelle nicht kalibriert)" not in out
     nb.run(8)
     notes = _readme_notes(tmp_path / "query_url_matcher.xlsx")
     assert export.CAVEAT_THRESHOLD["manuell"] in notes and export.CAVEAT_THRESHOLD["median"] not in notes
@@ -557,6 +572,7 @@ def test_smoke_serps_with_few_urls_per_keyword_warn(nb, capsys):
 def test_step_7c_fine_settings_keep_their_defaults():
     source = _source("7c")
     for line in ("rankt_gut_bis_position = 10", "abstand_fast_gleich = 0.01", "sichtbar_bis_position = 20",
+                 "luecke_unter_score = 0.0", "luecke_nur_ohne_ranking_bis_position = 0",
                  "serp_ueberschneidung = 50", "cluster_dichte = 50"):
         assert re.search(rf"^{re.escape(line)} #@param", source, flags=re.M), line
     assert re.search(r"^kalibrierung_bis_position = 5 #@param", _source("7a"), flags=re.M)
@@ -806,7 +822,7 @@ def test_smoke_rerunning_step_7b_invalidates_the_verdicts(nb, capsys):
     _verdicts(nb)
     nb.run("7b", schwelle_waehlen=OWN, eigene_schwelle=0.3)
     assert nb.ns["threshold"] == 0.3 and nb.ns["threshold_source"] == "manuell"
-    for name in ("decisions", "cannibal", "settings"):
+    for name in ("decisions", "cannibal", "gaps", "new_pages", "settings"):
         assert nb.ns[name] is None, name
     capsys.readouterr()
     with pytest.raises(colab.NotebookStop):
@@ -991,8 +1007,77 @@ def test_step_3_explains_both_input_files():
 
 def test_step_7c_explains_both_cluster_sliders_with_examples():
     source = next(s for s in _code_cells() if s.startswith("#@title Schritt 7c"))
-    for text in ("**serp_ueberschneidung:**", "6 von 10 URLs", "**cluster_dichte:**", "verhindert Ketten", "A und E fallen raus"):
+    for text in ("**serp_ueberschneidung:**", "6 von 10 URLs", "**cluster_dichte:**", "verhindert Ketten", "A und E fallen raus",
+                 "ändern nur die Spalte Thema im Blatt „Potentielle Content-Lücken“"):
         assert text in source, text
+
+
+def test_step_7c_explains_the_gap_fields():
+    source = _source("7c")
+    for text in ("**luecke_unter_score:**", "0 = Schwelle aus Schritt 7b", "**luecke_nur_ohne_ranking_bis_position:**",
+                 "0 = aus", "Ohne Rankings wird der Wert ignoriert"):
+        assert text in source, text
+
+
+def test_smoke_step_7c_counts_gaps_with_its_own_settings(nb, capsys):
+    from qum import labels as L
+
+    _load(nb)
+    _verdicts(nb)
+    out = capsys.readouterr().out
+    gaps = nb.ns["gaps"]
+    assert f"{len(gaps):>5} potentielle Content-Lücken (Schwelle nicht kalibriert)" in out
+    assert "neue Seiten" not in out  # ohne SERPs gibt es kein Thema
+    assert "eigenen Einstellungen" in out and "Content-Lücke" in out
+    nb.run("7c", luecke_unter_score=1.0)
+    assert len(nb.ns["gaps"]) == 12
+    assert nb.ns["settings"]["Lücke unter Score"] == 1.0
+    nb.run("7c", luecke_unter_score=0.0)
+    assert nb.ns["settings"]["Lücke unter Score"] == "Schwelle aus Schritt 7b"
+    assert nb.ns["gaps"][L.C_TOPIC].isna().all()
+
+
+def test_smoke_step_7c_gaps_with_rankings_and_serps(nb, capsys):
+    from qum import labels as L
+    from qum.gaps import count_new_pages
+
+    _load(nb)
+    nb.run(5, "rankings.csv")
+    nb.run(6, "serps.csv")
+    _verdicts(nb, OWN, eigene_schwelle=1.0)
+    out = capsys.readouterr().out
+    gaps = nb.ns["gaps"]
+    assert len(gaps) == 12 and gaps[L.C_TOPIC].notna().any()
+    assert nb.ns["new_pages"] == count_new_pages(gaps) < 12
+    assert f"   {len(gaps):>5} potentielle Content-Lücken, zusammen {nb.ns['new_pages']} neue Seiten" in out
+    nb.run("7c", luecke_nur_ohne_ranking_bis_position=10)
+    ranking = set(nb.ns["rankings"].query("position <= 10")["query_norm"])
+    assert len(nb.ns["gaps"]) == 12 - len(ranking & {q.lower() for q in nb.ns["queries"]})
+    assert nb.ns["settings"]["Lücke nur ohne Ranking bis Position"] == 10
+
+
+def test_smoke_step_7c_ignores_the_ranking_condition_without_rankings(nb, capsys):
+    _load(nb)
+    _verdicts(nb, OWN, eigene_schwelle=1.0, luecke_nur_ohne_ranking_bis_position=5)
+    out = capsys.readouterr().out
+    assert "ℹ️ luecke_nur_ohne_ranking_bis_position wird ignoriert: Es sind keine Rankings geladen." in out
+    assert len(nb.ns["gaps"]) == 12
+    assert nb.ns["settings"]["Lücke nur ohne Ranking bis Position"] == "ignoriert, keine Rankings"
+
+
+@pytest.mark.parametrize(
+    "form, hint",
+    [({"luecke_unter_score": -0.1}, "luecke_unter_score"), ({"luecke_unter_score": 1.5}, "luecke_unter_score"),
+     ({"luecke_nur_ohne_ranking_bis_position": -1}, "luecke_nur_ohne_ranking_bis_position")],
+)
+def test_smoke_step_7c_rejects_invalid_gap_settings(nb, capsys, form, hint):
+    _load(nb)
+    _threshold(nb)
+    capsys.readouterr()
+    with pytest.raises(colab.NotebookStop):
+        nb.run("7c", **form)
+    out = capsys.readouterr().out
+    assert out.startswith("❌ ") and hint in out
 
 
 def test_verdict_guide_sits_before_step_7a_and_covers_every_verdict():

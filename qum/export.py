@@ -7,40 +7,51 @@ from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 from . import labels as L
-from .serp import gap_summary
+from .cannibal import COLUMNS as CANNIBAL_COLUMNS
+from .gaps import COLUMNS as GAP_COLUMNS
+from .verdict import OVERVIEW_COLUMNS
 
-SHEET_README = "Lesehilfe"
-SHEET_DECISION = "Entscheidung"
+SHEET_OVERVIEW = "Übersicht"
 SHEET_CANNIBAL = "Kannibalisierungsgefahr"
-SHEET_GAPS = "Content-Lücken"
-SHEET_GAP_CLUSTERS = "Lücken je Cluster"
+SHEET_GAPS = "Potentielle Content-Lücken"
+SHEET_README = "Lesehilfe"
 
 _CSV_NAMES = {
-    SHEET_README: "lesehilfe.csv",
-    SHEET_DECISION: "entscheidung.csv",
+    SHEET_OVERVIEW: "uebersicht.csv",
     SHEET_CANNIBAL: "kannibalisierungsgefahr.csv",
-    SHEET_GAPS: "content_luecken.csv",
-    SHEET_GAP_CLUSTERS: "luecken_je_cluster.csv",
+    SHEET_GAPS: "potentielle_content_luecken.csv",
+    SHEET_README: "lesehilfe.csv",
 }
 
 _SHEET_HELP = {
-    SHEET_DECISION: "Eine Zeile je Query mit Urteil, bester URL, Passage und Scores.",
-    SHEET_CANNIBAL: "Queries, bei denen mehrere eigene Seiten konkurrieren, getrennt nach Stufe.",
-    SHEET_GAPS: "Queries ohne passende Seite.",
-    SHEET_GAP_CLUSTERS: "Lücken gebündelt nach SERP-Cluster: ein Cluster entspricht einer neuen Seite.",
+    SHEET_OVERVIEW: (
+        "Eine Zeile je Query: die drei am besten passenden URLs mit ihren Scores, die beste eigene Rankingposition, "
+        "das Urteil und ob die Query im Blatt Kannibalisierungsgefahr steht."
+    ),
+    SHEET_CANNIBAL: (
+        "Queries, bei denen mehrere eigene Seiten konkurrieren, getrennt nach Stufe, mit bis zu drei URLs. "
+        f"Enthält jede Query mit dem Urteil '{L.V_CANNIBAL}'."
+    ),
+    SHEET_GAPS: (
+        "Queries, deren bester Score unter der Lücken-Schwelle liegt, mit den eigenen Einstellungen luecke_unter_score "
+        "und luecke_nur_ohne_ranking_bis_position aus Schritt 7c. Wegen dieser eigenen Einstellungen kann die Zahl der "
+        f"Zeilen von der Zahl der Urteile '{L.V_GAP}' abweichen."
+    ),
+    SHEET_README: "Diese Erklärungen: Hinweise, Blätter, Urteile, Stufen, Spalten und die Einstellungen des Laufs.",
 }
 
 _COLUMN_HELP = {
+    # Übersicht
     L.C_QUERY: "Die Suchanfrage, um die es in der Zeile geht.",
-    L.C_URL: "Die eigene Seite, die zur Query passt.",
-    L.C_CHUNK: "Der Textblock der Seite, der zur Query am besten passt.",
-    L.C_S_CHUNK: "Cosinus-Ähnlichkeit zwischen Query und dem am besten passenden Textblock der Seite.",
-    L.C_S_FULL: "Cosinus-Ähnlichkeit zwischen Query und dem gesamten Main Content der Seite.",
-    L.C_S_COMBI: "Gewichtete Mischung aus Chunk-Score und Gesamt-URL-Score.",
+    L.C_BEST_URL: "Die Seite mit dem höchsten Score für die Query, nach der gewählten Bewertungsgrundlage.",
+    L.C_CHUNK: "Der Textblock der besten URL, der zur Query am besten passt.",
+    L.C_S_CHUNK: "Cosinus-Ähnlichkeit zwischen Query und dem am besten passenden Textblock der besten URL.",
+    L.C_S_FULL: "Cosinus-Ähnlichkeit zwischen Query und dem gesamten Main Content der besten URL.",
+    L.C_S_COMBI: "Gewichtete Mischung aus Chunk-Score und Gesamt-URL-Score der besten URL.",
     L.C_LEAD_GAP: (
-        "Abstand des Scores der besten URL zum Score der nächstbesten Seite. "
+        "Score der besten URL minus Score der zweitbesten URL, nach der gewählten Bewertungsgrundlage. "
         "Ein großer Vorsprung heißt: eine Seite sticht klar heraus, auch wenn der absolute Score niedrig ist. "
-        "Negativ, wenn eine andere Seite knapp davor liegt."
+        "Leer, wenn es nur eine URL gibt."
     ),
     L.C_SECOND_URL: "Die Seite mit dem zweithöchsten Score für die Query, nach der gewählten Bewertungsgrundlage.",
     L.C_S_CHUNK_2: "Chunk-Score der zweitbesten URL.",
@@ -50,34 +61,37 @@ _COLUMN_HELP = {
     L.C_S_CHUNK_3: "Chunk-Score der drittbesten URL.",
     L.C_S_FULL_3: "Gesamt-URL-Score der drittbesten URL.",
     L.C_S_COMBI_3: "Kombi-Score der drittbesten URL.",
-    L.C_VERDICT: "Einordnung der Query, siehe die Urteile weiter unten in dieser Lesehilfe.",
-    L.C_BEST_URL: "Die Seite mit dem höchsten Score für die Query, nach der gewählten Bewertungsgrundlage.",
+    L.C_POSITION: "Beste eigene Position für die Query laut Rankings. Leer, wenn die Query nicht rankt oder keine Rankings geladen sind.",
     L.C_RANK_URL: "Die eigene URL, die laut Rankings am besten für die Query rankt, egal auf welcher Position.",
-    L.C_POSITION: "Beste eigene Position für die Query laut Rankings. Leer, wenn die Query nicht rankt.",
     L.C_RANK_IS_BEST: (
         f"'{L.YES}': die rankende URL ist die beste URL. '{L.CMP_CLOSE}': sie erreicht die Schwelle und liegt höchstens "
         f"um den Abstand 'fast gleich' hinter der besten. '{L.NO}': eine andere Seite passt besser. "
         f"'{L.CMP_NOT_RANKING}': keine eigene URL rankt für die Query. '{L.CMP_NOT_IN_EXPORT}': die rankende URL "
         "steht nicht im Frog-Export und wurde nicht verglichen. Leer ohne Rankings."
     ),
-    L.C_CANNIBAL: (
-        f"'{L.YES}', wenn die Query im Blatt Kannibalisierungsgefahr steht, unabhängig vom Urteil, sonst '{L.NO}'."
+    L.C_VERDICT: "Einordnung der Query, siehe die Urteile weiter oben in dieser Lesehilfe.",
+    L.C_CANNIBAL: f"'{L.YES}', wenn die Query im Blatt Kannibalisierungsgefahr steht, unabhängig vom Urteil, sonst '{L.NO}'.",
+    # Kannibalisierungsgefahr
+    L.C_STAGE: "Stufe der Kannibalisierungsgefahr, siehe die Stufen weiter oben in dieser Lesehilfe.",
+    L.C_REASON: "Warum die Query hier steht. Konkurrieren mehr als drei URLs, steht die Zahl der weiteren am Ende.",
+    L.C_URL_1: (
+        "Erste konkurrierende eigene URL. Stufe Gefahr: nach Score sortiert, die rankende URL zuerst, wenn der Grund sie "
+        "betrifft. Stufe Bereits sichtbar: nach Position sortiert. Mehr als drei URLs zählt die Spalte Grund als weitere."
     ),
-    L.C_CLUSTER: "Keywords mit gleicher Nummer haben stark überlappende Google-Ergebnisse. 0 = kein Cluster.",
-    L.C_STAGE: "Stufe der Kannibalisierungsgefahr, siehe die Stufen weiter unten in dieser Lesehilfe.",
-    L.C_REASON: "Warum die Query im Blatt Kannibalisierungsgefahr steht.",
-    L.C_URL_1: "Erste konkurrierende eigene URL. Mehr als drei URLs zählt die Spalte Grund.",
     L.C_SCORE_1: "Score der URL 1 nach der gewählten Bewertungsgrundlage. Leer, wenn sie nicht im Frog-Export steht.",
     L.C_POS_1: "Eigene Position der URL 1 für die Query. Leer, wenn sie dafür nicht rankt.",
     L.C_URL_2: "Zweite konkurrierende eigene URL.",
     L.C_SCORE_2: "Score der URL 2 nach der gewählten Bewertungsgrundlage. Leer, wenn sie nicht im Frog-Export steht.",
     L.C_POS_2: "Eigene Position der URL 2 für die Query. Leer, wenn sie dafür nicht rankt.",
-    L.C_URL_3: "Dritte konkurrierende eigene URL.",
+    L.C_URL_3: "Dritte konkurrierende eigene URL. Leer, wenn nur zwei URLs konkurrieren.",
     L.C_SCORE_3: "Score der URL 3 nach der gewählten Bewertungsgrundlage. Leer, wenn sie nicht im Frog-Export steht.",
     L.C_POS_3: "Eigene Position der URL 3 für die Query. Leer, wenn sie dafür nicht rankt.",
-    L.C_GAP_COUNT: "Anzahl der Content-Lücken-Queries in diesem Cluster.",
-    L.C_NEW_PAGES: "Anzahl neuer Seiten, die dafür nötig wären: ein Cluster eine Seite, Queries ohne Cluster je eine.",
-    L.C_GAP_QUERIES: "Die Content-Lücken-Queries dieser Zeile, getrennt durch senkrechte Striche.",
+    # Potentielle Content-Lücken
+    L.C_BEST_SCORE: "Score der besten URL nach der gewählten Bewertungsgrundlage. Er liegt unter der Lücken-Schwelle.",
+    L.C_TOPIC: (
+        "Nummer des SERP-Clusters aus Schritt 6: Queries mit gleicher Nummer haben stark überlappende Google-Ergebnisse "
+        "und ergeben zusammen eine neue Seite. Leer ohne SERPs oder wenn die Query in keinem Cluster ist."
+    ),
 }
 
 _STAGE_HELP = {
@@ -104,7 +118,10 @@ VERDICT_HELP = {
         "passen fast gleich gut. Details im Blatt Kannibalisierungsgefahr."
     ),
     L.V_WATCH: "Die Query rankt gut, obwohl keine Seite die Schwelle erreicht.",
-    L.V_USE: "Die Query rankt nicht gut, aber genau eine Seite passt klar: Sie erreicht die Schwelle und liegt deutlich vor allen anderen.",
+    L.V_USE: (
+        "Die Query rankt nicht gut, aber genau eine Seite passt klar: Sie erreicht die Schwelle und liegt deutlich vor "
+        "allen anderen."
+    ),
 }
 
 _FILLS = {
@@ -142,33 +159,36 @@ CAVEAT_THRESHOLD = {
 }
 
 
-def content_gaps(decisions: pd.DataFrame) -> pd.DataFrame:
-    return decisions[decisions[L.C_VERDICT] == L.V_GAP].reset_index(drop=True)
+def _gap_sheet_help(new_pages) -> str:
+    if new_pages is None:
+        return f"{_SHEET_HELP[SHEET_GAPS]} Ohne SERPs (Schritt 6) gibt es kein Thema, jede Query zählt einzeln."
+    return f"{_SHEET_HELP[SHEET_GAPS]} Neue Seiten: {new_pages} (eine je Thema, Queries ohne Thema einzeln)."
 
 
-def _readme(sheet_names, settings, present_columns, threshold_source=None) -> pd.DataFrame:
+def _readme(sheets, settings, threshold_source, new_pages) -> pd.DataFrame:
     rows = [("Hinweis", "Einordnung", DISCLAIMER), ("Hinweis", "Scores", CAVEAT_SCORES)]
     if threshold_source in CAVEAT_THRESHOLD:
         rows.append(("Hinweis", "Schwelle", CAVEAT_THRESHOLD[threshold_source]))
-    rows += [("Blatt", name, _SHEET_HELP[name]) for name in sheet_names]
+    for name in list(sheets) + [SHEET_README]:
+        text = _gap_sheet_help(new_pages) if name == SHEET_GAPS else _SHEET_HELP[name]
+        rows.append(("Blatt", name, text))
     rows += [("Urteil", verdict, text) for verdict, text in VERDICT_HELP.items()]
     rows += [("Stufe", stage, text) for stage, text in _STAGE_HELP.items()]
-    rows += [("Spalte", column, text) for column, text in _COLUMN_HELP.items() if column in present_columns]
+    columns = dict.fromkeys(column for df in sheets.values() for column in df.columns)
+    rows += [("Spalte", column, _COLUMN_HELP[column]) for column in columns]
     rows += [("Einstellung", key, str(value)) for key, value in settings.items()]
     return pd.DataFrame(rows, columns=[L.R_AREA, L.R_ENTRY, L.R_TEXT])
 
 
-def build_sheets(decisions, cannibal, settings, threshold_source=None) -> dict:
-    """threshold_source: "rankings", "median" oder "manuell" (Herkunft der Schwelle für die Lesehilfe)."""
+def build_sheets(overview, cannibal, gaps, settings, threshold_source=None, new_pages=None) -> dict:
+    """threshold_source: "rankings", "median" oder "manuell" (Herkunft der Schwelle für die Lesehilfe).
+    new_pages: Zahl neuer Seiten aus den Lücken, nur mit SERPs (sonst None)."""
     sheets = {
-        SHEET_DECISION: decisions,
-        SHEET_CANNIBAL: cannibal,
-        SHEET_GAPS: content_gaps(decisions),
+        SHEET_OVERVIEW: overview[OVERVIEW_COLUMNS],
+        SHEET_CANNIBAL: cannibal[CANNIBAL_COLUMNS],
+        SHEET_GAPS: gaps[GAP_COLUMNS],
     }
-    if L.C_CLUSTER in decisions.columns:
-        sheets[SHEET_GAP_CLUSTERS] = gap_summary(decisions)
-    present = {column for df in sheets.values() for column in df.columns}
-    return {SHEET_README: _readme(list(sheets), settings, present, threshold_source), **sheets}
+    return {**sheets, SHEET_README: _readme(sheets, settings, threshold_source, new_pages)}
 
 
 def _clean(df: pd.DataFrame) -> pd.DataFrame:

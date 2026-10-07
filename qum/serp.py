@@ -3,7 +3,6 @@ from collections import Counter, defaultdict, deque
 
 import pandas as pd
 
-from . import labels as L
 from .normalize import normalize_query
 
 
@@ -94,24 +93,3 @@ def topics(queries, serps, min_overlap=0.5, min_density=0.5) -> list:
     """Je Query die Nummer ihres SERP-Clusters, 0 ohne Cluster."""
     clusters = cluster_keywords(top_urls_per_keyword(serps), min_overlap, min_density)
     return [clusters.get(normalize_query(query), 0) for query in queries]
-
-
-def gap_summary(decisions: pd.DataFrame) -> pd.DataFrame:
-    gaps = decisions[decisions[L.C_VERDICT] == L.V_GAP]
-    clusters = gaps[L.C_CLUSTER] if L.C_CLUSTER in gaps.columns else pd.Series(0, index=gaps.index)
-    rows = []
-    for cluster in sorted(c for c in clusters.unique() if c != 0):
-        queries = gaps.loc[clusters == cluster, L.C_QUERY].tolist()
-        rows.append(
-            {L.C_CLUSTER: str(cluster), L.C_GAP_COUNT: len(queries), L.C_NEW_PAGES: 1, L.C_GAP_QUERIES: " | ".join(queries)}
-        )
-    loose = gaps.loc[clusters == 0, L.C_QUERY].tolist()
-    if loose:
-        rows.append(
-            {L.C_CLUSTER: L.NO_CLUSTER, L.C_GAP_COUNT: len(loose), L.C_NEW_PAGES: len(loose), L.C_GAP_QUERIES: " | ".join(loose)}
-        )
-    return pd.DataFrame(rows, columns=[L.C_CLUSTER, L.C_GAP_COUNT, L.C_NEW_PAGES, L.C_GAP_QUERIES])
-
-
-def count_new_pages(decisions: pd.DataFrame) -> int:
-    return int(gap_summary(decisions)[L.C_NEW_PAGES].sum())

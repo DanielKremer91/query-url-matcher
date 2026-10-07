@@ -1,10 +1,7 @@
 import pandas as pd
 
-from qum import labels as L
 from qum.serp import (
     cluster_keywords,
-    count_new_pages,
-    gap_summary,
     overlap_edges,
     top_urls_per_keyword,
     topics,
@@ -123,27 +120,6 @@ def test_topics_use_the_sliders():
     serps = _serps({"a": _urls(1, 2, 3, 4), "b": _urls(1, 2, 7, 8)})
     assert topics(["a", "b"], serps, min_overlap=0.5) == [1, 1]
     assert topics(["a", "b"], serps, min_overlap=0.6) == [0, 0]
-
-
-def test_gap_summary_counts_one_page_per_cluster():
-    decisions = pd.DataFrame(
-        {
-            L.C_QUERY: ["a", "b", "c", "d", "e"],
-            L.C_VERDICT: [L.V_GAP, L.V_GAP, L.V_GAP, L.V_GAP, L.V_MATCH],
-            L.C_CLUSTER: [1, 1, 0, 0, 1],
-        }
-    )
-    summary = gap_summary(decisions)
-    assert summary.to_dict("records") == [
-        {L.C_CLUSTER: "1", L.C_GAP_COUNT: 2, L.C_NEW_PAGES: 1, L.C_GAP_QUERIES: "a | b"},
-        {L.C_CLUSTER: L.NO_CLUSTER, L.C_GAP_COUNT: 2, L.C_NEW_PAGES: 2, L.C_GAP_QUERIES: "c | d"},
-    ]
-    assert count_new_pages(decisions) == 3
-
-
-def test_count_new_pages_without_cluster_column():
-    decisions = pd.DataFrame({L.C_QUERY: ["a", "b"], L.C_VERDICT: [L.V_GAP, L.V_GAP]})
-    assert count_new_pages(decisions) == 2
 
 
 def _brute_force_edges(kw_urls, min_overlap):

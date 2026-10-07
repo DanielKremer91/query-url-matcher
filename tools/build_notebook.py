@@ -410,26 +410,32 @@ print(f"✅ Schritt 7b fertig: Schwelle {threshold:.4f}. Weiter mit Schritt 7c: 
 
 STEP7C = '''#@title Schritt 7c: Urteile bilden { display-mode: "form" }
 #@markdown **▶ Starten. Die Werte darunter kannst du für den ersten Lauf auf den Voreinstellungen lassen.**
-#@markdown Die Zelle entscheidet mit der Schwelle aus Schritt 7b je Query, ob eine deiner Seiten schon passt, und bildet daraus die Urteile (passende Seite, Kannibalisierung, Content-Lücke). Willst du nur die Feineinstellungen ändern, starte nur diese Zelle erneut. Welches Urteil wann entsteht, zeigt die Übersicht über Schritt 7a.
-#@markdown **rankt_gut_bis_position:** Bis zu dieser Position gilt eine Query als gut rankend. Davon hängt das Urteil ab: "In Ordnung" oder "Kannibalisierungsgefahr" bei gutem Ranking, "Bestehende Seite nutzen" oder "Content-Lücke" bei schwachem.
+#@markdown Die Zelle entscheidet mit der Schwelle aus Schritt 7b je Query, ob eine oder mehrere deiner Seiten passen, und bildet daraus die Urteile (passende Seite, Kannibalisierungsgefahr, Content-Lücke). Dazu stellt sie die potentiellen Content-Lücken zusammen. Willst du nur die Feineinstellungen ändern, starte nur diese Zelle erneut. Welches Urteil wann entsteht, zeigt die Übersicht über Schritt 7a.
+#@markdown **rankt_gut_bis_position:** Bis zu dieser Position gilt eine Query als gut rankend. Davon hängt das Urteil ab: "In Ordnung" oder "Kannibalisierungsgefahr" bei gutem Ranking, "Bestehende Seite nutzen", "Kannibalisierungsgefahr" oder "Content-Lücke" bei schwachem.
 rankt_gut_bis_position = 10 #@param {type:"integer"}
-#@markdown **abstand_fast_gleich:** Score-Unterschied, bis zu dem zwei Seiten als gleich gut gelten (0.01 = ein Hundertstel). Liegt die rankende Seite höchstens so weit hinter der besten, lautet das Urteil "In Ordnung". Liegen zwei passende Seiten so nah beieinander, gibt es einen Hinweis auf Kannibalisierungsgefahr.
+#@markdown **abstand_fast_gleich:** Score-Unterschied, bis zu dem zwei Seiten als gleich gut gelten (0.01 = ein Hundertstel). Liegt die rankende Seite höchstens so weit hinter der besten, lautet das Urteil "In Ordnung". Liegen mehrere passende Seiten so nah beieinander, gibt es Kannibalisierungsgefahr.
 abstand_fast_gleich = 0.01 #@param {type:"number"}
-#@markdown **sichtbar_bis_position:** Ranken zwei eigene URLs für dieselbe Query bis zu dieser Position, meldet das Tool "Kannibalisierung bereits sichtbar".
+#@markdown **sichtbar_bis_position:** Ranken zwei eigene URLs für dieselbe Query bis zu dieser Position, steht die Query im Blatt Kannibalisierungsgefahr mit der Stufe "Bereits sichtbar".
 sichtbar_bis_position = 20 #@param {type:"integer"}
-#@markdown **Clustering (nur mit Schritt 6):** Das Tool fasst Keywords mit ähnlichen Google-Ergebnissen zu Themen zusammen. Ein Cluster mit mehreren Content-Lücken zählt als eine neue Seite, nicht als mehrere.
+#@markdown **Potentielle Content-Lücken:** Das Blatt „Potentielle Content-Lücken“ hat eigene Einstellungen. Seine Zahl kann deshalb von der Zahl der Urteile „Content-Lücke“ abweichen.
+#@markdown **luecke_unter_score:** Eine Query gilt als potentielle Lücke, wenn der Score ihrer besten Seite unter diesem Wert liegt. 0 = Schwelle aus Schritt 7b. Sonst ein Wert zwischen 0 und 1, zum Beispiel 0.8 für eine strengere oder 0.75 für eine mildere Auswahl.
+luecke_unter_score = 0.0 #@param {type:"number"}
+#@markdown **luecke_nur_ohne_ranking_bis_position:** 0 = aus. Bei zum Beispiel 10 zählen nur Queries, für die keine eigene Seite bis Position 10 rankt (kein Ranking oder schlechter als Position 10). Ohne Rankings wird der Wert ignoriert.
+luecke_nur_ohne_ranking_bis_position = 0 #@param {type:"integer"}
+#@markdown **Clustering (nur mit Schritt 6):** Das Tool fasst Keywords mit ähnlichen Google-Ergebnissen zu Themen zusammen. Die beiden Regler ändern nur die Spalte Thema im Blatt „Potentielle Content-Lücken“: Lücken mit gleichem Thema zählen als eine neue Seite, nicht als mehrere.
 #@markdown **serp_ueberschneidung:** Ab wie viel Prozent gleicher Top-10-URLs zwei Keywords als verwandt gelten. Beispiel: „fassade streichen" und „hausfassade streichen" teilen 6 von 10 URLs, also 60 %. Bei 50 % sind sie verwandt, Google behandelt sie als dieselbe Suchintention. Hat ein Keyword weniger als 10 Treffer, zählt die kürzere Liste.
 serp_ueberschneidung = 50 #@param {type:"slider", min:10, max:100, step:5}
 #@markdown **cluster_dichte:** Mit wie viel Prozent der anderen Mitglieder ein Keyword verwandt sein muss, um im Cluster zu bleiben. Das verhindert Ketten: Ist A mit B verwandt, B mit C, C mit D und D mit E, aber A hat mit E nichts gemeinsam, sollen nicht alle fünf in einem Cluster landen. Bei 50 % muss jedes Keyword mit mindestens 2 der 4 anderen verwandt sein. A und E fallen raus, B, C und D bleiben.
 cluster_dichte = 50 #@param {type:"slider", min:10, max:100, step:5}
-#@markdown Höhere Werte bei beiden Reglern ergeben kleinere, engere Cluster und damit eher mehr neue Seiten, niedrigere Werte größere Cluster und weniger neue Seiten.
+#@markdown Höhere Werte bei beiden Reglern ergeben kleinere, engere Themen und damit eher mehr neue Seiten, niedrigere Werte größere Themen und weniger neue Seiten.
 
 from datetime import date
 
 from qum import colab, export
 from qum import labels as L
 from qum.cannibal import annotate, find_cannibalization
-from qum.serp import count_new_pages, topics
+from qum.gaps import count_new_pages, find_gaps
+from qum.serp import topics
 from qum.verdict import build_decisions
 
 colab.require(globals(), 4, "result", "lead", "size", "overlap", "weight", "basis_label")
@@ -443,15 +449,31 @@ if not 0 <= abstand_fast_gleich < 0.1:
         'Der Abstand für "fast gleich" muss mindestens 0 und kleiner als 0.1 sein. Er ist eine Differenz von '
         f"Cosinus-Scores (zum Beispiel 0.01), kein Prozentwert.{kept}"
     )
+if not 0 <= luecke_unter_score <= 1:
+    colab.stop(
+        "luecke_unter_score muss 0 (Schwelle aus Schritt 7b) oder ein Wert zwischen 0 und 1 sein, zum Beispiel 0.8."
+        f"{kept}"
+    )
+if luecke_nur_ohne_ranking_bis_position < 0:
+    colab.stop(f"luecke_nur_ohne_ranking_bis_position darf nicht negativ sein. 0 schaltet die Bedingung aus.{kept}")
 colab.invalidate(globals(), *colab.DECISION_STATE)
 print(f"Schwelle aus Schritt 7b: {threshold:.4f} ({threshold_label}).")
 new_decisions = build_decisions(result, lead, threshold, rankings, rankt_gut_bis_position, weight, abstand_fast_gleich)
 new_cannibal = find_cannibalization(
     result, lead, threshold, rankings, rankt_gut_bis_position, abstand_fast_gleich, sichtbar_bis_position
 )
-if serps is not None:
-    new_decisions[L.C_CLUSTER] = topics(result.queries, serps, serp_ueberschneidung / 100, cluster_dichte / 100)
 new_decisions = annotate(new_decisions, new_cannibal)
+gap_position = luecke_nur_ohne_ranking_bis_position if rankings is not None else 0
+if luecke_nur_ohne_ranking_bis_position > 0 and rankings is None:
+    print("ℹ️ luecke_nur_ohne_ranking_bis_position wird ignoriert: Es sind keine Rankings geladen.")
+new_topics = None if serps is None else topics(result.queries, serps, serp_ueberschneidung / 100, cluster_dichte / 100)
+new_gaps = find_gaps(result, lead, threshold, rankings, new_topics, luecke_unter_score, gap_position)
+if luecke_nur_ohne_ranking_bis_position == 0:
+    gap_position_setting = "aus"
+elif rankings is None:
+    gap_position_setting = "ignoriert, keine Rankings"
+else:
+    gap_position_setting = luecke_nur_ohne_ranking_bis_position
 settings = {
     "Datum": date.today().isoformat(),
     "Modell": spec.model_id,
@@ -466,18 +488,26 @@ settings = {
     "Rankt gut bis Position": rankt_gut_bis_position,
     "Abstand fast gleich": abstand_fast_gleich,
     "Sichtbar bis Position": sichtbar_bis_position,
+    "Lücke unter Score": luecke_unter_score or "Schwelle aus Schritt 7b",
+    "Lücke nur ohne Ranking bis Position": gap_position_setting,
     "SERP-Überschneidung (%)": serp_ueberschneidung,
     "Cluster-Dichte (%)": cluster_dichte,
     "Eigene Rankings": {"Datei": "ja, aus Datei", "SERPs": "ja, aus den SERPs abgeleitet"}.get(rankings_source, "nein"),
     "Top-10-SERPs": "ja" if serps is not None else "nein",
 }
-decisions, cannibal = new_decisions, new_cannibal
+decisions, cannibal, gaps = new_decisions, new_cannibal, new_gaps
+new_pages = None if serps is None else count_new_pages(gaps)
 counts = decisions[L.C_VERDICT].value_counts()
 for verdict, count in counts.items():
     print(f"   {count:>5} × {verdict}")
-print(f"   {cannibal[L.C_QUERY].nunique():>5} Queries mit Kannibalisierungsgefahr (über alle Urteile, Spalte „Kannibalisierungsgefahr“)")
-uncalibrated = " (Schwelle nicht kalibriert)" if threshold_source == "median" else ""
-print(f"   {count_new_pages(decisions):>5} neue Seiten aus den Content-Lücken{uncalibrated}")
+print(f"   {cannibal[L.C_QUERY].nunique():>5} Queries im Blatt Kannibalisierungsgefahr (über alle Urteile, Spalte „Kannibalisierungsgefahr“ = ja)")
+uncalibrated = " (Schwelle nicht kalibriert)" if threshold_source == "median" and not luecke_unter_score else ""
+pages = "" if new_pages is None else f", zusammen {new_pages} neue Seiten (eine je Thema, Lücken ohne Thema einzeln)"
+print(f"   {len(gaps):>5} potentielle Content-Lücken{uncalibrated}{pages}")
+print(
+    "ℹ️ Das Blatt „Potentielle Content-Lücken“ folgt seinen eigenen Einstellungen (luecke_unter_score, "
+    "luecke_nur_ohne_ranking_bis_position). Seine Zahl kann deshalb von der Zahl der Urteile „Content-Lücke“ abweichen."
+)
 print()
 print("Was die Urteile bedeuten:")
 for verdict in counts.index:
@@ -494,8 +524,8 @@ csv_trennzeichen = "Semikolon (für deutsches Excel)" #@param ["Semikolon (für 
 
 from qum import colab, export
 
-colab.require(globals(), "7c", "decisions", "cannibal", "settings", "threshold_source")
-sheets = export.build_sheets(decisions, cannibal, settings, threshold_source=threshold_source)
+colab.require(globals(), "7c", "decisions", "cannibal", "gaps", "settings", "threshold_source")
+sheets = export.build_sheets(decisions, cannibal, gaps, settings, threshold_source=threshold_source, new_pages=new_pages)
 export.write_excel("query_url_matcher.xlsx", sheets)
 colab.download("query_url_matcher.xlsx")
 if zusaetzlich_csv_zip:

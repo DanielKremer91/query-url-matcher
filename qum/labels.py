@@ -22,10 +22,9 @@ C_POSITION = "Rankingposition"
 C_RANK_URL = "Rankende URL"
 C_RANK_IS_BEST = "Rankende URL = beste URL?"
 
-C_CLUSTER = "Cluster"
-C_GAP_COUNT = "Lücken-Queries"
-C_NEW_PAGES = "Neue Seiten"
-C_GAP_QUERIES = "Queries"
+# Blatt Potentielle Content-Lücken
+C_BEST_SCORE = "Bester Score"
+C_TOPIC = "Thema"
 
 C_CANNIBAL = "Kannibalisierungsgefahr"
 
@@ -79,8 +78,6 @@ NO = "nein"
 CMP_CLOSE = "fast gleich gut"
 CMP_NOT_RANKING = "rankt nicht"
 CMP_NOT_IN_EXPORT = "nicht im Frog-Export"
-
-NO_CLUSTER = "ohne Cluster"
 
 # Auswahl im Formular -> interner Schlüssel
 BASIS = {"Chunk": "chunk", "Gesamt-URL": "full", "Kombi": "combined"}
