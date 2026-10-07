@@ -7,6 +7,7 @@ from openpyxl import load_workbook
 
 from qum import export
 from qum import labels as L
+from qum.cannibal import COLUMNS
 
 
 def _decisions(with_cluster=False):
@@ -23,7 +24,7 @@ def _decisions(with_cluster=False):
 
 
 TOP = pd.DataFrame({L.C_QUERY: ["a"], L.C_URL: ["u1"]})
-CANNIBAL = pd.DataFrame(columns=[L.C_QUERY, L.C_STAGE, L.C_REASON, L.C_COMPETING])
+CANNIBAL = pd.DataFrame(columns=COLUMNS)
 SETTINGS = {"Modell": "multilingual-e5-large", "Schwelle": "0.81"}
 
 
@@ -174,8 +175,10 @@ def test_write_excel_keeps_formula_like_text_as_text(tmp_path):
 def test_help_texts_describe_the_margin_rule():
     assert "fast gleich" in export.VERDICT_HELP[L.V_OK]
     assert "deutlich besser" in export.VERDICT_HELP[L.V_CANNIBAL]
-    assert "rankende Seite" in export._COLUMN_HELP[L.C_BEST_URL]
-    assert "deutlich besser" in export._STAGE_HELP[L.STAGE_DANGER]
+    assert "fast gleich gut" in export._STAGE_HELP[L.STAGE_DANGER]
+    for verdict in (L.V_MATCH, L.V_USE):
+        assert "Genau eine Seite passt klar" in export.VERDICT_HELP[verdict] or "genau eine Seite passt klar" in export.VERDICT_HELP[verdict]
+    assert "Mehrere Seiten erreichen die Schwelle und passen fast gleich gut" in export.VERDICT_HELP[L.V_CANNIBAL]
 
 
 @pytest.mark.parametrize("sep, number", [(";", "0,8123"), (",", "0.8123")])
@@ -200,12 +203,9 @@ def _text_number_sheets():
     decisions = _decisions()
     decisions[L.C_POSITION] = ["4.3", "12", ""]
     cannibal = pd.DataFrame(
-        {
-            L.C_QUERY: ["a"],
-            L.C_STAGE: [L.STAGE_DANGER],
-            L.C_REASON: [L.REASON_BETTER],
-            L.C_COMPETING: ["https://a.de/x.html (Position 4.3, Score 0.842) | https://a.de/y (Score -0.0123)"],
-        }
+        [["a", L.STAGE_DANGER, L.REASON_BETTER, "https://a.de/x.html", 0.842, "4.3", "https://a.de/y", -0.0123, "",
+          "https://a.de/z", None, "17.5"]],
+        columns=COLUMNS,
     )
     settings = {"Datum": "2026-10-05", "Modell": "multilingual-e5-large", "Schwelle": 0.8123, "Treffer je Query (Top-N)": 5}
     return export.build_sheets(decisions, TOP, cannibal, settings)
@@ -219,15 +219,16 @@ def _csv_frames(path, sep):
         }
 
 
-def test_semicolon_csv_uses_decimal_comma_in_positions_settings_and_competing_urls(tmp_path):
+def test_semicolon_csv_uses_decimal_comma_in_positions_settings_and_scores(tmp_path):
     sheets = _text_number_sheets()
     export.write_csv_zip(tmp_path / "out.zip", sheets, sep=";")
     frames = _csv_frames(tmp_path / "out.zip", ";")
     decisions = frames["entscheidung.csv"]
     assert decisions[L.C_POSITION].tolist() == ["4,3", "12", ""]
-    assert frames["kannibalisierungsgefahr.csv"].iloc[0][L.C_COMPETING] == (
-        "https://a.de/x.html (Position 4,3, Score 0,842) | https://a.de/y (Score -0,0123)"
-    )
+    row = frames["kannibalisierungsgefahr.csv"].iloc[0]
+    assert [row[L.C_POS_1], row[L.C_SCORE_1], row[L.C_SCORE_2], row[L.C_POS_2], row[L.C_SCORE_3], row[L.C_POS_3]] == [
+        "4,3", "0,842", "-0,0123", "", "", "17,5",
+    ]
     readme = frames["lesehilfe.csv"].set_index(L.R_ENTRY)[L.R_TEXT]
     assert readme["Schwelle"] == "0,8123"
     assert readme["Datum"] == "2026-10-05" and readme["Modell"] == "multilingual-e5-large"
@@ -240,7 +241,8 @@ def test_comma_csv_and_excel_keep_the_decimal_point_in_text(tmp_path):
     export.write_csv_zip(tmp_path / "out.zip", sheets, sep=",")
     frames = _csv_frames(tmp_path / "out.zip", ",")
     assert frames["entscheidung.csv"][L.C_POSITION].tolist() == ["4.3", "12", ""]
-    assert "Position 4.3, Score 0.842" in frames["kannibalisierungsgefahr.csv"].iloc[0][L.C_COMPETING]
+    row = frames["kannibalisierungsgefahr.csv"].iloc[0]
+    assert [row[L.C_POS_1], row[L.C_SCORE_1], row[L.C_POS_3]] == ["4.3", "0.842", "17.5"]
     export.write_excel(tmp_path / "out.xlsx", sheets)
     book = load_workbook(tmp_path / "out.xlsx")
     position_col = list(sheets[export.SHEET_DECISION].columns).index(L.C_POSITION) + 1

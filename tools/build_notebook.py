@@ -450,7 +450,9 @@ if not 0 <= abstand_fast_gleich < 0.1:
 colab.invalidate(globals(), *colab.DECISION_STATE)
 print(f"Schwelle aus Schritt 7b: {threshold:.4f} ({threshold_label}).")
 new_decisions = build_decisions(result, lead, threshold, rankings, rankt_gut_bis_position, weight, abstand_fast_gleich)
-new_cannibal = find_cannibalization(result, lead, threshold, new_decisions, rankings, abstand_fast_gleich, sichtbar_bis_position)
+new_cannibal = find_cannibalization(
+    result, lead, threshold, rankings, rankt_gut_bis_position, abstand_fast_gleich, sichtbar_bis_position
+)
 if serps is not None:
     new_decisions[L.C_CLUSTER] = topics(result.queries, serps, serp_ueberschneidung / 100, cluster_dichte / 100)
 new_decisions = annotate(new_decisions, new_cannibal)

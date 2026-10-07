@@ -562,6 +562,16 @@ def test_step_7c_fine_settings_keep_their_defaults():
     assert re.search(r"^kalibrierung_bis_position = 5 #@param", _source("7a"), flags=re.M)
 
 
+WEAK_QUERY = "getreidefreies trockenfutter hund"
+
+
+def _verdict_of(nb, query):
+    from qum import labels as L
+
+    decisions = nb.ns["decisions"]
+    return decisions.loc[decisions[L.C_QUERY] == query, L.C_VERDICT].item()
+
+
 def test_smoke_step_7_margin_reaches_the_verdicts(nb):
     from qum import labels as L
 
@@ -571,9 +581,9 @@ def test_smoke_step_7_margin_reaches_the_verdicts(nb):
     nb.uploads.append(("rankings.csv", weak.encode()))
     nb.run(5)
     _verdicts(nb, OWN, eigene_schwelle=0.2)
-    assert nb.ns["decisions"][L.C_VERDICT].tolist().count(L.V_CANNIBAL) == 1
+    assert _verdict_of(nb, WEAK_QUERY) == L.V_CANNIBAL
     _verdicts(nb, OWN, eigene_schwelle=0.2, abstand_fast_gleich=0.05)
-    assert L.V_CANNIBAL not in nb.ns["decisions"][L.C_VERDICT].tolist()
+    assert _verdict_of(nb, WEAK_QUERY) == L.V_OK
 
 
 def test_smoke_rerunning_only_step_7c_with_another_margin_changes_the_verdicts(nb, capsys):
@@ -584,10 +594,10 @@ def test_smoke_rerunning_only_step_7c_with_another_margin_changes_the_verdicts(n
     nb.uploads.append(("rankings.csv", weak.encode()))
     nb.run(5)
     _verdicts(nb, OWN, eigene_schwelle=0.2)
-    assert nb.ns["decisions"][L.C_VERDICT].tolist().count(L.V_CANNIBAL) == 1
+    assert _verdict_of(nb, WEAK_QUERY) == L.V_CANNIBAL
     capsys.readouterr()
     nb.run("7c", abstand_fast_gleich=0.05)
-    assert L.V_CANNIBAL not in nb.ns["decisions"][L.C_VERDICT].tolist()
+    assert _verdict_of(nb, WEAK_QUERY) == L.V_OK
     assert nb.ns["threshold"] == 0.2 and nb.ns["settings"]["Abstand fast gleich"] == 0.05
     assert "✅ Schritt 7c fertig. Weiter mit Schritt 8 (Export)." in capsys.readouterr().out
     nb.run(8)
@@ -987,7 +997,8 @@ def test_smoke_decisions_carry_the_cannibalisation_column(nb, capsys):
     nb.run("7b", schwelle_waehlen=MEDIAN)
     nb.run("7c")
     decisions, cannibal = nb.ns["decisions"], nb.ns["cannibal"]
-    flagged = set(decisions.loc[decisions[L.C_CANNIBAL] != "", L.C_QUERY])
+    assert set(decisions[L.C_CANNIBAL]) <= {L.YES, L.NO}
+    flagged = set(decisions.loc[decisions[L.C_CANNIBAL] == L.YES, L.C_QUERY])
     assert flagged == set(cannibal[L.C_QUERY])
     assert "über alle Urteile" in capsys.readouterr().out
 

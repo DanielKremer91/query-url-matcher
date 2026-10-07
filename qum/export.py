@@ -59,45 +59,60 @@ _COLUMN_HELP = {
     L.C_R_COMBI: "Rang der Seite nach Kombi-Score für diese Query. 1 = beste URL für diese Query unter allen URLs.",
     L.C_METHOD: f"'{L.FULLTEXT}': ganzer Text als ein Embedding. '{L.CHUNK_MEAN}': Text zu lang, Näherung.",
     L.C_VERDICT: "Einordnung der Query, siehe die Urteile weiter unten in dieser Lesehilfe.",
-    L.C_BEST_URL: (
-        "Die Seite mit dem höchsten Score für die Query, nach der gewählten Bewertungsgrundlage. "
-        "Bei 'In Ordnung' die rankende Seite, wenn sie fast gleich gut passt."
+    L.C_BEST_URL: "Die Seite mit dem höchsten Score für die Query, nach der gewählten Bewertungsgrundlage.",
+    L.C_RANK_URL: "Die eigene URL, die laut Rankings am besten für die Query rankt, egal auf welcher Position.",
+    L.C_POSITION: "Beste eigene Position für die Query laut Rankings. Leer, wenn die Query nicht rankt.",
+    L.C_RANK_IS_BEST: (
+        f"'{L.YES}': die rankende URL ist die beste URL. '{L.CMP_CLOSE}': sie erreicht die Schwelle und liegt höchstens "
+        f"um den Abstand 'fast gleich' hinter der besten. '{L.NO}': eine andere Seite passt besser. "
+        f"'{L.CMP_NOT_RANKING}': keine eigene URL rankt für die Query. '{L.CMP_NOT_IN_EXPORT}': die rankende URL "
+        "steht nicht im Frog-Export und wurde nicht verglichen. Leer ohne Rankings."
     ),
-    L.C_RANK_URL: "Die URL, die laut Ranking-Export am besten für die Query rankt.",
-    L.C_POSITION: "Beste Position der rankenden URL für die Query im Ranking-Export.",
-    L.C_NOTE: "Ergänzender Hinweis, zum Beispiel wenn eine URL im Frog-Export fehlt.",
     L.C_CANNIBAL: (
-        "Hinweis auf Kannibalisierungsgefahr zu dieser Query, unabhängig vom Urteil: Stufe (Gefahr oder Bereits sichtbar) und die "
-        "konkurrierenden eigenen URLs. Leer, wenn es keinen Hinweis gibt. Details im Blatt Kannibalisierungsgefahr."
+        f"'{L.YES}', wenn die Query im Blatt Kannibalisierungsgefahr steht, unabhängig vom Urteil, sonst '{L.NO}'."
     ),
     L.C_CLUSTER: "Keywords mit gleicher Nummer haben stark überlappende Google-Ergebnisse. 0 = kein Cluster.",
     L.C_STAGE: "Stufe der Kannibalisierungsgefahr, siehe die Stufen weiter unten in dieser Lesehilfe.",
     L.C_REASON: "Warum die Query im Blatt Kannibalisierungsgefahr steht.",
-    L.C_COMPETING: "Die konkurrierenden eigenen URLs mit Score oder Position.",
+    L.C_URL_1: "Erste konkurrierende eigene URL. Mehr als drei URLs zählt die Spalte Grund.",
+    L.C_SCORE_1: "Score der URL 1 nach der gewählten Bewertungsgrundlage. Leer, wenn sie nicht im Frog-Export steht.",
+    L.C_POS_1: "Eigene Position der URL 1 für die Query. Leer, wenn sie dafür nicht rankt.",
+    L.C_URL_2: "Zweite konkurrierende eigene URL.",
+    L.C_SCORE_2: "Score der URL 2 nach der gewählten Bewertungsgrundlage. Leer, wenn sie nicht im Frog-Export steht.",
+    L.C_POS_2: "Eigene Position der URL 2 für die Query. Leer, wenn sie dafür nicht rankt.",
+    L.C_URL_3: "Dritte konkurrierende eigene URL.",
+    L.C_SCORE_3: "Score der URL 3 nach der gewählten Bewertungsgrundlage. Leer, wenn sie nicht im Frog-Export steht.",
+    L.C_POS_3: "Eigene Position der URL 3 für die Query. Leer, wenn sie dafür nicht rankt.",
     L.C_GAP_COUNT: "Anzahl der Content-Lücken-Queries in diesem Cluster.",
     L.C_NEW_PAGES: "Anzahl neuer Seiten, die dafür nötig wären: ein Cluster eine Seite, Queries ohne Cluster je eine.",
     L.C_GAP_QUERIES: "Die Content-Lücken-Queries dieser Zeile, getrennt durch senkrechte Striche.",
 }
 
 _STAGE_HELP = {
-    L.STAGE_DANGER: "Eine Seite rankt gut, eine andere passt deutlich besser, oder mehrere Seiten passen fast gleich gut.",
-    L.STAGE_VISIBLE: "Mehrere eigene Seiten ranken bereits für die Query.",
+    L.STAGE_DANGER: (
+        "Mehrere eigene Seiten passen semantisch fast gleich gut, oder eine gut rankende Seite passt deutlich schlechter "
+        "als eine andere eigene Seite. In den Rankings ist das noch nicht sichtbar."
+    ),
+    L.STAGE_VISIBLE: "Mehrere eigene Seiten ranken bereits für die Query (bis zur Position aus sichtbar_bis_position).",
 }
 
+# "passt klar": eine Seite erreicht die Schwelle und liegt mehr als den Abstand 'fast gleich' vor jeder anderen passenden
 VERDICT_HELP = {
-    L.V_MATCH: "Mindestens eine Seite erreicht die Schwelle.",
-    L.V_GAP: "Keine Seite erreicht die Schwelle.",
+    L.V_MATCH: "Ohne Rankings: Genau eine Seite passt klar, sie erreicht die Schwelle und liegt deutlich vor allen anderen.",
+    L.V_GAP: "Keine Seite erreicht die Schwelle. Die Query rankt nicht gut, oder es sind keine Rankings geladen.",
     L.V_OK: (
-        "Die rankende Seite erreicht die Schwelle und passt semantisch am besten oder fast gleich gut wie die beste "
-        "(Abstand 'fast gleich')."
+        "Die Query rankt gut, die rankende Seite erreicht die Schwelle und passt am besten oder fast gleich gut wie die "
+        "beste (Abstand 'fast gleich'). Passen mehrere Seiten fast gleich gut, steht in der Spalte "
+        "Kannibalisierungsgefahr 'ja'."
     ),
     L.V_CANNIBAL: (
-        "Eine Seite rankt gut, eine andere eigene Seite erreicht die Schwelle und passt semantisch deutlich besser "
-        "(mehr als der Abstand 'fast gleich'), die rankende erreicht die Schwelle nicht, "
-        "oder die rankende URL steht nicht im Frog-Export."
+        "Mehrere eigene Seiten konkurrieren um die Query. Bei gutem Ranking: Eine andere eigene Seite passt deutlich "
+        "besser (mehr als der Abstand 'fast gleich'), die rankende erreicht die Schwelle nicht, oder die rankende URL "
+        "steht nicht im Frog-Export. Bei schwachem oder fehlendem Ranking: Mehrere Seiten erreichen die Schwelle und "
+        "passen fast gleich gut. Details im Blatt Kannibalisierungsgefahr."
     ),
     L.V_WATCH: "Die Query rankt gut, obwohl keine Seite die Schwelle erreicht.",
-    L.V_USE: "Kein gutes Ranking, aber eine passende Seite existiert.",
+    L.V_USE: "Die Query rankt nicht gut, aber genau eine Seite passt klar: Sie erreicht die Schwelle und liegt deutlich vor allen anderen.",
 }
 
 _FILLS = {
@@ -202,7 +217,8 @@ def write_excel(path, sheets: dict) -> None:
 
 
 _PLAIN_NUMBER = re.compile(r"^-?\d+\.\d+$")
-_NUMBER_IN_TEXT = re.compile(r"(Score|Position) (-?\d+)\.(\d+)")
+# Positionen liegen als Text vor ("4.3"), damit ganze Zahlen ohne ".0" erscheinen
+_POSITION_COLUMNS = (L.C_POSITION, L.C_POS_1, L.C_POS_2, L.C_POS_3)
 
 
 def _comma_in_text(name, df: pd.DataFrame) -> pd.DataFrame:
@@ -212,11 +228,9 @@ def _comma_in_text(name, df: pd.DataFrame) -> pd.DataFrame:
     def swap(value):
         return value.replace(".", ",") if isinstance(value, str) else value
 
-    if L.C_POSITION in out.columns:
-        out[L.C_POSITION] = out[L.C_POSITION].map(swap)
-    for column in (L.C_COMPETING,):
+    for column in _POSITION_COLUMNS:
         if column in out.columns:
-            out[column] = out[column].map(lambda v: _NUMBER_IN_TEXT.sub(r"\1 \2,\3", v) if isinstance(v, str) else v)
+            out[column] = out[column].map(swap)
     if name == SHEET_README:
         numeric = (out[L.R_AREA] == "Einstellung") & out[L.R_TEXT].map(lambda v: bool(_PLAIN_NUMBER.match(str(v))))
         out.loc[numeric, L.R_TEXT] = out.loc[numeric, L.R_TEXT].map(swap)

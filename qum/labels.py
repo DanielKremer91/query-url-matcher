@@ -23,24 +23,33 @@ C_THIRD_URL = "Drittbeste URL"
 C_S_CHUNK_3 = "Score Chunk 3"
 C_S_FULL_3 = "Score Gesamt-URL 3"
 C_S_COMBI_3 = "Score Kombi 3"
+C_POSITION = "Rankingposition"
 C_RANK_URL = "Rankende URL"
-C_POSITION = "Position"
-C_NOTE = "Hinweis"
+C_RANK_IS_BEST = "Rankende URL = beste URL?"
 
 C_CLUSTER = "Cluster"
 C_GAP_COUNT = "Lücken-Queries"
 C_NEW_PAGES = "Neue Seiten"
 C_GAP_QUERIES = "Queries"
 
+C_CANNIBAL = "Kannibalisierungsgefahr"
+
+# Blatt Kannibalisierungsgefahr: bis zu drei konkurrierende URLs mit Leit-Score und eigener Position
 C_STAGE = "Stufe"
 C_REASON = "Grund"
-C_COMPETING = "Konkurrierende URLs"
-C_CANNIBAL = "Kannibalisierungsgefahr"
+C_URL_1 = "URL 1"
+C_SCORE_1 = "Score 1"
+C_POS_1 = "Position 1"
+C_URL_2 = "URL 2"
+C_SCORE_2 = "Score 2"
+C_POS_2 = "Position 2"
+C_URL_3 = "URL 3"
+C_SCORE_3 = "Score 3"
+C_POS_3 = "Position 3"
 
 # Prüfbeispiele um die Schwelle (Schritt 7a und 7b, nicht im Export)
 C_SIDE = "Lage"
 C_SCORE = "Score"
-C_SCORE_2 = "Score 2"
 SIDE_ABOVE = "knapp über der Schwelle"
 SIDE_BELOW = "knapp unter der Schwelle"
 
@@ -69,7 +78,13 @@ REASON_OK_CLOSE = "Rankende Seite passt, eine weitere passt fast gleich gut"
 REASON_CLOSE = "Mehrere Seiten passen fast gleich gut"
 REASON_RANKING = "Mehrere eigene Seiten ranken für die Query"
 
-NOTE_NOT_IN_EXPORT = "Rankende URL steht nicht im Frog-Export"
+# Werte der Spalten "Rankende URL = beste URL?" und Kannibalisierungsgefahr
+YES = "ja"
+NO = "nein"
+CMP_CLOSE = "fast gleich gut"
+CMP_NOT_RANKING = "rankt nicht"
+CMP_NOT_IN_EXPORT = "nicht im Frog-Export"
+
 NO_CLUSTER = "ohne Cluster"
 
 # Auswahl im Formular -> interner Schlüssel
