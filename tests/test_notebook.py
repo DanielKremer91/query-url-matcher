@@ -1022,6 +1022,7 @@ def test_step_7c_explains_both_cluster_sliders_with_examples():
 
 def test_step_7c_explains_the_gap_fields():
     source = _source("7c")
+    assert "Niedriger ist strenger" in _source("7c") and "Höher ist großzügiger" in _source("7c")
     for text in ("**luecke_unter_score:**", "0 = Schwelle aus Schritt 7b", "**luecke_nur_ohne_ranking_bis_position:**",
                  "0 = aus", "Ohne Rankings wird der Wert ignoriert"):
         assert text in source, text

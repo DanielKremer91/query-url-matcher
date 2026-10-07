@@ -430,7 +430,7 @@ abstand_fast_gleich = 0.01 #@param {type:"number"}
 #@markdown **sichtbar_bis_position:** Ranken zwei eigene URLs für dieselbe Query bis zu dieser Position, steht die Query im Blatt Kannibalisierungsgefahr mit der Stufe "Kannibalisierung bereits sichtbar".
 sichtbar_bis_position = 20 #@param {type:"integer"}
 #@markdown **Potentielle Content-Lücken:** Das Blatt „Potentielle Content-Lücken“ hat eigene Einstellungen. Seine Zahl kann deshalb von der Zahl der Urteile „Content-Lücke“ abweichen.
-#@markdown **luecke_unter_score:** Eine Query gilt als potentielle Lücke, wenn der Score ihrer besten Seite unter diesem Wert liegt. 0 = Schwelle aus Schritt 7b. Sonst ein Wert zwischen 0 und 1, zum Beispiel 0.8 für eine strengere oder 0.75 für eine mildere Auswahl.
+#@markdown **luecke_unter_score:** Eine Query gilt als potentielle Lücke, wenn der Score ihrer besten Seite unter diesem Wert liegt. 0 = Schwelle aus Schritt 7b. Sonst ein Wert zwischen 0 und 1. Niedriger ist strenger: Bei 0.75 zählen nur Queries, zu denen kaum eine Seite passt (weniger, aber sicherere Lücken). Höher ist großzügiger: Bei 0.8 zählen auch knappe Fälle. Wähle den Wert im Bereich deiner Scores, Schritt 7a zeigt Beispiele (bei e5 meist zwischen 0.75 und 0.9, bei anderen Modellen deutlich anders).
 luecke_unter_score = 0.0 #@param {type:"number"}
 #@markdown **luecke_nur_ohne_ranking_bis_position:** 0 = aus. Bei zum Beispiel 10 zählen nur Queries, für die keine eigene Seite bis Position 10 rankt (kein Ranking oder schlechter als Position 10). Ohne Rankings wird der Wert ignoriert.
 luecke_nur_ohne_ranking_bis_position = 0 #@param {type:"integer"}
