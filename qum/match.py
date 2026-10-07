@@ -6,6 +6,7 @@ import pandas as pd
 from . import labels as L
 from .chunk import chunk_words
 from .embeddings.base import l2_normalize
+from .embeddings.cache import CachedEmbedder
 
 
 @dataclass
@@ -38,13 +39,20 @@ def estimate_chunks(contents, chunk_size, chunk_overlap) -> int:
     return sum(len(chunk_words(c, chunk_size, chunk_overlap)) for c in contents)
 
 
+def _embed(embedder, texts, role, label):
+    """Nur der Zwischenspeicher kennt Fortschrittszeilen; andere Embedder bekommen keine Beschriftung."""
+    if isinstance(embedder, CachedEmbedder):
+        return embedder.embed(texts, role, label=label)
+    return embedder.embed(texts, role)
+
+
 def run_matching(queries, urls, contents, embedder, chunk_size, chunk_overlap) -> MatchResult:
     chunks = [chunk_words(c, chunk_size, chunk_overlap) for c in contents]
     flat = [chunk for per_url in chunks for chunk in per_url]
     offsets = np.cumsum([0] + [len(per_url) for per_url in chunks])
 
-    q = embedder.embed(list(queries), "query")
-    c = embedder.embed(flat, "passage")
+    q = _embed(embedder, list(queries), "query", L.P_QUERIES)
+    c = _embed(embedder, flat, "passage", L.P_CHUNKS)
     sims = q @ c.T
 
     n_q, n_u = len(queries), len(urls)
@@ -67,7 +75,7 @@ def run_matching(queries, urls, contents, embedder, chunk_size, chunk_overlap) -
             full_vecs[u] = c[lo:hi].mean(axis=0)
             methods.append(L.CHUNK_MEAN)
     if as_fulltext:
-        full_vecs[as_fulltext] = embedder.embed([" ".join(contents[u].split()) for u in as_fulltext], "passage")
+        full_vecs[as_fulltext] = _embed(embedder, [" ".join(contents[u].split()) for u in as_fulltext], "passage", L.P_PAGES)
     full_scores = q @ l2_normalize(full_vecs).T
 
     return MatchResult(list(queries), list(urls), chunks, chunk_scores, full_scores, best, methods)

@@ -145,3 +145,13 @@ def test_top_hits_sorted_by_selected_basis():
 
 def test_estimate_chunks():
     assert estimate_chunks(CONTENTS, 5, 1) == 5
+
+
+def test_run_matching_labels_each_embedding_pass(capsys):
+    from qum.embeddings.cache import CachedEmbedder
+
+    run_matching(["hundefutter getreidefrei"], URLS, CONTENTS, CachedEmbedder(FakeEmbedder(max_words=20)), 5, 1)
+    out = capsys.readouterr().out
+    assert "✅ Queries: 1 von 1 eingebettet" in out
+    assert "✅ Chunks: 5 von 5 eingebettet" in out
+    assert "✅ Ganze Seiten: 1 von 1 eingebettet" in out

@@ -12,9 +12,13 @@ from .base import CONSOLE, Embedder, EmbeddingError
 class ProgressLine:
     """Eine Fortschrittszeile, die an Ort und Stelle überschrieben wird; fertig endet sie ohne Auslassungszeichen."""
 
+    def __init__(self, label: str | None = None):
+        self.label = label
+
     def __call__(self, done: int, total: int) -> None:
         shown = f"{done:,} von {total:,}".replace(",", ".")
-        CONSOLE.progress(f"✅ {shown} Texten eingebettet" if done >= total else f"⏳ {shown} Texten eingebettet …")
+        text = f"{self.label}: {shown} eingebettet" if self.label else f"{shown} Texten eingebettet"
+        CONSOLE.progress(f"✅ {text}" if done >= total else f"⏳ {text} …")
 
     def close(self) -> None:
         CONSOLE.end_line()
@@ -31,7 +35,7 @@ class CachedEmbedder(Embedder):
     def __init__(self, inner: Embedder, cache_dir=None, notify=None, clock=time.monotonic):
         self.inner = inner
         self.spec = inner.spec
-        self._notify = ProgressLine() if notify is None else notify
+        self._custom_notify = notify
         self._clock = clock
         self._store = {}
         self._path = Path(cache_dir) / f"{self.spec.key}.npz" if cache_dir else None
@@ -47,7 +51,8 @@ class CachedEmbedder(Embedder):
         raw = "\x00".join([spec.model_id, spec.query_prefix, spec.passage_prefix, role, text])
         return hashlib.sha1(raw.encode("utf-8")).hexdigest()
 
-    def embed(self, texts, role):
+    def embed(self, texts, role, label=None):
+        """label (z. B. "Queries"): beschriftet die Fortschrittszeile und zeigt sie auch für wenige Texte."""
         if not texts:
             return self.inner.embed([], role)
 
@@ -57,7 +62,8 @@ class CachedEmbedder(Embedder):
             if key not in self._store and key not in missing:
                 missing[key] = text
         todo = list(missing)
-        show_progress = len(todo) > self.SLICE
+        show_progress = len(todo) > self.SLICE or (label is not None and len(todo) > 0)
+        notify = self._custom_notify or ProgressLine(label)
         last_save = self._clock()
         unsaved = False
         try:
@@ -69,7 +75,7 @@ class CachedEmbedder(Embedder):
                 self._store.update(zip(part, vectors))
                 unsaved = True
                 if show_progress:
-                    self._notify(start + len(part), len(todo))
+                    notify(start + len(part), len(todo))
                 now = self._clock()
                 if now - last_save >= self.SAVE_INTERVAL:
                     self._save()
@@ -80,7 +86,7 @@ class CachedEmbedder(Embedder):
                 if unsaved:
                     self._save()
             finally:
-                close = getattr(self._notify, "close", None)
+                close = getattr(notify, "close", None)
                 if close is not None:
                     close()
         return np.vstack([self._store[key] for key in keys])

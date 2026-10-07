@@ -433,3 +433,25 @@ def test_notice_without_open_progress_line_adds_no_blank_line(capsys):
 
     CONSOLE.say("Hinweis")
     assert capsys.readouterr().out == "Hinweis\n"
+
+
+def test_progress_line_with_label(capsys):
+    from qum.embeddings.cache import ProgressLine
+
+    line = ProgressLine("Queries")
+    line(394, 394)
+    line.close()
+    assert capsys.readouterr().out == "\r✅ Queries: 394 von 394 eingebettet\n"
+
+
+def test_labelled_embed_reports_even_small_batches(capsys):
+    CachedEmbedder(FakeEmbedder()).embed(["a b", "c d", "e f"], "query", label="Queries")
+    assert capsys.readouterr().out == "\r✅ Queries: 3 von 3 eingebettet\n"
+
+
+def test_labelled_embed_is_quiet_when_everything_is_cached(capsys):
+    cached = CachedEmbedder(FakeEmbedder())
+    cached.embed(["a b"], "query", label="Queries")
+    capsys.readouterr()
+    cached.embed(["a b"], "query", label="Queries")
+    assert capsys.readouterr().out == ""

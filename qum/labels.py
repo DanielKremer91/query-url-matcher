@@ -82,3 +82,8 @@ THRESHOLD_CHOICE = {
     "Mittlerer bester Score (nicht kalibriert)": "median",
     "Eigener Wert": "manuell",
 }
+
+# Beschriftung der Fortschrittszeilen beim Einbetten (Schritt 4)
+P_QUERIES = "Queries"
+P_CHUNKS = "Chunks"
+P_PAGES = "Ganze Seiten"
