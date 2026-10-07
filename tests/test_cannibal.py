@@ -28,7 +28,7 @@ def test_columns_and_empty_result():
 
 def test_two_urls_close_together_without_rankings():
     df = _run(["q"], [[0.80, 0.79, 0.3]])
-    assert df[L.C_STAGE].tolist() == [L.STAGE_RISK]
+    assert df[L.C_STAGE].tolist() == [L.STAGE_DANGER]
     assert df.iloc[0][L.C_COMPETING] == f"{U1} (Score 0.8) | {U2} (Score 0.79)"
 
 
@@ -44,7 +44,7 @@ def test_margin_is_adjustable():
 def test_risk_verdict_is_listed_with_ranking_and_better_url():
     rankings = _rankings([("q", U1, U1, 4.0)])
     df = _run(["q"], [[0.65, 0.9, 0.1]], rankings)
-    assert df[L.C_STAGE].tolist() == [L.STAGE_RISK]
+    assert df[L.C_STAGE].tolist() == [L.STAGE_DANGER]
     assert df.iloc[0][L.C_COMPETING] == f"{U1} (Position 4, Score 0.65) | {U2} (Score 0.9)"
 
 
@@ -58,7 +58,7 @@ def test_risk_row_for_ranking_url_outside_export_shows_position_only():
     alt = "https://a.de/alt"
     rankings = _rankings([("q", alt, alt, 2.0)])
     df = _run(["q"], [[0.9, 0.1, 0.1]], rankings)
-    assert df[L.C_STAGE].tolist() == [L.STAGE_RISK]
+    assert df[L.C_STAGE].tolist() == [L.STAGE_DANGER]
     assert df.iloc[0][L.C_COMPETING] == f"{alt} (Position 2) | {U1} (Score 0.9)"
     assert df.iloc[0][L.C_REASON] == L.REASON_NOT_IN_EXPORT
     assert L.REASON_NOT_IN_EXPORT == "Rankende URL steht nicht im Frog-Export und wurde nicht verglichen"
@@ -71,7 +71,7 @@ def test_default_margin_is_one_hundredth():
 
 def test_margin_boundary_counts_as_close():
     df = _run(["q"], [[0.80, 0.78, 0.1]], margin=0.02)
-    assert df[L.C_STAGE].tolist() == [L.STAGE_RISK]
+    assert df[L.C_STAGE].tolist() == [L.STAGE_DANGER]
     assert df.iloc[0][L.C_COMPETING] == f"{U1} (Score 0.8) | {U2} (Score 0.78)"
 
 
@@ -101,7 +101,7 @@ def test_visible_stage_url_outside_export_shows_position_only():
 def test_both_stages_can_apply_to_one_query():
     rankings = _rankings([("q", U1, U1, 3.0), ("q", U2, U2, 12.0)])
     df = _run(["q"], [[0.65, 0.9, 0.1]], rankings)
-    assert df[L.C_STAGE].tolist() == [L.STAGE_RISK, L.STAGE_VISIBLE]
+    assert df[L.C_STAGE].tolist() == [L.STAGE_DANGER, L.STAGE_VISIBLE]
 
 
 def test_reasons_come_from_labels():
@@ -116,7 +116,7 @@ def test_ok_row_with_an_almost_as_good_url_lists_the_ranking_url_first():
     df = _run(["q"], [[0.842, 0.848, 0.1]], rankings)
     assert df[L.C_REASON].tolist() == [L.REASON_OK_CLOSE]
     assert L.REASON_OK_CLOSE == "Rankende Seite passt, eine weitere passt fast gleich gut"
-    assert df.iloc[0][L.C_STAGE] == L.STAGE_RISK
+    assert df.iloc[0][L.C_STAGE] == L.STAGE_DANGER
     assert df.iloc[0][L.C_COMPETING] == f"{U1} (Position 3, Score 0.842) | {U2} (Position 31, Score 0.848)"
 
 
@@ -162,15 +162,15 @@ def test_decision_and_cannibalisation_sheet_agree():
             assert entry[L.C_REASON].tolist() == [L.REASON_OK_CLOSE]
             other = entry.iloc[0][L.C_COMPETING].split(" | ")[1].split(" (")[0]
             assert row[L.C_ADVICE] == ADVICE_OK_CLOSE.format(other=other)
-        if row[L.C_VERDICT] == L.V_RISK:
+        if row[L.C_VERDICT] == L.V_CANNIBAL:
             values = {"best": row[L.C_BEST_URL], "rank_url": row[L.C_RANK_URL], "position": row[L.C_POSITION]}
             expected = {
-                ADVICE[L.V_RISK].format(**values): L.REASON_BETTER,
+                ADVICE[L.V_CANNIBAL].format(**values): L.REASON_BETTER,
                 ADVICE_RISK_PLAIN.format(**values): L.REASON_BETTER_PLAIN,
                 ADVICE_NOT_IN_EXPORT.format(**values): L.REASON_NOT_IN_EXPORT,
             }[row[L.C_ADVICE]]
             assert entry[L.C_REASON].tolist() == [expected], row[L.C_QUERY]
-    assert decisions[L.C_VERDICT].tolist() == [L.V_OK, L.V_OK, L.V_RISK, L.V_USE, L.V_RISK, L.V_RISK]
+    assert decisions[L.C_VERDICT].tolist() == [L.V_OK, L.V_OK, L.V_CANNIBAL, L.V_USE, L.V_CANNIBAL, L.V_CANNIBAL]
     reasons = dict(zip(cannibal[L.C_QUERY], cannibal[L.C_REASON]))
     assert reasons["knapp-unter-schwelle"] == L.REASON_BETTER_PLAIN
     assert reasons["nicht-im-export"] == L.REASON_NOT_IN_EXPORT
@@ -201,8 +201,8 @@ def test_annotate_adds_the_cannibalisation_hint_to_every_decision_row():
     decisions = pd.DataFrame({L.C_QUERY: ["a", "b", "c"], L.C_VERDICT: [L.V_USE, L.V_OK, L.V_GAP]})
     cannibal = pd.DataFrame(
         [
-            ("a", L.STAGE_RISK, "x", "https://a.de/1 (Score 0.8) | https://a.de/2 (Score 0.79)"),
-            ("b", L.STAGE_RISK, "x", "https://a.de/3 (Score 0.9)"),
+            ("a", L.STAGE_DANGER, "x", "https://a.de/1 (Score 0.8) | https://a.de/2 (Score 0.79)"),
+            ("b", L.STAGE_DANGER, "x", "https://a.de/3 (Score 0.9)"),
             ("b", L.STAGE_VISIBLE, "y", "https://a.de/3 (Position 2) | https://a.de/4 (Position 9)"),
         ],
         columns=[L.C_QUERY, L.C_STAGE, L.C_REASON, L.C_COMPETING],
@@ -210,8 +210,8 @@ def test_annotate_adds_the_cannibalisation_hint_to_every_decision_row():
     out = annotate(decisions, cannibal)
     assert list(out.columns)[-1] == L.C_CANNIBAL
     assert out[L.C_CANNIBAL].tolist() == [
-        "Risiko: https://a.de/1 (Score 0.8) | https://a.de/2 (Score 0.79)",
-        "Risiko: https://a.de/3 (Score 0.9); Bereits sichtbar: https://a.de/3 (Position 2) | https://a.de/4 (Position 9)",
+        "Gefahr: https://a.de/1 (Score 0.8) | https://a.de/2 (Score 0.79)",
+        "Gefahr: https://a.de/3 (Score 0.9); Bereits sichtbar: https://a.de/3 (Position 2) | https://a.de/4 (Position 9)",
         "",
     ]
     assert L.C_CANNIBAL not in decisions.columns
@@ -223,3 +223,12 @@ def test_annotate_with_empty_cannibalisation_sheet():
     decisions = pd.DataFrame({L.C_QUERY: ["a"], L.C_VERDICT: [L.V_GAP]})
     out = annotate(decisions, pd.DataFrame(columns=[L.C_QUERY, L.C_STAGE, L.C_REASON, L.C_COMPETING]))
     assert out[L.C_CANNIBAL].tolist() == [""]
+
+
+def test_one_word_for_cannibalisation():
+    from qum import export
+
+    assert L.V_CANNIBAL == "Kannibalisierungsgefahr"
+    assert export.SHEET_CANNIBAL == "Kannibalisierungsgefahr"
+    assert L.C_CANNIBAL == "Kannibalisierungsgefahr"
+    assert [L.STAGE_DANGER, L.STAGE_VISIBLE] == ["Gefahr", "Bereits sichtbar"]

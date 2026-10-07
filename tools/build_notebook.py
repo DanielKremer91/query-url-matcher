@@ -22,7 +22,7 @@ Dieses Notebook vergleicht deine Suchanfragen (oder Prompts) per Embeddings mit 
 | Eigene Rankings | optional | Keyword, URL, Position (GSC, Ahrefs, SISTRIX) |
 | Top-10-SERPs | optional | Ahrefs-Export mit Keyword, URL, Position, Type |
 
-Schon ohne Ranking-Dateien bekommst du das Matching mit Urteilen zu passender Seite und Content-Lücke und den Hinweis, wenn mehrere Seiten fast gleich gut passen (Kannibalisierung). Eigene Rankings ergänzen die Urteile, die sich auf Rankings stützen (zum Beispiel "Kannibalisierungs-Risiko" und "Rankt trotz schwachem Match"), und ermöglichen eine Kalibrierung der Schwelle für "passend" (ab 20 gut rankenden Paaren, Wahl in Schritt 7b). Top-10-SERPs bündeln die Lücken zusätzlich zu Themen.
+Schon ohne Ranking-Dateien bekommst du das Matching mit Urteilen zu passender Seite und Content-Lücke und den Hinweis, wenn mehrere Seiten fast gleich gut passen (Kannibalisierung). Eigene Rankings ergänzen die Urteile, die sich auf Rankings stützen (zum Beispiel "Kannibalisierungsgefahr" und "Rankt trotz schwachem Match"), und ermöglichen eine Kalibrierung der Schwelle für "passend" (ab 20 gut rankenden Paaren, Wahl in Schritt 7b). Top-10-SERPs bündeln die Lücken zusätzlich zu Themen.
 
 ## So gehst du vor
 
@@ -415,9 +415,9 @@ print(f"✅ Schritt 7b fertig: Schwelle {threshold:.4f}. Weiter mit Schritt 7c: 
 STEP7C = '''#@title Schritt 7c: Urteile bilden { display-mode: "form" }
 #@markdown **▶ Starten. Die Werte darunter kannst du für den ersten Lauf auf den Voreinstellungen lassen.**
 #@markdown Die Zelle entscheidet mit der Schwelle aus Schritt 7b je Query, ob eine deiner Seiten schon passt, und bildet daraus die Urteile (passende Seite, Kannibalisierung, Content-Lücke). Willst du nur die Feineinstellungen ändern, starte nur diese Zelle erneut. Welches Urteil wann entsteht, zeigt die Übersicht über Schritt 7a.
-#@markdown **rankt_gut_bis_position:** Bis zu dieser Position gilt eine Query als gut rankend. Davon hängt das Urteil ab: "In Ordnung" oder "Kannibalisierungs-Risiko" bei gutem Ranking, "Bestehende Seite nutzen" oder "Content-Lücke" bei schwachem.
+#@markdown **rankt_gut_bis_position:** Bis zu dieser Position gilt eine Query als gut rankend. Davon hängt das Urteil ab: "In Ordnung" oder "Kannibalisierungsgefahr" bei gutem Ranking, "Bestehende Seite nutzen" oder "Content-Lücke" bei schwachem.
 rankt_gut_bis_position = 10 #@param {type:"integer"}
-#@markdown **abstand_fast_gleich:** Score-Unterschied, bis zu dem zwei Seiten als gleich gut gelten (0.01 = ein Hundertstel). Liegt die rankende Seite höchstens so weit hinter der besten, lautet das Urteil "In Ordnung". Liegen zwei passende Seiten so nah beieinander, gibt es einen Kannibalisierungs-Hinweis.
+#@markdown **abstand_fast_gleich:** Score-Unterschied, bis zu dem zwei Seiten als gleich gut gelten (0.01 = ein Hundertstel). Liegt die rankende Seite höchstens so weit hinter der besten, lautet das Urteil "In Ordnung". Liegen zwei passende Seiten so nah beieinander, gibt es einen Hinweis auf Kannibalisierungsgefahr.
 abstand_fast_gleich = 0.01 #@param {type:"number"}
 #@markdown **sichtbar_bis_position:** Ranken zwei eigene URLs für dieselbe Query bis zu dieser Position, meldet das Tool "Kannibalisierung bereits sichtbar".
 sichtbar_bis_position = 20 #@param {type:"integer"}
@@ -478,7 +478,7 @@ decisions, cannibal = new_decisions, new_cannibal
 counts = decisions[L.C_VERDICT].value_counts()
 for verdict, count in counts.items():
     print(f"   {count:>5} × {verdict}")
-print(f"   {cannibal[L.C_QUERY].nunique():>5} Queries mit Kannibalisierungs-Hinweis (über alle Urteile, Spalte „Kannibalisierung“)")
+print(f"   {cannibal[L.C_QUERY].nunique():>5} Queries mit Kannibalisierungsgefahr (über alle Urteile, Spalte „Kannibalisierungsgefahr“)")
 uncalibrated = " (Schwelle nicht kalibriert)" if threshold_source == "median" else ""
 print(f"   {count_new_pages(decisions):>5} neue Seiten aus den Content-Lücken{uncalibrated}")
 print()
@@ -514,13 +514,13 @@ Für jede Query prüft das Tool zwei Dinge: Passt eine deiner Seiten semantisch,
 
 | | Eine eigene Seite passt semantisch | Keine Seite passt |
 |---|---|---|
-| **Rankt gut** (Voreinstellung: bis Position 10) | **In Ordnung**, wenn die rankende Seite die beste ist oder fast gleich gut. **Kannibalisierungs-Risiko**, wenn eine andere eigene Seite deutlich besser passt. | **Rankt trotz schwachem Match**: beobachten und die Schwelle prüfen |
+| **Rankt gut** (Voreinstellung: bis Position 10) | **In Ordnung**, wenn die rankende Seite die beste ist oder fast gleich gut. **Kannibalisierungsgefahr**, wenn eine andere eigene Seite deutlich besser passt. | **Rankt trotz schwachem Match**: beobachten und die Schwelle prüfen |
 | **Rankt schwach oder gar nicht** | **Bestehende Seite nutzen**: ausbauen und intern stärken statt neu bauen | **Content-Lücke**: Kandidat für eine neue Seite |
 
 - **Ohne Rankings** gibt es nur zwei Urteile: **Passende Seite vorhanden** oder **Content-Lücke**.
-- **Kannibalisierungs-Risiko** gibt es auch, wenn die rankende Seite selbst die Schwelle nicht erreicht, eine andere eigene Seite aber schon, oder wenn die rankende URL nicht im Frog-Export steht.
+- **Kannibalisierungsgefahr** gibt es auch, wenn die rankende Seite selbst die Schwelle nicht erreicht, eine andere eigene Seite aber schon, oder wenn die rankende URL nicht im Frog-Export steht.
 - **Mit SERPs aus Schritt 6** wird aus einer Content-Lücke **Vor Neuerstellung prüfen**, wenn ein Keyword mit stark überlappender SERP schon eine passende Seite hat.
-- **In jedem Feld** kann zusätzlich ein Kannibalisierungs-Hinweis stehen: wenn zwei eigene Seiten fast gleich gut passen oder mehrere eigene Seiten für dieselbe Query ranken. Er steht im Export in der Spalte „Kannibalisierung" neben dem Urteil, Details im Blatt „Kannibalisierung". Gerade bei „Bestehende Seite nutzen" zeigt er Konkurrenz zwischen eigenen Seiten, bevor sie in den Rankings sichtbar wird.
+- **In jedem Feld** kann zusätzlich ein Hinweis auf Kannibalisierungsgefahr stehen: wenn zwei eigene Seiten fast gleich gut passen oder mehrere eigene Seiten für dieselbe Query ranken. Er steht im Export in der Spalte „Kannibalisierungsgefahr" neben dem Urteil, Details im Blatt „Kannibalisierungsgefahr". Gerade bei „Bestehende Seite nutzen" zeigt er Konkurrenz zwischen eigenen Seiten, bevor sie in den Rankings sichtbar wird.
 
 Alle Urteile sind Hinweise zum Prüfen, keine Entscheidungen.
 '''

@@ -12,7 +12,7 @@ ADVICE = {
     ),
     L.V_GAP: "Keine Seite erreicht die Schwelle. Kandidat für eine neue Seite, nach Prüfung der besten Treffer.",
     L.V_OK: "Die rankende Seite gehört semantisch zu den besten Treffern. Kein Hinweis auf Handlungsbedarf.",
-    L.V_RISK: (
+    L.V_CANNIBAL: (
         "{rank_url} rankt auf Position {position}, semantisch passt {best} deutlich besser. "
         "Prüfen, welche Seite die Query bedienen soll."
     ),
@@ -29,11 +29,11 @@ ADVICE = {
         "Lässt sich die Seite erweitern?"
     ),
 }
-# "In Ordnung", aber eine weitere passende Seite liegt fast gleich auf: gleiche Aussage wie im Blatt Kannibalisierung
+# "In Ordnung", aber eine weitere passende Seite liegt fast gleich auf: gleiche Aussage wie im Blatt Kannibalisierungsgefahr
 ADVICE_OK_CLOSE = (
-    "Die rankende Seite gehört semantisch zu den besten Treffern. {other} passt fast gleich gut, siehe Blatt Kannibalisierung."
+    "Die rankende Seite gehört semantisch zu den besten Treffern. {other} passt fast gleich gut, siehe Blatt Kannibalisierungsgefahr."
 )
-# Risiko ohne deutlichen Abstand (Abstand 0 oder die rankende Seite erreicht die Schwelle nicht)
+# Kannibalisierungsgefahr ohne deutlichen Abstand (Abstand 0 oder die rankende Seite erreicht die Schwelle nicht)
 ADVICE_RISK_PLAIN = (
     "{rank_url} rankt auf Position {position}, semantisch passt {best} besser. "
     "Prüfen, welche Seite die Query bedienen soll."
@@ -75,7 +75,7 @@ def close_to_ranking(scores, ranking_j, threshold, margin) -> list:
     ]
 
 
-# Art des Risikos: entscheidet über die Empfehlung und den Grund im Blatt Kannibalisierung
+# Art der Gefahr: entscheidet über die Empfehlung und den Grund im Blatt Kannibalisierungsgefahr
 RISK_CLEAR, RISK_PLAIN, RISK_NOT_IN_EXPORT = "deutlich", "knapp", "nicht im Export"
 
 
@@ -134,7 +134,7 @@ def build_decisions(result, lead, threshold, rankings=None, good_position=10, we
                 if others:
                     advice = ADVICE_OK_CLOSE.format(other=result.urls[others[0]])
             else:
-                verdict = L.V_RISK
+                verdict = L.V_CANNIBAL
                 if risk_kind(lead[i], ranking_j, margin) == RISK_PLAIN:
                     advice = ADVICE_RISK_PLAIN.format(best=result.urls[j], rank_url=rank_url, position=position)
         else:

@@ -56,7 +56,7 @@ def find_cannibalization(
         order = np.argsort(-lead[i], kind="stable")
         best = order[0]
         close = [j for j in order if lead[i, j] >= threshold and within_margin(lead[i, best], lead[i, j], margin)]
-        if decision[L.C_VERDICT] == L.V_RISK:
+        if decision[L.C_VERDICT] == L.V_CANNIBAL:
             rank_url = decision[L.C_RANK_URL]
             best_position = next((r.position for r in own if r.url_norm == normalize_url(result.urls[best])), None)
             competing = [
@@ -64,7 +64,7 @@ def find_cannibalization(
                 _describe(result.urls[best], lead[i, best], format_position(best_position)),
             ]
             reason = _RISK_REASON[risk_kind(lead[i], u_index.get(normalize_url(rank_url)), margin)]
-            rows.append((query, L.STAGE_RISK, reason, " | ".join(competing)))
+            rows.append((query, L.STAGE_DANGER, reason, " | ".join(competing)))
         elif decision[L.C_VERDICT] == L.V_OK:
             # dieselbe Regel wie der Hinweis in der Empfehlung: weitere passende Seiten nah an der rankenden
             ranking_j = u_index[normalize_url(decision[L.C_RANK_URL])]
@@ -75,10 +75,10 @@ def find_cannibalization(
                     _describe(result.urls[k], lead[i, k], position_of.get(normalize_url(result.urls[k]), ""))
                     for k in others
                 ]
-                rows.append((query, L.STAGE_RISK, L.REASON_OK_CLOSE, " | ".join(competing)))
+                rows.append((query, L.STAGE_DANGER, L.REASON_OK_CLOSE, " | ".join(competing)))
         elif len(close) >= 2:
             competing = [_describe(result.urls[j], lead[i, j]) for j in close]
-            rows.append((query, L.STAGE_RISK, L.REASON_CLOSE, " | ".join(competing)))
+            rows.append((query, L.STAGE_DANGER, L.REASON_CLOSE, " | ".join(competing)))
         visible = [r for r in own if r.position <= visible_position]
         if len(visible) >= 2:
             competing = [_describe(r.url, score_of(i, r.url_norm), format_position(r.position)) for r in visible]
@@ -87,7 +87,7 @@ def find_cannibalization(
 
 
 def annotate(decisions: pd.DataFrame, cannibal: pd.DataFrame) -> pd.DataFrame:
-    """Kopie der Urteile mit der Spalte Kannibalisierung: Stufe und konkurrierende URLs je Query, sonst leer."""
+    """Kopie der Urteile mit der Spalte Kannibalisierungsgefahr: Stufe und konkurrierende URLs je Query, sonst leer."""
     hints = {}
     for query, stage, competing in zip(cannibal[L.C_QUERY], cannibal[L.C_STAGE], cannibal[L.C_COMPETING]):
         hints.setdefault(query, []).append(f"{stage}: {competing}")

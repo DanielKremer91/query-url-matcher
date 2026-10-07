@@ -111,11 +111,11 @@ Mit Rankings, in dieser Prüfreihenfolge:
 |---|---|---|
 | gut | keine URL passt | rankt trotz schwachem Match, beobachten |
 | gut | rankende URL passt selbst und liegt höchstens um den Abstand „fast gleich" hinter dem besten Treffer | in Ordnung |
-| gut | rankende URL liegt weiter dahinter, erreicht die Schwelle nicht oder fehlt im Export, der beste Treffer passt | Kannibalisierungs-Risiko |
+| gut | rankende URL liegt weiter dahinter, erreicht die Schwelle nicht oder fehlt im Export, der beste Treffer passt | Kannibalisierungsgefahr |
 | schwach oder keines | beste URL passt | bestehende Seite nutzen, nicht neu bauen |
 | schwach oder keines | keine URL passt | Content-Lücke |
 
-Der Abstand „fast gleich" ist derselbe wie in Abschnitt 8 (Default 0,01, einstellbar). Verglichen werden die auf 4 Nachkommastellen gerundeten Leit-Scores. Bei „in Ordnung" beziehen sich beste URL, Passage und die drei Scores auf die rankende URL, damit die Zeile keine andere Seite als beste nennt. Passt eine weitere URL und liegt ihr Score höchstens um den Abstand von dem der rankenden entfernt (in beide Richtungen), nennt die Empfehlung diese URL und verweist auf das Blatt Kannibalisierung; dort steht dieselbe Query. Die Empfehlung beim Risiko sagt „deutlich besser" nur, wenn der Abstand größer als 0 ist und die rankende URL die Schwelle erreicht. Ein negativer Abstand ist ein Fehler.
+Der Abstand „fast gleich" ist derselbe wie in Abschnitt 8 (Default 0,01, einstellbar). Verglichen werden die auf 4 Nachkommastellen gerundeten Leit-Scores. Bei „in Ordnung" beziehen sich beste URL, Passage und die drei Scores auf die rankende URL, damit die Zeile keine andere Seite als beste nennt. Passt eine weitere URL und liegt ihr Score höchstens um den Abstand von dem der rankenden entfernt (in beide Richtungen), nennt die Empfehlung diese URL und verweist auf das Blatt Kannibalisierungsgefahr; dort steht dieselbe Query. Die Empfehlung beim Risiko sagt „deutlich besser" nur, wenn der Abstand größer als 0 ist und die rankende URL die Schwelle erreicht. Ein negativer Abstand ist ein Fehler.
 
 Steht die rankende URL nicht im Frog-Export, wird das in einer Hinweisspalte vermerkt und die Query wie „andere URL" behandelt.
 
@@ -123,7 +123,7 @@ Steht die rankende URL nicht im Frog-Export, wird das in einer Hinweisspalte ver
 
 Eigene Auswertung mit zwei Stufen:
 
-- **Risiko:** Urteil „Kannibalisierungs-Risiko" aus Abschnitt 7, oder zwei und mehr eigene URLs passen und liegen im Leit-Score höchstens 0,01 auseinander (einstellbar; e5-Scores liegen in einem engen Band, ein größerer Abstand markiert zu viel). Der zweite Fall funktioniert auch ohne Rankings. Bei „in Ordnung" zählt dieselbe Regel wie in Abschnitt 7 (weitere passende URLs nah an der rankenden), mit eigenem Grund; die rankende URL steht zuerst. Der Grund beim Urteil „Kannibalisierungs-Risiko" folgt derselben Unterscheidung wie die Empfehlung: „deutlich besser", „besser" oder „nicht verglichen" (rankende URL fehlt im Export).
+- **Gefahr:** Urteil „Kannibalisierungsgefahr" aus Abschnitt 7, oder zwei und mehr eigene URLs passen und liegen im Leit-Score höchstens 0,01 auseinander (einstellbar; e5-Scores liegen in einem engen Band, ein größerer Abstand markiert zu viel). Der zweite Fall funktioniert auch ohne Rankings. Bei „in Ordnung" zählt dieselbe Regel wie in Abschnitt 7 (weitere passende URLs nah an der rankenden), mit eigenem Grund; die rankende URL steht zuerst. Der Grund beim Urteil „Kannibalisierungsgefahr" folgt derselben Unterscheidung wie die Empfehlung: „deutlich besser", „besser" oder „nicht verglichen" (rankende URL fehlt im Export).
 - **Bereits sichtbar:** zwei oder mehr eigene URLs ranken für die Query mit Position ≤ 20 (einstellbar).
 
 Ausgegeben werden die Query, die Stufe, die konkurrierenden URLs mit Scores und Positionen.
@@ -167,7 +167,7 @@ Standard ist eine Excel-Datei, per Häkchen zusätzlich ein ZIP mit einer CSV je
 | Lesehilfe | Bedeutung jedes Blatts und jeder Spalte, alle Einstellungen des Laufs | immer |
 | Entscheidung | eine Zeile je Query: Urteil, beste URL, Passage, drei Scores, Vorsprung vor der zweitbesten URL, rankende URL mit Position, Cluster, Nachbar-Kandidat, Empfehlung | immer |
 | Top-Treffer | Top-N-URLs je Query mit Scores, Abstand zur besten URL, Rängen, Methode der Gesamt-URL | immer |
-| Kannibalisierung | Abschnitt 8 | immer (Stufe „bereits sichtbar" nur mit Rankings) |
+| Kannibalisierungsgefahr | Abschnitt 8 | immer (Stufe „bereits sichtbar" nur mit Rankings) |
 | Content-Lücken | Lücken-Queries, mit SERPs zusätzlich Cluster und Nachbar-Kandidat | immer |
 | Lücken je Cluster | Zusammenfassung: Lücken je Cluster und Zahl der neuen Seiten | nur mit SERPs |
 

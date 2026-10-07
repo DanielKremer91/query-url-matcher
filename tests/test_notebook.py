@@ -571,9 +571,9 @@ def test_smoke_step_7_margin_reaches_the_verdicts(nb):
     nb.uploads.append(("rankings.csv", weak.encode()))
     nb.run(5)
     _verdicts(nb, OWN, eigene_schwelle=0.2)
-    assert nb.ns["decisions"][L.C_VERDICT].tolist().count(L.V_RISK) == 1
+    assert nb.ns["decisions"][L.C_VERDICT].tolist().count(L.V_CANNIBAL) == 1
     _verdicts(nb, OWN, eigene_schwelle=0.2, abstand_fast_gleich=0.05)
-    assert L.V_RISK not in nb.ns["decisions"][L.C_VERDICT].tolist()
+    assert L.V_CANNIBAL not in nb.ns["decisions"][L.C_VERDICT].tolist()
 
 
 def test_smoke_rerunning_only_step_7c_with_another_margin_changes_the_verdicts(nb, capsys):
@@ -584,10 +584,10 @@ def test_smoke_rerunning_only_step_7c_with_another_margin_changes_the_verdicts(n
     nb.uploads.append(("rankings.csv", weak.encode()))
     nb.run(5)
     _verdicts(nb, OWN, eigene_schwelle=0.2)
-    assert nb.ns["decisions"][L.C_VERDICT].tolist().count(L.V_RISK) == 1
+    assert nb.ns["decisions"][L.C_VERDICT].tolist().count(L.V_CANNIBAL) == 1
     capsys.readouterr()
     nb.run("7c", abstand_fast_gleich=0.05)
-    assert L.V_RISK not in nb.ns["decisions"][L.C_VERDICT].tolist()
+    assert L.V_CANNIBAL not in nb.ns["decisions"][L.C_VERDICT].tolist()
     assert nb.ns["threshold"] == 0.2 and nb.ns["settings"]["Abstand fast gleich"] == 0.05
     assert "✅ Schritt 7c fertig. Weiter mit Schritt 8 (Export)." in capsys.readouterr().out
     nb.run(8)
@@ -973,7 +973,7 @@ def test_verdict_guide_sits_before_step_7a_and_covers_every_verdict():
     guide_index = next(i for i, (kind, first) in enumerate(kinds) if kind == "markdown" and "So entstehen die Urteile" in first)
     assert kinds[guide_index + 1][1].startswith("#@title Schritt 7a")
     guide = CELLS[guide_index][1]
-    for verdict in (L.V_OK, L.V_RISK, L.V_WATCH, L.V_USE, L.V_GAP, L.V_MATCH, L.V_CHECK):
+    for verdict in (L.V_OK, L.V_CANNIBAL, L.V_WATCH, L.V_USE, L.V_GAP, L.V_MATCH, L.V_CHECK):
         assert verdict in guide, verdict
     assert "| **Rankt gut**" in guide
 
@@ -994,7 +994,7 @@ def test_smoke_decisions_carry_the_cannibalisation_column(nb, capsys):
 
 def test_verdict_guide_says_every_field_can_carry_a_cannibalisation_hint():
     guide = next(source for kind, source in CELLS if kind == "markdown" and "So entstehen die Urteile" in source)
-    assert "In jedem Feld" in guide and "Spalte „Kannibalisierung\"" in guide
+    assert "In jedem Feld" in guide and "Spalte „Kannibalisierungsgefahr\"" in guide
 
 
 def test_notebook_ends_with_step_8_and_nothing_mentions_step_9_or_pairs():

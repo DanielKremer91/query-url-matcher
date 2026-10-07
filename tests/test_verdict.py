@@ -49,7 +49,7 @@ def test_all_five_verdicts_with_rankings():
     )
     result = make_result(queries, [U1, U2], scores)
     df = build_decisions(result, result.lead("chunk"), 0.6, rankings, good_position=10)
-    assert df[L.C_VERDICT].tolist() == [L.V_OK, L.V_RISK, L.V_WATCH, L.V_USE, L.V_GAP]
+    assert df[L.C_VERDICT].tolist() == [L.V_OK, L.V_CANNIBAL, L.V_WATCH, L.V_USE, L.V_GAP]
     assert df[L.C_POSITION].tolist() == ["2", "4", "1", "35", ""]
     assert df[L.C_RANK_URL].tolist() == [U1, U1, U1, U1, ""]
 
@@ -66,7 +66,7 @@ def test_ranking_url_missing_in_export_is_noted_and_treated_as_other_url():
     rankings = _rankings([("q", "https://a.de/alt", "https://a.de/alt", 2.0)])
     result = make_result(["q"], [U1], [[0.9]])
     row = build_decisions(result, result.lead("chunk"), 0.6, rankings).iloc[0]
-    assert row[L.C_VERDICT] == L.V_RISK
+    assert row[L.C_VERDICT] == L.V_CANNIBAL
     assert row[L.C_NOTE] == L.NOTE_NOT_IN_EXPORT
 
 
@@ -85,7 +85,7 @@ def test_advice_is_template_with_values():
 
 
 def test_every_verdict_has_advice():
-    for verdict in [L.V_MATCH, L.V_GAP, L.V_OK, L.V_RISK, L.V_WATCH, L.V_USE, L.V_CHECK]:
+    for verdict in [L.V_MATCH, L.V_GAP, L.V_OK, L.V_CANNIBAL, L.V_WATCH, L.V_USE, L.V_CHECK]:
         assert verdict in ADVICE
 
 
@@ -115,19 +115,19 @@ def test_ranking_url_just_behind_the_top_is_ok_and_named_as_best():
 
 def test_ranking_url_clearly_behind_the_top_is_risk():
     row = _ranking_u1([0.790, 0.860])
-    assert row[L.C_VERDICT] == L.V_RISK
+    assert row[L.C_VERDICT] == L.V_CANNIBAL
     assert row[L.C_BEST_URL] == U2
     assert row[L.C_S_CHUNK] == 0.86
 
 
 def test_ranking_url_exactly_at_the_margin_is_ok():
     assert _ranking_u1([0.80, 0.81])[L.C_VERDICT] == L.V_OK
-    assert _ranking_u1([0.80, 0.8101])[L.C_VERDICT] == L.V_RISK
+    assert _ranking_u1([0.80, 0.8101])[L.C_VERDICT] == L.V_CANNIBAL
 
 
 def test_verdict_margin_is_adjustable():
     assert _ranking_u1([0.790, 0.860], margin=0.1)[L.C_VERDICT] == L.V_OK
-    assert _ranking_u1([0.842, 0.843], margin=0)[L.C_VERDICT] == L.V_RISK
+    assert _ranking_u1([0.842, 0.843], margin=0)[L.C_VERDICT] == L.V_CANNIBAL
 
 
 def test_nothing_fits_is_checked_before_the_margin():
@@ -141,7 +141,7 @@ def test_ranking_url_missing_in_export_gets_its_own_advice():
     rankings = _rankings([("q", alt, alt, 2.0)])
     result = make_result(["q"], [U1], [[0.9]])
     row = build_decisions(result, result.lead("chunk"), 0.6, rankings).iloc[0]
-    assert row[L.C_VERDICT] == L.V_RISK
+    assert row[L.C_VERDICT] == L.V_CANNIBAL
     assert row[L.C_ADVICE] == ADVICE_NOT_IN_EXPORT.format(best=U1, rank_url=alt, position="2")
     assert "besser" not in row[L.C_ADVICE]
     assert "nicht verglichen" in row[L.C_ADVICE]
@@ -160,7 +160,7 @@ def test_advice_reads_as_a_hint_to_check():
         ),
         L.V_GAP: "Keine Seite erreicht die Schwelle. Kandidat für eine neue Seite, nach Prüfung der besten Treffer.",
         L.V_OK: "Die rankende Seite gehört semantisch zu den besten Treffern. Kein Hinweis auf Handlungsbedarf.",
-        L.V_RISK: (
+        L.V_CANNIBAL: (
             "{rank_url} rankt auf Position {position}, semantisch passt {best} deutlich besser. "
             "Prüfen, welche Seite die Query bedienen soll."
         ),
@@ -192,7 +192,7 @@ def test_ok_names_another_fitting_url_that_is_almost_as_good():
     assert row[L.C_VERDICT] == L.V_OK
     assert row[L.C_ADVICE] == ADVICE_OK_CLOSE.format(other=U2)
     assert ADVICE_OK_CLOSE == (
-        "Die rankende Seite gehört semantisch zu den besten Treffern. {other} passt fast gleich gut, siehe Blatt Kannibalisierung."
+        "Die rankende Seite gehört semantisch zu den besten Treffern. {other} passt fast gleich gut, siehe Blatt Kannibalisierungsgefahr."
     )
 
 
@@ -209,7 +209,7 @@ def test_ok_keeps_the_plain_advice_when_no_other_url_is_close_and_fitting():
 
 def test_ranking_url_within_margin_but_below_threshold_is_risk():
     row = _ok_row([0.795, 0.803, 0.1], threshold=0.80)
-    assert row[L.C_VERDICT] == L.V_RISK
+    assert row[L.C_VERDICT] == L.V_CANNIBAL
     assert row[L.C_BEST_URL] == U2
     assert row[L.C_ADVICE] == ADVICE_RISK_PLAIN.format(rank_url=U1, position="3", best=U2)
 
@@ -217,7 +217,7 @@ def test_ranking_url_within_margin_but_below_threshold_is_risk():
 def test_risk_advice_says_clearly_better_only_beyond_a_positive_margin():
     assert "deutlich besser" in _ranking_u1([0.790, 0.860])[L.C_ADVICE]
     plain = _ranking_u1([0.842, 0.843], margin=0)
-    assert plain[L.C_VERDICT] == L.V_RISK
+    assert plain[L.C_VERDICT] == L.V_CANNIBAL
     assert plain[L.C_ADVICE] == ADVICE_RISK_PLAIN.format(rank_url=U1, position="3", best=U2)
     assert ADVICE_RISK_PLAIN == (
         "{rank_url} rankt auf Position {position}, semantisch passt {best} besser. "

@@ -12,7 +12,7 @@ from .serp import gap_summary
 SHEET_README = "Lesehilfe"
 SHEET_DECISION = "Entscheidung"
 SHEET_TOP = "Top-Treffer"
-SHEET_CANNIBAL = "Kannibalisierung"
+SHEET_CANNIBAL = "Kannibalisierungsgefahr"
 SHEET_GAPS = "Content-Lücken"
 SHEET_GAP_CLUSTERS = "Lücken je Cluster"
 
@@ -20,7 +20,7 @@ _CSV_NAMES = {
     SHEET_README: "lesehilfe.csv",
     SHEET_DECISION: "entscheidung.csv",
     SHEET_TOP: "top_treffer.csv",
-    SHEET_CANNIBAL: "kannibalisierung.csv",
+    SHEET_CANNIBAL: "kannibalisierungsgefahr.csv",
     SHEET_GAPS: "content_luecken.csv",
     SHEET_GAP_CLUSTERS: "luecken_je_cluster.csv",
 }
@@ -60,8 +60,8 @@ _COLUMN_HELP = {
     L.C_NOTE: "Ergänzender Hinweis, zum Beispiel wenn eine URL im Frog-Export fehlt.",
     L.C_ADVICE: "Fester Hinweis, was zu prüfen ist, kein generierter Text. Entscheiden muss ein Mensch.",
     L.C_CANNIBAL: (
-        "Kannibalisierungs-Hinweis zu dieser Query, unabhängig vom Urteil: Stufe (Risiko oder Bereits sichtbar) und die "
-        "konkurrierenden eigenen URLs. Leer, wenn es keinen Hinweis gibt. Details im Blatt Kannibalisierung."
+        "Hinweis auf Kannibalisierungsgefahr zu dieser Query, unabhängig vom Urteil: Stufe (Gefahr oder Bereits sichtbar) und die "
+        "konkurrierenden eigenen URLs. Leer, wenn es keinen Hinweis gibt. Details im Blatt Kannibalisierungsgefahr."
     ),
     L.C_CLUSTER: "Keywords mit gleicher Nummer haben stark überlappende Google-Ergebnisse. 0 = kein Cluster.",
     L.C_CAND: "Bestehende Seite, die ein Keyword mit stark überlappender SERP bereits bedient.",
@@ -71,8 +71,8 @@ _COLUMN_HELP = {
     L.C_CAND_CHUNK: "Der Textblock der Kandidaten-Seite, der zur Lücken-Query am besten passt.",
     L.C_CAND_POS: "Position der Kandidaten-Seite für diese Lücken-Query im Ranking-Export. Leer, wenn sie dafür nicht rankt.",
     L.C_CAND_MORE: "Weitere Kandidaten-Seiten von anderen Nachbar-Keywords.",
-    L.C_STAGE: "Stufe der Kannibalisierung, siehe die Stufen weiter unten in dieser Lesehilfe.",
-    L.C_REASON: "Warum die Query als Kannibalisierung aufgeführt wird.",
+    L.C_STAGE: "Stufe der Kannibalisierungsgefahr, siehe die Stufen weiter unten in dieser Lesehilfe.",
+    L.C_REASON: "Warum die Query im Blatt Kannibalisierungsgefahr steht.",
     L.C_COMPETING: "Die konkurrierenden eigenen URLs mit Score oder Position.",
     L.C_GAP_COUNT: "Anzahl der Content-Lücken-Queries in diesem Cluster.",
     L.C_NEW_PAGES: "Anzahl neuer Seiten, die dafür nötig wären: ein Cluster eine Seite, Queries ohne Cluster je eine.",
@@ -80,7 +80,7 @@ _COLUMN_HELP = {
 }
 
 _STAGE_HELP = {
-    L.STAGE_RISK: "Eine Seite rankt gut, eine andere passt deutlich besser, oder mehrere Seiten passen fast gleich gut.",
+    L.STAGE_DANGER: "Eine Seite rankt gut, eine andere passt deutlich besser, oder mehrere Seiten passen fast gleich gut.",
     L.STAGE_VISIBLE: "Mehrere eigene Seiten ranken bereits für die Query.",
 }
 
@@ -91,7 +91,7 @@ VERDICT_HELP = {
         "Die rankende Seite erreicht die Schwelle und passt semantisch am besten oder fast gleich gut wie die beste "
         "(Abstand 'fast gleich')."
     ),
-    L.V_RISK: (
+    L.V_CANNIBAL: (
         "Eine Seite rankt gut, eine andere eigene Seite erreicht die Schwelle und passt semantisch deutlich besser "
         "(mehr als der Abstand 'fast gleich'), die rankende erreicht die Schwelle nicht, "
         "oder die rankende URL steht nicht im Frog-Export."
@@ -106,7 +106,7 @@ _FILLS = {
     L.V_OK: "C6EFCE",
     L.V_USE: "FFEB9C",
     L.V_CHECK: "FFEB9C",
-    L.V_RISK: "F8CBAD",
+    L.V_CANNIBAL: "F8CBAD",
     L.V_GAP: "FFC7CE",
     L.V_WATCH: "D9D9D9",
 }

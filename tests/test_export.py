@@ -51,7 +51,7 @@ def test_readme_lists_present_sheets_settings_and_disclaimer():
     entries = readme[L.R_ENTRY].tolist()
     assert export.SHEET_GAPS in entries
     assert "Modell" in entries
-    assert L.V_RISK in entries
+    assert L.V_CANNIBAL in entries
     assert readme.iloc[0][L.R_TEXT].startswith("Das Notebook sortiert vor")
 
 
@@ -76,7 +76,7 @@ def test_readme_explains_candidate_columns_only_when_present():
     readme = export.build_sheets(decisions, TOP, CANNIBAL, SETTINGS)[export.SHEET_README]
     assert L.C_CAND in readme[L.R_ENTRY].tolist()
     stages = readme[readme[L.R_AREA] == "Stufe"][L.R_ENTRY].tolist()
-    assert stages == [L.STAGE_RISK, L.STAGE_VISIBLE]
+    assert stages == [L.STAGE_DANGER, L.STAGE_VISIBLE]
     plain = export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS)[export.SHEET_README]
     assert L.C_CAND not in plain[L.R_ENTRY].tolist()
     assert L.C_CLUSTER not in plain[L.R_ENTRY].tolist()
@@ -98,7 +98,7 @@ def test_write_csv_zip_has_one_file_per_sheet(tmp_path):
     export.write_csv_zip(path, export.build_sheets(_decisions(), TOP, CANNIBAL, SETTINGS))
     with zipfile.ZipFile(path) as archive:
         assert archive.namelist() == [
-            "lesehilfe.csv", "entscheidung.csv", "top_treffer.csv", "kannibalisierung.csv", "content_luecken.csv",
+            "lesehilfe.csv", "entscheidung.csv", "top_treffer.csv", "kannibalisierungsgefahr.csv", "content_luecken.csv",
         ]
         df = pd.read_csv(io.BytesIO(archive.read("entscheidung.csv")), encoding="utf-8-sig", sep=";")
     assert df[L.C_QUERY].tolist() == ["a", "b", "c"]
@@ -194,9 +194,9 @@ def test_write_excel_keeps_formula_like_text_as_text(tmp_path):
 
 def test_help_texts_describe_the_margin_rule():
     assert "fast gleich" in export.VERDICT_HELP[L.V_OK]
-    assert "deutlich besser" in export.VERDICT_HELP[L.V_RISK]
+    assert "deutlich besser" in export.VERDICT_HELP[L.V_CANNIBAL]
     assert "rankende Seite" in export._COLUMN_HELP[L.C_BEST_URL]
-    assert "deutlich besser" in export._STAGE_HELP[L.STAGE_RISK]
+    assert "deutlich besser" in export._STAGE_HELP[L.STAGE_DANGER]
 
 
 def test_advice_column_help_calls_it_a_hint_to_check():
@@ -218,7 +218,7 @@ def test_write_csv_zip_writes_decimal_comma_only_with_semicolon(tmp_path, sep, n
 
 
 def test_risk_help_covers_ranking_url_outside_the_export():
-    assert "oder die rankende URL steht nicht im Frog-Export" in export.VERDICT_HELP[L.V_RISK]
+    assert "oder die rankende URL steht nicht im Frog-Export" in export.VERDICT_HELP[L.V_CANNIBAL]
 
 
 def _text_number_sheets():
@@ -229,7 +229,7 @@ def _text_number_sheets():
     cannibal = pd.DataFrame(
         {
             L.C_QUERY: ["a"],
-            L.C_STAGE: [L.STAGE_RISK],
+            L.C_STAGE: [L.STAGE_DANGER],
             L.C_REASON: [L.REASON_BETTER],
             L.C_COMPETING: ["https://a.de/x.html (Position 4.3, Score 0.842) | https://a.de/y (Score -0.0123)"],
         }
@@ -242,7 +242,7 @@ def _csv_frames(path, sep):
     with zipfile.ZipFile(path) as archive:
         return {
             name: pd.read_csv(io.BytesIO(archive.read(name)), encoding="utf-8-sig", sep=sep, dtype=str, keep_default_na=False)
-            for name in ("entscheidung.csv", "kannibalisierung.csv", "lesehilfe.csv")
+            for name in ("entscheidung.csv", "kannibalisierungsgefahr.csv", "lesehilfe.csv")
         }
 
 
@@ -254,7 +254,7 @@ def test_semicolon_csv_uses_decimal_comma_in_positions_settings_and_competing_ur
     assert decisions[L.C_POSITION].tolist() == ["4,3", "12", ""]
     assert decisions[L.C_CAND_POS].tolist() == ["", "7,5", ""]
     assert decisions[L.C_ADVICE].tolist()[0] == "https://a.de/x.html rankt auf Position 4,3, semantisch passt https://a.de/y besser."
-    assert frames["kannibalisierung.csv"].iloc[0][L.C_COMPETING] == (
+    assert frames["kannibalisierungsgefahr.csv"].iloc[0][L.C_COMPETING] == (
         "https://a.de/x.html (Position 4,3, Score 0,842) | https://a.de/y (Score -0,0123)"
     )
     readme = frames["lesehilfe.csv"].set_index(L.R_ENTRY)[L.R_TEXT]
@@ -269,7 +269,7 @@ def test_comma_csv_and_excel_keep_the_decimal_point_in_text(tmp_path):
     export.write_csv_zip(tmp_path / "out.zip", sheets, sep=",")
     frames = _csv_frames(tmp_path / "out.zip", ",")
     assert frames["entscheidung.csv"][L.C_POSITION].tolist() == ["4.3", "12", ""]
-    assert "Position 4.3, Score 0.842" in frames["kannibalisierung.csv"].iloc[0][L.C_COMPETING]
+    assert "Position 4.3, Score 0.842" in frames["kannibalisierungsgefahr.csv"].iloc[0][L.C_COMPETING]
     assert "Position 4.3," in frames["entscheidung.csv"][L.C_ADVICE].tolist()[0]
     export.write_excel(tmp_path / "out.xlsx", sheets)
     book = load_workbook(tmp_path / "out.xlsx")

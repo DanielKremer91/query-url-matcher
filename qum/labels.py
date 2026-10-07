@@ -35,7 +35,7 @@ C_GAP_QUERIES = "Queries"
 C_STAGE = "Stufe"
 C_REASON = "Grund"
 C_COMPETING = "Konkurrierende URLs"
-C_CANNIBAL = "Kannibalisierung"
+C_CANNIBAL = "Kannibalisierungsgefahr"
 
 # Prüfbeispiele um die Schwelle (Schritt 7a und 7b, nicht im Export)
 C_SIDE = "Lage"
@@ -54,12 +54,12 @@ CHUNK_MEAN = "Mittelwert der Chunks"
 V_MATCH = "Passende Seite vorhanden"
 V_GAP = "Content-Lücke"
 V_OK = "In Ordnung"
-V_RISK = "Kannibalisierungs-Risiko"
+V_CANNIBAL = "Kannibalisierungsgefahr"
 V_WATCH = "Rankt trotz schwachem Match"
 V_USE = "Bestehende Seite nutzen"
 V_CHECK = "Vor Neuerstellung prüfen"
 
-STAGE_RISK = "Risiko"
+STAGE_DANGER = "Gefahr"
 STAGE_VISIBLE = "Bereits sichtbar"
 
 REASON_BETTER = "Eine andere Seite passt deutlich besser als die rankende"

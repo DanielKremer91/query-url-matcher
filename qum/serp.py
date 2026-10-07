@@ -8,7 +8,7 @@ from .normalize import normalize_query, normalize_url
 from .verdict import ADVICE, format_position
 
 # Urteile, bei denen "Beste URL" eine passende Seite ist
-_HAS_PAGE = {L.V_MATCH, L.V_USE, L.V_OK, L.V_RISK}
+_HAS_PAGE = {L.V_MATCH, L.V_USE, L.V_OK, L.V_CANNIBAL}
 _CANDIDATE_COLUMNS = [
     L.C_CAND, L.C_CAND_KW, L.C_CAND_OVERLAP, L.C_CAND_SCORE, L.C_CAND_CHUNK, L.C_CAND_POS, L.C_CAND_MORE,
 ]

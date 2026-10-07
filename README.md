@@ -7,7 +7,7 @@
 ## Was es beantwortet
 
 - Gibt es für eine Query schon eine passende Seite oder Textstelle?
-- Passt eine andere Seite deutlich besser als die, die gerade rankt (Kannibalisierungs-Risiko)? Liegt die rankende Seite höchstens 0,01 hinter der besten (einstellbar in Schritt 7c), gilt sie als bester Treffer.
+- Passt eine andere Seite deutlich besser als die, die gerade rankt (Kannibalisierungsgefahr)? Liegt die rankende Seite höchstens 0,01 hinter der besten (einstellbar in Schritt 7c), gilt sie als bester Treffer.
 - Für welche Queries fehlt Content, und wie viele neue Seiten sind das wirklich?
 
 Das Notebook sortiert vor und begründet. Die Entscheidung trifft ein Mensch.
@@ -56,7 +56,7 @@ Eine kurze Query gegen einen langen Text zu matchen ist eine asymmetrische Aufga
 
 ## Ergebnis
 
-Eine Excel-Datei mit den Blättern Lesehilfe, Entscheidung, Top-Treffer, Kannibalisierung, Content-Lücken, mit SERPs zusätzlich Lücken je Cluster. Auf Wunsch zusätzlich ein ZIP mit einer CSV je Blatt: mit Semikolon und Dezimalkomma für deutsches Excel oder mit Komma und Dezimalpunkt.
+Eine Excel-Datei mit den Blättern Lesehilfe, Entscheidung, Top-Treffer, Kannibalisierungsgefahr, Content-Lücken, mit SERPs zusätzlich Lücken je Cluster. Auf Wunsch zusätzlich ein ZIP mit einer CSV je Blatt: mit Semikolon und Dezimalkomma für deutsches Excel oder mit Komma und Dezimalpunkt.
 
 ## Grenzen
 
