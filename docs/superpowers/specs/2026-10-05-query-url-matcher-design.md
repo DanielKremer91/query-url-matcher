@@ -100,10 +100,10 @@ Eine URL „passt", wenn ihr Leit-Score mindestens die Schwelle erreicht. „Fas
 
 | | genau eine Seite passt klar | mehrere Seiten passen fast gleich gut | keine Seite passt |
 |---|---|---|---|
-| rankt gut | in Ordnung | rankende Seite ist die beste oder liegt im Abstand und passt: in Ordnung (Kannibalisierungsgefahr „ja“). Eine andere Seite deutlich besser, die rankende Seite unter der Schwelle, während eine andere passt, oder die rankende URL fehlt im Frog-Export: Kannibalisierungsgefahr | rankt trotz schwachem Match |
+| rankt gut | rankende Seite erreicht die Schwelle oder fehlt im Frog-Export: in Ordnung, sonst rankt trotz schwachem Match | wie links, Kannibalisierungsgefahr „ja“ | rankt trotz schwachem Match |
 | rankt schwach, gar nicht oder keine Rankings geladen | passende Seite vorhanden | Kannibalisierungsgefahr | Content-Lücke |
 
-Prüfreihenfolge: zuerst „keine Seite passt", dann gutes Ranking, dann die Zahl der fast gleich guten Seiten. Bei gutem Ranking gilt die Bedingung der mittleren Spalte auch, wenn nur eine Seite klar passt: Ist es nicht die rankende Seite, lautet das Urteil Kannibalisierungsgefahr.
+Prüfreihenfolge: zuerst „keine Seite passt", dann gutes Ranking, dann die Zahl der fast gleich guten Seiten. Bei gutem Ranking richtet sich das Urteil nach der rankenden Seite (Entscheidung Daniel, 2026-10-07: bei TOOM waren die so gemeldeten Fälle Hub-Seiten, die das Modell knapp vorzieht, während Google die richtige Detailseite rankt). Passt eine andere eigene Seite besser oder fast gleich gut, steht trotzdem Kannibalisierungsgefahr „ja“, weil Google die rankende Seite wechseln kann.
 
 Die Übersicht nennt immer die wirklich beste URL nach Leit-Score, auch bei „in Ordnung"; die rankende URL wird nicht eingesetzt. Wie die rankende URL zur besten steht, zeigt die Spalte „Rankende URL = beste URL?" (Abschnitt 11).
 
@@ -111,7 +111,7 @@ Die Übersicht nennt immer die wirklich beste URL nach Leit-Score, auch bei „i
 
 Eigenes Blatt mit zwei Stufen:
 
-- **Gefahr:** jede Query mit dem Urteil „Kannibalisierungsgefahr" und jede Query mit „in Ordnung", bei der mehrere Seiten fast gleich gut passen. Gründe: „deutlich besser" (die beste Seite liegt mehr als einen positiven Abstand vor der rankenden), „besser" (Abstand 0 oder die rankende Seite erreicht die Schwelle nicht), „nicht verglichen" (rankende URL fehlt im Frog-Export), „Rankende Seite passt, eine weitere passt fast gleich gut" (in Ordnung) und „Mehrere Seiten passen fast gleich gut" (schwaches, fehlendes oder kein Ranking). Funktioniert auch ohne Rankings.
+- **Gefahr:** jede Query mit dem Urteil „Kannibalisierungsgefahr" und jede gut rankende Query, bei der eine andere passende Seite besser oder fast gleich gut ist als die rankende (Urteil „in Ordnung" oder „rankt trotz schwachem Match"). Gründe: „deutlich besser" (die beste Seite liegt mehr als einen positiven Abstand vor der rankenden), „besser" (Abstand 0 oder die rankende Seite erreicht die Schwelle nicht), „nicht verglichen" (rankende URL fehlt im Frog-Export), „Rankende Seite passt, eine weitere passt fast gleich gut" (in Ordnung) und „Mehrere Seiten passen fast gleich gut" (schwaches, fehlendes oder kein Ranking). Funktioniert auch ohne Rankings.
 - **Bereits sichtbar:** zwei oder mehr eigene URLs ranken für die Query mit Position ≤ 20 (einstellbar).
 
 Eine Zeile je Query und Stufe mit bis zu drei URLs in eigenen Spalten (URL, Score, Position). Stufe Gefahr: nach Leit-Score sortiert, die rankende URL zuerst, wenn der Grund sie betrifft. Bereits sichtbar: nach Position sortiert. Score ist der Leit-Score (leer, wenn die URL nicht im Frog-Export steht), Position die eigene Position für die Query (leer, wenn sie dafür nicht rankt). Konkurrieren mehr als drei URLs, endet der Grund mit „… und n weitere".

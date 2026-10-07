@@ -96,8 +96,9 @@ _COLUMN_HELP = {
 
 _STAGE_HELP = {
     L.STAGE_DANGER: (
-        "Mehrere eigene Seiten passen semantisch fast gleich gut, oder eine gut rankende Seite passt deutlich schlechter "
-        "als eine andere eigene Seite. In den Rankings ist das noch nicht sichtbar."
+        "Mehrere eigene Seiten passen semantisch fast gleich gut, oder bei gutem Ranking passt eine andere eigene Seite "
+        "besser als die rankende (oder die rankende URL steht nicht im Frog-Export). In den Rankings ist das noch nicht "
+        "sichtbar, Google kann die rankende Seite aber wechseln."
     ),
     L.STAGE_VISIBLE: "Mehrere eigene Seiten ranken bereits für die Query (bis zur Position aus sichtbar_bis_position).",
 }
@@ -110,17 +111,20 @@ VERDICT_HELP = {
     ),
     L.V_GAP: "Keine Seite erreicht die Schwelle. Die Query rankt nicht gut, oder es sind keine Rankings geladen.",
     L.V_OK: (
-        "Die Query rankt gut, die rankende Seite erreicht die Schwelle und passt am besten oder fast gleich gut wie die "
-        "beste (Abstand 'fast gleich'). Passen mehrere Seiten fast gleich gut, steht in der Spalte "
-        "Kannibalisierungsgefahr 'ja'."
+        "Die Query rankt gut, und die rankende Seite erreicht die Schwelle. Steht die rankende URL nicht im Frog-Export, "
+        "kann das Tool sie nicht prüfen und wertet ebenfalls 'In Ordnung'. Passt eine andere eigene Seite besser oder "
+        "fast gleich gut, steht in der Spalte Kannibalisierungsgefahr 'ja': Heute rankt die richtige Seite, Google kann "
+        "aber wechseln."
     ),
     L.V_CANNIBAL: (
-        "Mehrere eigene Seiten konkurrieren um die Query. Bei gutem Ranking: Eine andere eigene Seite passt deutlich "
-        "besser (mehr als der Abstand 'fast gleich'), die rankende erreicht die Schwelle nicht, oder die rankende URL "
-        "steht nicht im Frog-Export. Bei schwachem oder fehlendem Ranking: Mehrere Seiten erreichen die Schwelle und "
-        "passen fast gleich gut. Details im Blatt Kannibalisierungsgefahr."
+        "Mehrere eigene Seiten erreichen die Schwelle und passen fast gleich gut, und die Query rankt schwach, gar nicht, "
+        "oder es sind keine Rankings geladen. Details im Blatt Kannibalisierungsgefahr."
     ),
-    L.V_WATCH: "Die Query rankt gut, obwohl keine Seite die Schwelle erreicht.",
+    L.V_WATCH: (
+        "Die Query rankt gut, aber die rankende Seite erreicht die Schwelle nicht. Passt eine andere eigene Seite, steht "
+        "in der Spalte Kannibalisierungsgefahr 'ja': prüfen, welche Seite die richtige ist. Passt gar keine Seite, die "
+        "Schwelle prüfen."
+    ),
 }
 
 _FILLS = {

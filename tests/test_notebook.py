@@ -588,6 +588,13 @@ def _verdict_of(nb, query):
     return decisions.loc[decisions[L.C_QUERY] == query, L.C_VERDICT].item()
 
 
+def _compare_of(nb, query):
+    from qum import labels as L
+
+    decisions = nb.ns["decisions"]
+    return decisions.loc[decisions[L.C_QUERY] == query, L.C_RANK_IS_BEST].item()
+
+
 def test_smoke_step_7_margin_reaches_the_verdicts(nb):
     from qum import labels as L
 
@@ -597,9 +604,9 @@ def test_smoke_step_7_margin_reaches_the_verdicts(nb):
     nb.uploads.append(("rankings.csv", weak.encode()))
     nb.run(5)
     _verdicts(nb, OWN, eigene_schwelle=0.2)
-    assert _verdict_of(nb, WEAK_QUERY) == L.V_CANNIBAL
+    assert _compare_of(nb, WEAK_QUERY) == L.NO
     _verdicts(nb, OWN, eigene_schwelle=0.2, abstand_fast_gleich=0.05)
-    assert _verdict_of(nb, WEAK_QUERY) == L.V_OK
+    assert _compare_of(nb, WEAK_QUERY) == L.CMP_CLOSE
 
 
 def test_smoke_rerunning_only_step_7c_with_another_margin_changes_the_verdicts(nb, capsys):
@@ -610,10 +617,10 @@ def test_smoke_rerunning_only_step_7c_with_another_margin_changes_the_verdicts(n
     nb.uploads.append(("rankings.csv", weak.encode()))
     nb.run(5)
     _verdicts(nb, OWN, eigene_schwelle=0.2)
-    assert _verdict_of(nb, WEAK_QUERY) == L.V_CANNIBAL
+    assert _compare_of(nb, WEAK_QUERY) == L.NO
     capsys.readouterr()
     nb.run("7c", abstand_fast_gleich=0.05)
-    assert _verdict_of(nb, WEAK_QUERY) == L.V_OK
+    assert _compare_of(nb, WEAK_QUERY) == L.CMP_CLOSE
     assert nb.ns["threshold"] == 0.2 and nb.ns["settings"]["Abstand fast gleich"] == 0.05
     assert "✅ Schritt 7c fertig. Weiter mit Schritt 8 (Export)." in capsys.readouterr().out
     nb.run(8)
@@ -1149,7 +1156,8 @@ def test_verdict_guide_shows_the_three_column_matrix():
     assert [L.V_MATCH in weak[0], L.V_CANNIBAL in weak[1], L.V_GAP in weak[2]] == [True, True, True]
     assert "Bestehende Seite nutzen" not in guide
     good = rows["**Rankt gut** (Voreinstellung: bis Position 10)"].split("|")[2:5]
-    assert L.V_OK in good[0] and L.V_OK in good[1] and L.V_CANNIBAL in good[1] and L.V_WATCH in good[2]
+    assert L.V_OK in good[0] and L.V_WATCH in good[0] and L.V_WATCH in good[2] and L.V_CANNIBAL not in good[0]
+    assert "Kannibalisierungsgefahr „ja“" in good[1]
     assert "Spalte „Kannibalisierungsgefahr“" in guide and "Übersicht" in guide
 
 

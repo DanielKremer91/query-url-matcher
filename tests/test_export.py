@@ -142,9 +142,10 @@ def test_readme_says_when_threshold_was_set_by_hand():
 
 def test_help_texts_describe_the_rules():
     assert "fast gleich" in export.VERDICT_HELP[L.V_OK]
-    assert "deutlich besser" in export.VERDICT_HELP[L.V_CANNIBAL]
-    assert "oder die rankende URL steht nicht im Frog-Export" in export.VERDICT_HELP[L.V_CANNIBAL]
-    assert "Mehrere Seiten erreichen die Schwelle und passen fast gleich gut" in export.VERDICT_HELP[L.V_CANNIBAL]
+    assert "Mehrere eigene Seiten erreichen die Schwelle und passen fast gleich gut" in export.VERDICT_HELP[L.V_CANNIBAL]
+    assert "nicht im Frog-Export" in export.VERDICT_HELP[L.V_OK]
+    for verdict in (L.V_OK, L.V_WATCH):
+        assert "Kannibalisierungsgefahr 'ja'" in export.VERDICT_HELP[verdict]
     assert "fast gleich gut" in export._STAGE_HELP[L.STAGE_DANGER]
     assert "enau eine Seite passt klar" in export.VERDICT_HELP[L.V_MATCH]
     assert "keine Rankings geladen" in export.VERDICT_HELP[L.V_MATCH]

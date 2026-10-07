@@ -46,28 +46,30 @@ def test_ranks_well_with_several_close_pages_and_the_ranking_page_within_the_mar
     assert row[L.C_BEST_URL] == U2  # immer die wirklich beste URL, keine Ersetzung durch die rankende
 
 
-def test_ranks_well_and_another_page_clearly_better_is_cannibalisation():
+# Bei gutem Ranking zählt die rankende Seite: passt sie, ist es in Ordnung, sonst rankt sie trotz schwachem Match.
+# Konkurriert eine andere Seite, steht das in der Spalte Kannibalisierungsgefahr (test_cannibal.py).
+def test_ranks_well_and_another_page_clearly_better_is_ok_when_the_ranking_page_fits():
     row = _row([0.81, 0.86, 0.1], ranking=[(U1, 3)])
-    assert row[L.C_VERDICT] == L.V_CANNIBAL
+    assert row[L.C_VERDICT] == L.V_OK
     assert row[L.C_RANK_IS_BEST] == L.NO
 
 
-def test_ranks_well_and_the_ranking_page_below_the_threshold_while_another_fits_is_cannibalisation():
+def test_ranks_well_and_the_ranking_page_below_the_threshold_while_another_fits_is_a_weak_match():
     row = _row([0.795, 0.803, 0.1], ranking=[(U1, 3)])
-    assert row[L.C_VERDICT] == L.V_CANNIBAL
+    assert row[L.C_VERDICT] == L.V_WATCH
     assert row[L.C_RANK_IS_BEST] == L.NO
 
 
-def test_ranks_well_with_the_ranking_url_outside_the_export_is_cannibalisation():
+def test_ranks_well_with_the_ranking_url_outside_the_export_is_ok():
     row = _row([0.9, 0.1, 0.1], ranking=[(ALT, 2)])
-    assert row[L.C_VERDICT] == L.V_CANNIBAL
+    assert row[L.C_VERDICT] == L.V_OK
     assert row[L.C_RANK_IS_BEST] == L.CMP_NOT_IN_EXPORT
     assert row[L.C_RANK_URL] == ALT
 
 
-def test_ranks_well_with_one_clear_page_that_is_not_the_ranking_page_is_cannibalisation():
+def test_ranks_well_with_one_clear_page_that_is_not_the_ranking_page_is_a_weak_match():
     row = _row([0.3, 0.9, 0.1], ranking=[(U1, 3)])
-    assert row[L.C_VERDICT] == L.V_CANNIBAL
+    assert row[L.C_VERDICT] == L.V_WATCH
     assert row[L.C_RANK_IS_BEST] == L.NO
 
 
@@ -121,13 +123,13 @@ def test_close_means_fitting_and_at_most_the_margin_below_the_top():
 def test_the_margin_is_adjustable():
     assert _row([0.85, 0.80, 0.1], margin=0.05)[L.C_VERDICT] == L.V_CANNIBAL
     assert _row([0.80, 0.80, 0.1], margin=0)[L.C_VERDICT] == L.V_CANNIBAL
-    assert _row([0.842, 0.843, 0.1], ranking=[(U1, 3)], margin=0)[L.C_VERDICT] == L.V_CANNIBAL
-    assert _row([0.81, 0.86, 0.1], ranking=[(U1, 3)], margin=0.1)[L.C_VERDICT] == L.V_OK
+    assert _row([0.842, 0.843, 0.1], ranking=[(U1, 3)], margin=0)[L.C_RANK_IS_BEST] == L.NO
+    assert _row([0.81, 0.86, 0.1], ranking=[(U1, 3)], margin=0.1)[L.C_RANK_IS_BEST] == L.CMP_CLOSE
 
 
-def test_ranking_url_exactly_at_the_margin_is_ok():
-    assert _row([0.80, 0.81, 0.1], ranking=[(U1, 3)])[L.C_VERDICT] == L.V_OK
-    assert _row([0.80, 0.8101, 0.1], ranking=[(U1, 3)])[L.C_VERDICT] == L.V_CANNIBAL
+def test_ranking_url_exactly_at_the_margin_is_almost_as_good():
+    assert _row([0.80, 0.81, 0.1], ranking=[(U1, 3)])[L.C_RANK_IS_BEST] == L.CMP_CLOSE
+    assert _row([0.80, 0.8101, 0.1], ranking=[(U1, 3)])[L.C_RANK_IS_BEST] == L.NO
 
 
 def test_exact_tie_between_ranking_and_best_url_is_ok_and_almost_as_good():

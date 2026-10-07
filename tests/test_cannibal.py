@@ -171,7 +171,7 @@ def test_both_stages_can_apply_to_one_query_danger_first():
 # --- Übereinstimmung mit den Urteilen ----------------------------------------------------------------------------
 
 
-def test_every_cannibalisation_verdict_and_every_close_ok_is_listed():
+def test_every_cannibalisation_verdict_and_every_competing_page_at_good_ranking_is_listed():
     queries = ["ok-nah", "ok-allein", "deutlich", "nah-schwach", "nah-ohne-ranking", "knapp-unter", "nicht-im-export",
                "nutzen", "luecke"]
     scores = [[0.842, 0.848, 0.1], [0.9, 0.7, 0.1], [0.7, 0.9, 0.1], [0.81, 0.805, 0.1], [0.81, 0.805, 0.1],
@@ -185,7 +185,11 @@ def test_every_cannibalisation_verdict_and_every_close_ok_is_listed():
     decisions = build_decisions(result, lead, 0.8, rankings)
     cannibal = find_cannibalization(result, lead, 0.8, rankings)
     assert decisions[L.C_VERDICT].tolist() == [
-        L.V_OK, L.V_OK, L.V_CANNIBAL, L.V_CANNIBAL, L.V_CANNIBAL, L.V_CANNIBAL, L.V_CANNIBAL, L.V_MATCH, L.V_GAP,
+        L.V_OK, L.V_OK, L.V_WATCH, L.V_CANNIBAL, L.V_CANNIBAL, L.V_WATCH, L.V_OK, L.V_MATCH, L.V_GAP,
+    ]
+    # gutes Ranking: das Urteil folgt der rankenden Seite, die Gefahr steht trotzdem im Blatt
+    assert annotate(decisions, cannibal)[L.C_CANNIBAL].tolist() == [
+        L.YES, L.NO, L.YES, L.YES, L.YES, L.YES, L.YES, L.NO, L.NO,
     ]
     flagged = set(decisions.loc[decisions[L.C_VERDICT] == L.V_CANNIBAL, L.C_QUERY])
     assert flagged <= set(cannibal.loc[cannibal[L.C_STAGE] == L.STAGE_DANGER, L.C_QUERY])

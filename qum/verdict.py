@@ -65,7 +65,11 @@ class Assessment:
 
 
 def assess(result, lead, threshold, rankings=None, good_position=10, margin=0.01) -> list:
-    """Urteil je Query. Prüfreihenfolge: nichts passt, dann gutes Ranking, dann eine oder mehrere passende Seiten."""
+    """Urteil je Query. Prüfreihenfolge: nichts passt, dann gutes Ranking, dann eine oder mehrere passende Seiten.
+
+    Bei gutem Ranking zählt die rankende Seite: erreicht sie die Schwelle oder steht sie nicht im Frog-Export (nicht
+    prüfbar), ist es in Ordnung, sonst rankt sie trotz schwachem Match. Konkurrierende Seiten meldet cannibal.py.
+    """
     check_margin(margin)
     u_index = {normalize_url(u): j for j, u in enumerate(result.urls)}
     best = best_rankings(rankings)
@@ -78,8 +82,8 @@ def assess(result, lead, threshold, rankings=None, good_position=10, margin=0.01
         if not close:
             verdict = L.V_WATCH if ranks_well else L.V_GAP
         elif ranks_well:
-            # in Ordnung, wenn die rankende Seite passt und höchstens um den Abstand hinter der besten liegt
-            verdict = L.V_OK if ranking_j in close else L.V_CANNIBAL
+            fits = ranking_j is None or lead[i, ranking_j] >= threshold
+            verdict = L.V_OK if fits else L.V_WATCH
         elif len(close) >= 2:
             verdict = L.V_CANNIBAL
         else:

@@ -19,14 +19,18 @@ _RISK_REASON = {
 
 
 def _danger_reason(a, scores, margin):
-    """Grund der Stufe Gefahr oder None. Gutes Ranking: der Grund betrifft die rankende URL."""
-    if a.verdict == L.V_CANNIBAL and a.ranks_well:
-        return _RISK_REASON[risk_kind(scores, a.ranking_j, margin)]
+    """Grund der Stufe Gefahr oder None.
+
+    Gutes Ranking: auch wenn heute die richtige Seite rankt, wird gemeldet, wenn eine andere eigene Seite passt und
+    besser oder fast gleich gut ist, denn Google kann die rankende Seite wechseln. Der Grund betrifft die rankende URL.
+    """
     if a.verdict == L.V_CANNIBAL:
         return L.REASON_CLOSE
-    if a.verdict == L.V_OK and len(a.close) >= 2:
-        return L.REASON_OK_CLOSE
-    return None
+    if not a.ranks_well or not a.close:
+        return None
+    if a.ranking_j in a.close:
+        return L.REASON_OK_CLOSE if len(a.close) >= 2 else None
+    return _RISK_REASON[risk_kind(scores, a.ranking_j, margin)]
 
 
 def _row(query, stage, reason, competing) -> dict:
@@ -51,7 +55,8 @@ def _own_rankings(rankings) -> dict:
 def find_cannibalization(
     result, lead, threshold, rankings=None, good_position=10, margin=0.01, visible_position=20
 ) -> pd.DataFrame:
-    """Stufe Gefahr: jedes Urteil Kannibalisierungsgefahr und jedes "In Ordnung" mit fast gleich guten Seiten.
+    """Stufe Gefahr: jedes Urteil Kannibalisierungsgefahr und bei gutem Ranking jede andere passende Seite, die besser
+    oder fast gleich gut ist als die rankende.
     Stufe Bereits sichtbar: mehrere eigene URLs ranken bis visible_position."""
     assessments = assess(result, lead, threshold, rankings, good_position, margin)
     u_index = {normalize_url(u): j for j, u in enumerate(result.urls)}

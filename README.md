@@ -7,7 +7,7 @@
 ## Was es beantwortet
 
 - Gibt es für eine Query schon eine passende Seite oder Textstelle?
-- Passt eine andere Seite deutlich besser als die, die gerade rankt, oder passen mehrere eigene Seiten fast gleich gut (Kannibalisierungsgefahr)? Liegt die rankende Seite höchstens 0,01 hinter der besten (einstellbar in Schritt 7c), ist sie in Ordnung.
+- Passen mehrere eigene Seiten fast gleich gut (Kannibalisierungsgefahr)? Bei gutem Ranking zählt die rankende Seite fürs Urteil; passt eine andere eigene Seite besser oder fast gleich gut (höchstens 0,01 dahinter, einstellbar in Schritt 7c), meldet die Übersicht trotzdem Kannibalisierungsgefahr.
 - Für welche Queries fehlt Content (potentielle Content-Lücken), und wie viele neue Seiten sind das wirklich?
 
 Das Notebook sortiert vor und begründet. Die Entscheidung trifft ein Mensch.

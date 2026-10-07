@@ -420,9 +420,9 @@ print(f"✅ Schritt 7b fertig: Schwelle {threshold:.4f}. Weiter mit Schritt 7c: 
 STEP7C = '''#@title Schritt 7c: Urteile bilden { display-mode: "form" }
 #@markdown **▶ Starten. Die Werte darunter kannst du für den ersten Lauf auf den Voreinstellungen lassen.**
 #@markdown Die Zelle entscheidet mit der Schwelle aus Schritt 7b je Query, ob eine oder mehrere deiner Seiten passen, und bildet daraus die Urteile (passende Seite, Kannibalisierungsgefahr, Content-Lücke). Dazu stellt sie die potentiellen Content-Lücken zusammen. Willst du nur die Feineinstellungen ändern, starte nur diese Zelle erneut. Welches Urteil wann entsteht, zeigt die Übersicht über Schritt 7a.
-#@markdown **rankt_gut_bis_position:** Bis zu dieser Position gilt eine Query als gut rankend. Davon hängt das Urteil ab: "In Ordnung" oder "Kannibalisierungsgefahr" bei gutem Ranking, "Passende Seite vorhanden", "Kannibalisierungsgefahr" oder "Content-Lücke" bei schwachem oder fehlendem.
+#@markdown **rankt_gut_bis_position:** Bis zu dieser Position gilt eine Query als gut rankend. Davon hängt das Urteil ab: "In Ordnung" oder "Rankt trotz schwachem Match" bei gutem Ranking, "Passende Seite vorhanden", "Kannibalisierungsgefahr" oder "Content-Lücke" bei schwachem oder fehlendem.
 rankt_gut_bis_position = 10 #@param {type:"integer"}
-#@markdown **abstand_fast_gleich:** Score-Unterschied, bis zu dem zwei Seiten als gleich gut gelten (0.01 = ein Hundertstel). Liegt die rankende Seite höchstens so weit hinter der besten, lautet das Urteil "In Ordnung". Liegen mehrere passende Seiten so nah beieinander, gibt es Kannibalisierungsgefahr.
+#@markdown **abstand_fast_gleich:** Score-Unterschied, bis zu dem zwei Seiten als gleich gut gelten (0.01 = ein Hundertstel). Liegen mehrere passende Seiten so nah beieinander, gibt es Kannibalisierungsgefahr.
 abstand_fast_gleich = 0.01 #@param {type:"number"}
 #@markdown **sichtbar_bis_position:** Ranken zwei eigene URLs für dieselbe Query bis zu dieser Position, steht die Query im Blatt Kannibalisierungsgefahr mit der Stufe "Bereits sichtbar".
 sichtbar_bis_position = 20 #@param {type:"integer"}
@@ -554,10 +554,11 @@ Für jede Query prüft das Tool zwei Dinge: Wie viele deiner Seiten passen seman
 
 | | Genau eine Seite passt klar | Mehrere Seiten passen fast gleich gut | Keine Seite passt |
 |---|---|---|---|
-| **Rankt gut** (Voreinstellung: bis Position 10) | **In Ordnung** | **In Ordnung**, wenn die rankende Seite die beste ist oder fast gleich gut passt (in der Übersicht steht dann Kannibalisierungsgefahr „ja“). **Kannibalisierungsgefahr**, wenn eine andere eigene Seite deutlich besser passt, die rankende Seite die Schwelle nicht erreicht oder die rankende URL nicht im Frog-Export steht. | **Rankt trotz schwachem Match**: beobachten und die Schwelle prüfen |
+| **Rankt gut** (Voreinstellung: bis Position 10) | **In Ordnung**, wenn die rankende Seite die Schwelle erreicht, sonst **Rankt trotz schwachem Match** | wie links, dazu Kannibalisierungsgefahr „ja“ | **Rankt trotz schwachem Match**: beobachten und die Schwelle prüfen |
 | **Rankt schwach, gar nicht oder keine Rankings geladen** | **Passende Seite vorhanden**: ausbauen und intern stärken statt neu bauen | **Kannibalisierungsgefahr**: mehrere eigene Seiten konkurrieren, bevor eine davon rankt | **Content-Lücke**: Kandidat für eine neue Seite |
 
-- Bei gutem Ranking gelten die Bedingungen der mittleren Spalte auch, wenn nur eine Seite klar passt: Ist das nicht die rankende Seite, lautet das Urteil **Kannibalisierungsgefahr**.
+- Bei gutem Ranking richtet sich das Urteil nach der rankenden Seite. Passt eine andere eigene Seite besser oder fast gleich gut, steht in der Übersicht trotzdem Kannibalisierungsgefahr „ja“: Heute rankt die richtige Seite, Google kann aber wechseln.
+- Steht die rankende URL nicht im Frog-Export, kann das Tool sie nicht prüfen. Das Urteil ist dann **In Ordnung**, die Spalte „Rankende URL = beste URL?“ zeigt „nicht im Frog-Export“.
 - **In jedem Feld** steht in der Übersicht neben dem Urteil die Spalte „Kannibalisierungsgefahr“: „ja“, wenn die Query im Blatt „Kannibalisierungsgefahr“ steht. Das ist auch der Fall, wenn mehrere eigene Seiten für dieselbe Query ranken (Stufe „Bereits sichtbar“).
 - Das Blatt „Potentielle Content-Lücken“ hat eigene Einstellungen in Schritt 7c. Seine Zahl kann deshalb von der Zahl der Urteile „Content-Lücke“ abweichen.
 
