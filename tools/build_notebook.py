@@ -11,7 +11,7 @@ INTRO = '''# Query-URL Matcher
 
 **Neue Seite bauen oder Bestehendes nutzen?**
 
-Dieses Notebook vergleicht deine Suchanfragen (oder Prompts) per Embeddings mit dem Inhalt deiner Seiten. Es zeigt je Query, welche Seite und welche Textstelle am besten passt, und leitet daraus Hinweise zu **Kannibalisierung** und **Content-Lücken** ab.
+Dieses Notebook vergleicht deine Suchanfragen (oder Prompts) per Embeddings mit dem Inhalt deiner Seiten. Es zeigt je Query, welche Seiten und welche Textstelle am besten passen, und leitet daraus Hinweise zu **Kannibalisierungsgefahr** und **Content-Lücken** ab.
 
 ## Schritt 1: Was du brauchst
 
@@ -22,7 +22,7 @@ Dieses Notebook vergleicht deine Suchanfragen (oder Prompts) per Embeddings mit 
 | Eigene Rankings | optional | Keyword, URL, Position (GSC, Ahrefs, SISTRIX) |
 | Top-10-SERPs | optional | Ahrefs-Export mit Keyword, URL, Position, Type |
 
-Schon ohne Ranking-Dateien bekommst du das Matching mit Urteilen zu passender Seite und Content-Lücke und den Hinweis, wenn mehrere Seiten fast gleich gut passen (Kannibalisierung). Eigene Rankings ergänzen die Urteile, die sich auf Rankings stützen (zum Beispiel "Kannibalisierungsgefahr" und "Rankt trotz schwachem Match"), und ermöglichen eine Kalibrierung der Schwelle für "passend" (ab 20 gut rankenden Paaren, Wahl in Schritt 7b). Top-10-SERPs bündeln die Lücken zusätzlich zu Themen.
+Schon ohne Ranking-Dateien bekommst du das Matching mit Urteilen zu passender Seite, Kannibalisierungsgefahr (mehrere eigene Seiten passen fast gleich gut) und Content-Lücke. Eigene Rankings ergänzen die Urteile, die sich auf Rankings stützen (zum Beispiel "In Ordnung" und "Rankt trotz schwachem Match"), und ermöglichen eine Kalibrierung der Schwelle für "passend" (ab 20 gut rankenden Paaren, Wahl in Schritt 7b). Top-10-SERPs bündeln die potentiellen Content-Lücken zusätzlich zu Themen.
 
 ## So gehst du vor
 
@@ -35,6 +35,15 @@ Wenn du einen früheren Schritt erneut ausführst, setzt das Notebook alles zur�
 Das Notebook fordert beim Start automatisch eine kostenlose T4-GPU an. Teilt Colab gerade keine zu, läuft es auf der CPU: Bei einigen hundert Seiten reicht das, bei mehreren tausend Seiten dauert das Einbetten deutlich länger.
 
 Für die Modelle mit API-Key legst du im Secrets-Panel (Schlüssel-Symbol links) das Secret an und aktivierst dort den Schalter "Notebook-Zugriff".
+
+## Ergebnis
+
+Schritt 8 lädt eine Excel-Datei mit vier Blättern herunter, auf Wunsch zusätzlich ein ZIP mit einer CSV je Blatt:
+
+- **Übersicht:** eine Zeile je Query mit den drei am besten passenden URLs und ihren Scores, der eigenen Rankingposition, dem Urteil und der Spalte Kannibalisierungsgefahr (ja oder nein).
+- **Kannibalisierungsgefahr:** Queries, bei denen mehrere eigene Seiten konkurrieren, mit bis zu drei URLs samt Score und Position.
+- **Potentielle Content-Lücken:** Queries ohne ausreichend passende Seite, mit SERPs nach Thema gebündelt.
+- **Lesehilfe:** erklärt jedes Blatt, jede Spalte, jedes Urteil und nennt die Einstellungen des Laufs.
 
 ## Wichtig
 
@@ -204,7 +213,7 @@ STEP5 = '''#@title Schritt 5 (optional): Eigene Rankings hochladen { display-mod
 #@markdown Export mit Keyword, URL und Position, zum Beispiel aus GSC, Ahrefs (Organic Keywords) oder SISTRIX.
 #@markdown Ergänzt die Urteile, die sich auf Rankings stützen, und ermöglicht eine Kalibrierung der Schwelle für "passend"
 #@markdown (ab 20 gut rankenden Paaren, Wahl in Schritt 7b).
-#@markdown Kannibalisierung und Content-Lücken gibt es auch ohne Rankings.
+#@markdown Kannibalisierungsgefahr und Content-Lücken gibt es auch ohne Rankings.
 #@markdown **Die Felder unten bleiben normalerweise leer.** Nur wenn die Zelle mit ❌ „…-Spalte nicht erkannt" abbricht, trägst du den Namen aus der Meldung ein und startest die Zelle erneut.
 keyword_spalte = "" #@param {type:"string"}
 url_spalte_ranking = "" #@param {type:"string"}
@@ -249,7 +258,7 @@ if rankings is None:
 STEP6 = '''#@title Schritt 6 (optional): Top-10-SERPs hochladen { display-mode: "form" }
 #@markdown **▶ Klicke links auf das Play-Symbol. Unter der Zelle erscheint dann der Knopf „Dateien auswählen".**
 #@markdown Ahrefs-Export mit Keyword, URL, Position und Type (die kompletten Top 10 je Keyword, inklusive Wettbewerber).
-#@markdown Schaltet die Bündelung der Content-Lücken zu Themen frei.
+#@markdown Die SERPs werden nur genutzt, um die potentiellen Content-Lücken zu Themen zu bündeln (Spalte Thema im Blatt „Potentielle Content-Lücken“) und daraus die Zahl neuer Seiten zu zählen. Ohne Ranking-Datei aus Schritt 5 übernimmt das Notebook außerdem deine eigenen Rankings aus den SERPs.
 #@markdown **Die Felder unten bleiben normalerweise leer.** Nur wenn die Zelle mit ❌ „…-Spalte nicht erkannt" abbricht, trägst du den Namen aus der Meldung ein und startest die Zelle erneut.
 serp_keyword_spalte = "" #@param {type:"string"}
 serp_url_spalte = "" #@param {type:"string"}
@@ -517,8 +526,12 @@ print("✅ Schritt 7c fertig. Weiter mit Schritt 8 (Export).")
 '''
 
 STEP8 = '''#@title Schritt 8: Export { display-mode: "form" }
-#@markdown Die Excel-Datei enthält ein Blatt je Auswertung und eine Lesehilfe.
-#@markdown Das Trennzeichen gilt nur für die zusätzliche CSV-ZIP.
+#@markdown Die Excel-Datei hat vier Blätter:
+#@markdown **Übersicht:** eine Zeile je Query mit den drei besten URLs, ihren Scores, der Rankingposition, dem Urteil und Kannibalisierungsgefahr ja oder nein.
+#@markdown **Kannibalisierungsgefahr:** Queries, bei denen mehrere eigene Seiten konkurrieren, mit bis zu drei URLs samt Score und Position.
+#@markdown **Potentielle Content-Lücken:** Queries, deren beste Seite unter der Lücken-Schwelle aus Schritt 7c liegt, mit SERPs nach Thema gebündelt.
+#@markdown **Lesehilfe:** erklärt Blätter, Spalten, Urteile und Stufen und nennt die Einstellungen des Laufs.
+#@markdown Das Trennzeichen gilt nur für die zusätzliche CSV-ZIP (eine CSV je Blatt).
 zusaetzlich_csv_zip = False #@param {type:"boolean"}
 csv_trennzeichen = "Semikolon (für deutsches Excel)" #@param ["Semikolon (für deutsches Excel)", "Komma"]
 
@@ -537,16 +550,17 @@ print(f"✅ Schritt 8 fertig: {len(sheets)} Blätter exportiert.")
 
 VERDICT_GUIDE = '''## So entstehen die Urteile (Schritt 7a bis 7c)
 
-Für jede Query prüft das Tool zwei Dinge: Passt eine deiner Seiten semantisch, erreicht ihr Score also die Schwelle aus Schritt 7b? Und rankt die Query heute schon gut (Rankings aus Schritt 5 oder 6)? Daraus ergibt sich das Urteil:
+Für jede Query prüft das Tool zwei Dinge: Wie viele deiner Seiten passen semantisch, erreichen also mit ihrem Score die Schwelle aus Schritt 7b? Und rankt die Query heute schon gut (Rankings aus Schritt 5 oder 6)? „Fast gleich gut“ heißt: Mehrere Seiten passen und liegen höchstens um den Abstand „fast gleich“ (Voreinstellung 0.01) unter dem besten Score. Sonst passt genau eine Seite klar.
 
-| | Eine eigene Seite passt semantisch | Keine Seite passt |
-|---|---|---|
-| **Rankt gut** (Voreinstellung: bis Position 10) | **In Ordnung**, wenn die rankende Seite die beste ist oder fast gleich gut. **Kannibalisierungsgefahr**, wenn eine andere eigene Seite deutlich besser passt. | **Rankt trotz schwachem Match**: beobachten und die Schwelle prüfen |
-| **Rankt schwach oder gar nicht** | **Bestehende Seite nutzen**: ausbauen und intern stärken statt neu bauen | **Content-Lücke**: Kandidat für eine neue Seite |
+| | Genau eine Seite passt klar | Mehrere Seiten passen fast gleich gut | Keine Seite passt |
+|---|---|---|---|
+| **Rankt gut** (Voreinstellung: bis Position 10) | **In Ordnung** | **In Ordnung**, wenn die rankende Seite die beste ist oder fast gleich gut passt (in der Übersicht steht dann Kannibalisierungsgefahr „ja“). **Kannibalisierungsgefahr**, wenn eine andere eigene Seite deutlich besser passt, die rankende Seite die Schwelle nicht erreicht oder die rankende URL nicht im Frog-Export steht. | **Rankt trotz schwachem Match**: beobachten und die Schwelle prüfen |
+| **Rankt schwach oder gar nicht** | **Bestehende Seite nutzen**: ausbauen und intern stärken statt neu bauen | **Kannibalisierungsgefahr**: mehrere eigene Seiten konkurrieren, bevor eine davon rankt | **Content-Lücke**: Kandidat für eine neue Seite |
+| **Keine Rankings geladen** | **Passende Seite vorhanden** | **Kannibalisierungsgefahr** | **Content-Lücke** |
 
-- **Ohne Rankings** gibt es nur zwei Urteile: **Passende Seite vorhanden** oder **Content-Lücke**.
-- **Kannibalisierungsgefahr** gibt es auch, wenn die rankende Seite selbst die Schwelle nicht erreicht, eine andere eigene Seite aber schon, oder wenn die rankende URL nicht im Frog-Export steht.
-- **In jedem Feld** kann zusätzlich ein Hinweis auf Kannibalisierungsgefahr stehen: wenn zwei eigene Seiten fast gleich gut passen oder mehrere eigene Seiten für dieselbe Query ranken. Er steht im Export in der Spalte „Kannibalisierungsgefahr" neben dem Urteil, Details im Blatt „Kannibalisierungsgefahr". Gerade bei „Bestehende Seite nutzen" zeigt er Konkurrenz zwischen eigenen Seiten, bevor sie in den Rankings sichtbar wird.
+- Bei gutem Ranking gelten die Bedingungen der mittleren Spalte auch, wenn nur eine Seite klar passt: Ist das nicht die rankende Seite, lautet das Urteil **Kannibalisierungsgefahr**.
+- **In jedem Feld** steht in der Übersicht neben dem Urteil die Spalte „Kannibalisierungsgefahr“: „ja“, wenn die Query im Blatt „Kannibalisierungsgefahr“ steht. Das ist auch der Fall, wenn mehrere eigene Seiten für dieselbe Query ranken (Stufe „Bereits sichtbar“).
+- Das Blatt „Potentielle Content-Lücken“ hat eigene Einstellungen in Schritt 7c. Seine Zahl kann deshalb von der Zahl der Urteile „Content-Lücke“ abweichen.
 
 Alle Urteile sind Hinweise zum Prüfen, keine Entscheidungen.
 '''

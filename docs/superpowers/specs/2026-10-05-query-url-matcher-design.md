@@ -1,6 +1,6 @@
 # Query-URL Matcher – Design
 
-Stand: 2026-10-05. Abgestimmt mit Daniel im Brainstorming. Grundlage ist sein Colab-Skript „Query-URL Matcher v2.2".
+Stand: 2026-10-05, Export und Urteile überarbeitet für Version 0.2.0 (2026-10-07). Abgestimmt mit Daniel im Brainstorming. Grundlage ist sein Colab-Skript „Query-URL Matcher v2.2".
 
 ## 1. Zweck
 
@@ -20,7 +20,7 @@ Das Notebook sortiert vor und begründet. Die Entscheidung trifft ein Mensch. Da
 - **Aufbau:** getestetes Python-Paket `qum` im GitHub-Repo `query-url-matcher`, dazu ein dünnes Notebook `query_url_matcher.ipynb`, das das Paket per `pip install git+https://github.com/DanielKremer91/query-url-matcher@v<version>` lädt, festgelegt auf den Git-Tag der Paketversion (`qum.__version__`, gleich der Version in `pyproject.toml`).
 - **Lizenz:** MIT. README auf Deutsch mit „Open in Colab"-Button.
 - **Größenordnung:** einige tausend bis wenige zehntausend URLs. Vor dem Einbetten schätzt das Notebook die Zahl der Chunks und warnt ab 50.000.
-- **Kein generierter Text:** Empfehlungen sind feste Textbausteine mit eingesetzten Werten.
+- **Kein generierter Text:** Gründe und Erklärungen sind feste Textbausteine.
 - **Push:** Das Repo wird erst auf Daniels Ansage nach GitHub gepusht. Bis dahin installiert das Notebook das Paket aus einem lokalen Stand.
 
 Nicht im Umfang: eigener Crawler, Verarbeitung von Millionen Seiten, Ollama, eine Oberfläche außerhalb von Colab.
@@ -31,8 +31,8 @@ Nicht im Umfang: eigener Crawler, Verarbeitung von Millionen Seiten, Ollama, ein
 |---|---|---|---|
 | Queries | ja | eine Query oder ein Prompt je Zeile | Matching |
 | Frog-Export | ja | URL, Main Content | Matching |
-| Eigene Rankings | optional | Keyword, URL, Position | Urteile mit Ranking, Kannibalisierungs-Stufen, Kalibrierung der Schwelle |
-| Top-10-SERPs | optional | Keyword, URL, Position, Type (Ahrefs) | Clustering, Nachbar-Hinweis |
+| Eigene Rankings | optional | Keyword, URL, Position | Urteile mit Ranking, Stufe „Bereits sichtbar“, Rankingposition in den Blättern, Kalibrierung der Schwelle |
+| Top-10-SERPs | optional | Keyword, URL, Position, Type (Ahrefs) | Thema der potentiellen Content-Lücken und Zahl neuer Seiten (Clustering) |
 
 Regeln:
 
@@ -70,12 +70,12 @@ Regeln:
 Je Query und URL entstehen immer drei Scores:
 
 1. **Chunk-Score:** Der Content wird in überlappende Wort-Chunks zerlegt. Der Score ist der höchste Cosinus-Wert eines Chunks. Der beste Chunk steht im Export.
-2. **Gesamt-URL-Score:** Passt der Main Content ins Kontextfenster, wird er als Ganzes eingebettet (Methode „Volltext"). Sonst gilt der normalisierte Mittelwert der Chunk-Vektoren (Methode „Mittelwert der Chunks"). Die Methode steht je URL im Export. Die Passung wird bei lokalen Modellen mit dem Tokenizer geprüft; bei bge-m3 zählt eine Seite nur bis 2.048 Tokens als passend, weil das Einbetten ganzer langer Seiten mehrere Sekunden je Seite und viel GPU-Speicher kostet (längere Seiten nehmen den Mittelwert der Chunks). Bei OpenAI gilt die Grenze 3.000 Wörter, bei Gemini 1.000 Wörter.
+2. **Gesamt-URL-Score:** Passt der Main Content ins Kontextfenster, wird er als Ganzes eingebettet (Methode „Volltext"). Sonst gilt der normalisierte Mittelwert der Chunk-Vektoren (Methode „Mittelwert der Chunks"). Die Methode wird nicht exportiert. Die Passung wird bei lokalen Modellen mit dem Tokenizer geprüft; bei bge-m3 zählt eine Seite nur bis 2.048 Tokens als passend, weil das Einbetten ganzer langer Seiten mehrere Sekunden je Seite und viel GPU-Speicher kostet (längere Seiten nehmen den Mittelwert der Chunks). Bei OpenAI gilt die Grenze 3.000 Wörter, bei Gemini 1.000 Wörter.
 3. **Kombi-Score:** `w × Chunk + (1 − w) × Gesamt-URL`, `w` per Schieberegler, Default 0,7.
 
-Ein Formularfeld „Bewertungsgrundlage" (Chunk als Default, Gesamt-URL, Kombi) legt den **Leit-Score** fest. Er entscheidet über „passend" und die Sortierung. Alle drei Scores und Ränge stehen immer im Export.
+Ein Formularfeld „Bewertungsgrundlage" (Chunk als Default, Gesamt-URL, Kombi) legt den **Leit-Score** fest. Er entscheidet über „passend", über beste, zweitbeste und drittbeste URL und die Sortierung. Alle drei Scores stehen immer im Export.
 
-Je Query werden die drei besten URLs nach Leit-Score ausgegeben.
+Je Query gibt das Notebook die drei URLs mit dem höchsten Leit-Score aus, je mit allen drei Scores (Blatt Übersicht). Schritt 4 zeigt danach eine Vorschau der ersten 10 Queries mit bester und zweitbester URL und ihrem Leit-Score, gebaut aus derselben Funktion.
 
 Berechnete Vektoren werden in der Sitzung und auf der Colab-Platte zwischengespeichert, Schlüssel ist Modell, Rolle (Query oder Passage) und Text-Hash. Geänderte Schwellen oder ein wiederholter Schritt betten nichts neu ein. Die Ähnlichkeiten werden als Matrixoperation gerechnet.
 
@@ -96,52 +96,44 @@ Vorschläge werden einmal auf 4 Nachkommastellen gerundet. Die Wahl steht in den
 
 ## 7. Urteile je Query
 
-Eine URL „passt", wenn ihr Leit-Score mindestens die Schwelle erreicht. „Rankt gut" heißt: beste eigene Position ≤ 10 (einstellbar).
+Eine URL „passt", wenn ihr Leit-Score mindestens die Schwelle erreicht. „Fast gleich gut" heißt: Mehrere URLs passen und liegen höchstens um den Abstand „fast gleich" (Default 0,01, einstellbar) unter dem besten Leit-Score. Verglichen werden die auf 4 Nachkommastellen gerundeten Leit-Scores; ein negativer Abstand ist ein Fehler. Passt genau eine URL und liegen alle anderen passenden weiter dahinter, passt sie „klar". „Rankt gut" heißt: beste eigene Position ≤ 10 (einstellbar).
 
-Ohne Rankings:
+| | genau eine Seite passt klar | mehrere Seiten passen fast gleich gut | keine Seite passt |
+|---|---|---|---|
+| rankt gut | in Ordnung | rankende Seite ist die beste oder liegt im Abstand und passt: in Ordnung (Kannibalisierungsgefahr „ja“). Eine andere Seite deutlich besser, die rankende Seite unter der Schwelle, während eine andere passt, oder die rankende URL fehlt im Frog-Export: Kannibalisierungsgefahr | rankt trotz schwachem Match |
+| rankt schwach oder gar nicht | bestehende Seite nutzen | Kannibalisierungsgefahr | Content-Lücke |
+| keine Rankings geladen | passende Seite vorhanden | Kannibalisierungsgefahr | Content-Lücke |
 
-| Matching | Urteil |
-|---|---|
-| beste URL passt | passende Seite vorhanden |
-| keine URL passt | keine passende Seite (Content-Lücke) |
+Prüfreihenfolge: zuerst „keine Seite passt", dann gutes Ranking, dann die Zahl der fast gleich guten Seiten. Bei gutem Ranking gilt die Bedingung der mittleren Spalte auch, wenn nur eine Seite klar passt: Ist es nicht die rankende Seite, lautet das Urteil Kannibalisierungsgefahr.
 
-Mit Rankings, in dieser Prüfreihenfolge:
+Die Übersicht nennt immer die wirklich beste URL nach Leit-Score, auch bei „in Ordnung"; die rankende URL wird nicht eingesetzt. Wie die rankende URL zur besten steht, zeigt die Spalte „Rankende URL = beste URL?" (Abschnitt 11).
 
-| Ranking | Matching | Urteil |
-|---|---|---|
-| gut | keine URL passt | rankt trotz schwachem Match, beobachten |
-| gut | rankende URL passt selbst und liegt höchstens um den Abstand „fast gleich" hinter dem besten Treffer | in Ordnung |
-| gut | rankende URL liegt weiter dahinter, erreicht die Schwelle nicht oder fehlt im Export, der beste Treffer passt | Kannibalisierungsgefahr |
-| schwach oder keines | beste URL passt | bestehende Seite nutzen, nicht neu bauen |
-| schwach oder keines | keine URL passt | Content-Lücke |
+## 8. Kannibalisierungsgefahr
 
-Der Abstand „fast gleich" ist derselbe wie in Abschnitt 8 (Default 0,01, einstellbar). Verglichen werden die auf 4 Nachkommastellen gerundeten Leit-Scores. Bei „in Ordnung" beziehen sich beste URL, Passage und die drei Scores auf die rankende URL, damit die Zeile keine andere Seite als beste nennt. Passt eine weitere URL und liegt ihr Score höchstens um den Abstand von dem der rankenden entfernt (in beide Richtungen), nennt die Empfehlung diese URL und verweist auf das Blatt Kannibalisierungsgefahr; dort steht dieselbe Query. Die Empfehlung beim Risiko sagt „deutlich besser" nur, wenn der Abstand größer als 0 ist und die rankende URL die Schwelle erreicht. Ein negativer Abstand ist ein Fehler.
+Eigenes Blatt mit zwei Stufen:
 
-Steht die rankende URL nicht im Frog-Export, wird das in einer Hinweisspalte vermerkt und die Query wie „andere URL" behandelt.
-
-## 8. Kannibalisierung
-
-Eigene Auswertung mit zwei Stufen:
-
-- **Gefahr:** Urteil „Kannibalisierungsgefahr" aus Abschnitt 7, oder zwei und mehr eigene URLs passen und liegen im Leit-Score höchstens 0,01 auseinander (einstellbar; e5-Scores liegen in einem engen Band, ein größerer Abstand markiert zu viel). Der zweite Fall funktioniert auch ohne Rankings. Bei „in Ordnung" zählt dieselbe Regel wie in Abschnitt 7 (weitere passende URLs nah an der rankenden), mit eigenem Grund; die rankende URL steht zuerst. Der Grund beim Urteil „Kannibalisierungsgefahr" folgt derselben Unterscheidung wie die Empfehlung: „deutlich besser", „besser" oder „nicht verglichen" (rankende URL fehlt im Export).
+- **Gefahr:** jede Query mit dem Urteil „Kannibalisierungsgefahr" und jede Query mit „in Ordnung", bei der mehrere Seiten fast gleich gut passen. Gründe: „deutlich besser" (die beste Seite liegt mehr als einen positiven Abstand vor der rankenden), „besser" (Abstand 0 oder die rankende Seite erreicht die Schwelle nicht), „nicht verglichen" (rankende URL fehlt im Frog-Export), „Rankende Seite passt, eine weitere passt fast gleich gut" (in Ordnung) und „Mehrere Seiten passen fast gleich gut" (schwaches, fehlendes oder kein Ranking). Funktioniert auch ohne Rankings.
 - **Bereits sichtbar:** zwei oder mehr eigene URLs ranken für die Query mit Position ≤ 20 (einstellbar).
 
-Ausgegeben werden die Query, die Stufe, die konkurrierenden URLs mit Scores und Positionen.
+Eine Zeile je Query und Stufe mit bis zu drei URLs in eigenen Spalten (URL, Score, Position). Stufe Gefahr: nach Leit-Score sortiert, die rankende URL zuerst, wenn der Grund sie betrifft. Bereits sichtbar: nach Position sortiert. Score ist der Leit-Score (leer, wenn die URL nicht im Frog-Export steht), Position die eigene Position für die Query (leer, wenn sie dafür nicht rankt). Konkurrieren mehr als drei URLs, endet der Grund mit „… und n weitere".
 
-## 9. SERP-Clustering
+## 9. SERP-Clustering und potentielle Content-Lücken
 
-Nur mit Top-10-SERPs. Übernommen aus dem alten Skript:
+Clustering nur mit Top-10-SERPs. Übernommen aus dem alten Skript:
 
 - nur Zeilen mit Type „organic", je Keyword die ersten 10 URLs nach Position
 - Überschneidung zweier Keywords: gemeinsame URLs geteilt durch die kleinere Listenlänge, höchstens 10
 - Kante ab Überschneidung ≥ 50 % (einstellbar)
 - Cluster sind zusammenhängende Komponenten, bereinigt über die Dichte: Ein Keyword bleibt nur, wenn es mit mindestens 50 % (einstellbar) der übrigen Mitglieder eine Kante hat. Das verhindert den Ketteneffekt.
 
-Verwendung:
+Das Clustering dient nur dem Blatt „Potentielle Content-Lücken": Die Cluster-Nummer steht dort in der Spalte Thema, und die Zahl neuer Seiten zählt eine Seite je Thema, Lücken ohne Thema einzeln.
 
-- **Cluster-Spalte** an allen Ergebniszeilen.
-- **Nachbar-Hinweis** bei Lücken-Queries: Hat ein direkter Nachbar (Kante, nicht bloß gleiches Cluster) eine passende Seite, erscheint sie als Kandidat mit Nachbar-Keyword, Überschneidung, eigenem Leit-Score der Lücken-Query gegen diese Seite, bester Passage und, falls vorhanden, Position. Bei mehreren Nachbarn mit verschiedenen Seiten werden alle gelistet, höchste Überschneidung zuerst. Das Urteil lautet dann „vor Neuerstellung prüfen".
-- **Zusammenfassung** „Lücken je Cluster": Anzahl Lücken-Queries und daraus die Zahl der tatsächlich neuen Seiten (ein Cluster zählt als eine Seite, Queries ohne Cluster einzeln).
+Das Blatt hat eigene Einstellungen in Schritt 7c, seine Zahl kann deshalb von der Zahl der Urteile „Content-Lücke" abweichen:
+
+- `luecke_unter_score` (Default 0 = Schwelle aus Schritt 7b): Eine Query ist eine potentielle Lücke, wenn ihr bester Leit-Score darunter liegt. Erlaubt sind 0 oder Werte zwischen 0 und 1.
+- `luecke_nur_ohne_ranking_bis_position` (Default 0 = aus): Bei einem Wert über 0 zählen nur Queries ohne eigenes Ranking bis zu dieser Position (kein Ranking oder schlechter). Ohne Rankings wird der Wert mit einer Hinweiszeile ignoriert.
+
+Schritt 7c nennt die Zahl der potentiellen Lücken und, mit SERPs, die Zahl der neuen Seiten; die Lesehilfe nennt die Zahl der neuen Seiten in der Zeile zum Blatt.
 
 ## 10. Nutzerführung im Notebook
 
@@ -150,27 +142,36 @@ Schritt-Zellen mit Colab-Formularen (`#@param`), Code eingeklappt. Jede Zelle ha
 1. Einführung: was das Notebook beantwortet, was man braucht, wie man die Ergebnisse liest
 2. Installation und Modellwahl
 3. Upload Queries und Frog-Export, Vorschau der erkannten Spalten
-4. Matching (Chunk-Einstellungen, Bewertungsgrundlage, Kombi-Gewicht)
+4. Matching (Chunk-Einstellungen, Bewertungsgrundlage, Kombi-Gewicht), Vorschau der ersten 10 Queries
 5. Optional: eigene Rankings
-6. Optional: Top-10-SERPs
-7. Schwelle und Urteile: 7a Vorschläge ansehen, 7b Schwelle festlegen, 7c Urteile bilden
-8. Export
+6. Optional: Top-10-SERPs (nur für das Thema der potentiellen Content-Lücken und die Zahl neuer Seiten; ohne Ranking-Datei liefern sie auch die eigenen Rankings)
+7. Schwelle und Urteile: 7a Vorschläge ansehen, 7b Schwelle festlegen, 7c Urteile bilden und potentielle Content-Lücken zusammenstellen
+8. Export der vier Blätter
 
 Ohne die Schritte 5 und 6 arbeitet das Notebook wie das alte Skript, nur mit den Korrekturen.
 
 ## 11. Export
 
-Standard ist eine Excel-Datei, per Häkchen zusätzlich ein ZIP mit einer CSV je Blatt (UTF-8 mit BOM). Das Trennzeichen ist wählbar: Semikolon (Vorgabe, für deutsches Excel) schreibt Zahlen mit Dezimalkomma, Komma schreibt sie mit Dezimalpunkt. Beim Semikolon gilt das Dezimalkomma auch für Zahlen, die als Text vorliegen: Positionen, Zahlen-Einstellungen in der Lesehilfe und „Score …"/„Position …" (auch negativ) in den konkurrierenden URLs und der Empfehlung. Die Excel-Datei bleibt unverändert.
+Standard ist eine Excel-Datei, per Häkchen zusätzlich ein ZIP mit einer CSV je Blatt (UTF-8 mit BOM). Das Trennzeichen ist wählbar: Semikolon (Vorgabe, für deutsches Excel) schreibt Zahlen mit Dezimalkomma, Komma schreibt sie mit Dezimalpunkt. Beim Semikolon gilt das Dezimalkomma auch für Zahlen, die als Text vorliegen: Positionen und Zahlen-Einstellungen in der Lesehilfe. Die Excel-Datei bleibt unverändert.
 
-| Blatt | Inhalt | Vorhanden |
-|---|---|---|
-| Lesehilfe | Bedeutung jedes Blatts und jeder Spalte, alle Einstellungen des Laufs | immer |
-| Entscheidung | eine Zeile je Query: Urteil, beste URL, Passage, drei Scores, Vorsprung vor der zweitbesten URL, rankende URL mit Position, Cluster, Nachbar-Kandidat, Empfehlung | immer |
-| Kannibalisierungsgefahr | Abschnitt 8 | immer (Stufe „bereits sichtbar" nur mit Rankings) |
-| Content-Lücken | Lücken-Queries, mit SERPs zusätzlich Cluster und Nachbar-Kandidat | immer |
-| Lücken je Cluster | Zusammenfassung: Lücken je Cluster und Zahl der neuen Seiten | nur mit SERPs |
+Vier Blätter in dieser Reihenfolge:
 
-Die Query steht in jedem Blatt in der ersten Spalte. Urteile sind farbig hinterlegt. Zwei Spalten zeigen, wie klar die beste Seite vorn liegt, weil kurze Queries absolut niedrig scoren: „Vorsprung vor zweitbester URL" (Entscheidung, Score der gezeigten Seite minus bester Score aller anderen URLs, negativ wenn eine andere Seite knapp vorn liegt, leer bei nur einer URL). Beide beruhen auf dem Score der gewählten Bewertungsgrundlage, sind auf vier Nachkommastellen gerundet und ändern kein Urteil.
+| Blatt | Spalten |
+|---|---|
+| Übersicht | Query · Beste URL · Relevanter Chunk · Score Chunk · Score Gesamt-URL · Score Kombi · Vorsprung vor zweitbester URL · Zweitbeste URL · Score Chunk 2 · Score Gesamt-URL 2 · Score Kombi 2 · Drittbeste URL · Score Chunk 3 · Score Gesamt-URL 3 · Score Kombi 3 · Rankingposition · Rankende URL · Rankende URL = beste URL? · Urteil · Kannibalisierungsgefahr |
+| Kannibalisierungsgefahr | Query · Stufe · Grund · URL 1 · Score 1 · Position 1 · URL 2 · Score 2 · Position 2 · URL 3 · Score 3 · Position 3 (Abschnitt 8) |
+| Potentielle Content-Lücken | Query · Bester Score · Beste URL · Rankingposition · Thema (Abschnitt 9) |
+| Lesehilfe | Hinweise (Einordnung, Score-Band, Herkunft der Schwelle), alle vier Blätter, alle Urteile, beide Stufen, jede Spalte, alle Einstellungen des Laufs |
+
+Übersicht, eine Zeile je Query:
+
+- Beste, zweitbeste und drittbeste URL nach Leit-Score; „Relevanter Chunk" ist der beste Chunk der besten URL. Gibt es weniger als zwei oder drei URLs, bleiben die Zellen leer.
+- „Vorsprung vor zweitbester URL": Leit-Score der besten minus Leit-Score der zweitbesten URL, vier Nachkommastellen, leer bei nur einer URL. Er zeigt, wie klar die beste Seite vorn liegt, weil kurze Queries absolut niedrig scoren, und ändert kein Urteil.
+- „Rankingposition" und „Rankende URL": bestes eigenes Ranking für die Query, auf jeder Position, leer ohne Ranking.
+- „Rankende URL = beste URL?": „ja", „fast gleich gut" (die rankende URL passt und liegt im Abstand „fast gleich"), „nein", „rankt nicht" (Rankings geladen, aber keines für die Query), „nicht im Frog-Export", leer ohne Rankings.
+- „Kannibalisierungsgefahr": „ja", wenn die Query im Blatt Kannibalisierungsgefahr steht, sonst „nein".
+
+Die Query steht in den ersten drei Blättern in der ersten Spalte. Urteile sind farbig hinterlegt.
 
 ## 12. Paketaufbau
 
@@ -181,19 +182,20 @@ Die Query steht in jedem Blatt in der ersten Spalte. Urteile sind farbig hinterl
 | `qum/chunk.py` | Wort-Chunks |
 | `qum/models.py` | Modellregister: Ansteuerung, Chunk-Defaults, Kontextgrenzen |
 | `qum/embeddings/` | Basis-Schnittstelle, lokal, OpenAI, Gemini, Cache |
-| `qum/match.py` | drei Scores, die drei besten URLs je Query, Ränge für den Modellvergleich |
+| `qum/match.py` | drei Scores, die drei besten URLs je Query und die Vorschau in Schritt 4, Ränge für den Modellvergleich |
 | `qum/threshold.py` | Vorschläge der Schwelle (kalibriert, Median), Beispielpaare |
-| `qum/verdict.py` | Urteile, Textbausteine |
-| `qum/cannibal.py` | Kannibalisierungs-Stufen |
-| `qum/serp.py` | Clustering, Nachbarn, Lücken-Zusammenfassung |
-| `qum/export.py` | Excel und CSV-ZIP |
+| `qum/verdict.py` | Urteile und die Ranking-Spalten der Übersicht |
+| `qum/cannibal.py` | Blatt Kannibalisierungsgefahr mit beiden Stufen, Spalte Kannibalisierungsgefahr der Übersicht |
+| `qum/serp.py` | Clustering, Thema je Query |
+| `qum/gaps.py` | Blatt Potentielle Content-Lücken, Zahl neuer Seiten |
+| `qum/export.py` | vier Blätter, Lesehilfe, Excel und CSV-ZIP |
 | `qum/compare.py` | Modellvergleich für die Messung (Abschnitt 14) |
 
 Jedes Modul ist ohne Notebook und ohne echtes Modell testbar.
 
 ## 13. Tests
 
-`pytest`, ohne Netzwerk und ohne Modell-Download (ein Test-Embedder liefert feste Vektoren). Abgedeckt: verrutschte Zeilen, Encodings, Spaltenerkennung, Chunk-Grenzen, Ansteuerung je Modell (Prefix nur bei e5), Methode der Gesamt-URL, Kombi-Gewicht, jede Zeile der Urteilstabellen, beide Kannibalisierungs-Stufen, Ketteneffekt und Dichte beim Clustering, Nachbar-Regel, Export-Blätter. Ein Test prüft, dass die Code-Zellen des Notebooks gültiges Python sind.
+`pytest`, ohne Netzwerk und ohne Modell-Download (ein Test-Embedder liefert feste Vektoren). Abgedeckt: verrutschte Zeilen, Encodings, Spaltenerkennung, Chunk-Grenzen, Ansteuerung je Modell (Prefix nur bei e5), Methode der Gesamt-URL, Kombi-Gewicht, jede Zelle der Urteilstabelle, Spalten und Werte der Übersicht, beide Stufen der Kannibalisierungsgefahr, das Blatt der potentiellen Content-Lücken mit seinen Einstellungen, Ketteneffekt und Dichte beim Clustering, Export-Blätter und die Abdeckung jeder Spalte in der Lesehilfe. Ein Test prüft, dass die Code-Zellen des Notebooks gültiges Python sind.
 
 Vor der Übergabe: ein echter Durchlauf in Colab mit `multilingual-e5-large` und einem kleinen Datensatz.
 

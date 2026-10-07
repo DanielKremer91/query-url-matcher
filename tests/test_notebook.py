@@ -1109,7 +1109,7 @@ def test_smoke_decisions_carry_the_cannibalisation_column(nb, capsys):
 
 def test_verdict_guide_says_every_field_can_carry_a_cannibalisation_hint():
     guide = next(source for kind, source in CELLS if kind == "markdown" and "So entstehen die Urteile" in source)
-    assert "In jedem Feld" in guide and "Spalte „Kannibalisierungsgefahr\"" in guide
+    assert "In jedem Feld" in guide and "Spalte „Kannibalisierungsgefahr“" in guide
 
 
 def test_notebook_ends_with_step_8_and_nothing_mentions_step_9_or_pairs():
@@ -1131,3 +1131,49 @@ def test_no_serp_neighbour_hint_and_no_advice_column():
         assert not hasattr(L, name), name
     text = "\n".join(source for _, source in CELLS)
     assert "Vor Neuerstellung prüfen" not in text and "Die Empfehlung je Query" not in text
+
+
+def _guide():
+    return next(source for kind, source in CELLS if kind == "markdown" and "So entstehen die Urteile" in source)
+
+
+def test_verdict_guide_shows_the_three_column_matrix():
+    from qum import labels as L
+
+    guide = _guide()
+    assert "| | Genau eine Seite passt klar | Mehrere Seiten passen fast gleich gut | Keine Seite passt |" in guide
+    rows = {line.split("|")[1].strip(): line for line in guide.splitlines() if line.startswith("| **")}
+    assert set(rows) == {"**Rankt gut** (Voreinstellung: bis Position 10)", "**Rankt schwach oder gar nicht**",
+                         "**Keine Rankings geladen**"}
+    weak = rows["**Rankt schwach oder gar nicht**"].split("|")[2:5]
+    assert [L.V_USE in weak[0], L.V_CANNIBAL in weak[1], L.V_GAP in weak[2]] == [True, True, True]
+    none = rows["**Keine Rankings geladen**"].split("|")[2:5]
+    assert [L.V_MATCH in none[0], L.V_CANNIBAL in none[1], L.V_GAP in none[2]] == [True, True, True]
+    good = rows["**Rankt gut** (Voreinstellung: bis Position 10)"].split("|")[2:5]
+    assert L.V_OK in good[0] and L.V_OK in good[1] and L.V_CANNIBAL in good[1] and L.V_WATCH in good[2]
+    assert "Spalte „Kannibalisierungsgefahr“" in guide and "Übersicht" in guide
+
+
+def test_step_6_says_serps_only_group_the_gaps_into_topics():
+    source = _source(6)
+    assert "nur genutzt" in source and "Spalte Thema" in source and "Zahl neuer Seiten" in source and "Potentielle Content-Lücken" in source
+
+
+def test_step_8_describes_the_four_sheets_one_line_each():
+    from qum import export
+
+    hints = [line for line in _source(8).splitlines() if line.startswith("#@markdown")]
+    for name in (export.SHEET_OVERVIEW, export.SHEET_CANNIBAL, export.SHEET_GAPS, export.SHEET_README):
+        assert sum(f"**{name}:**" in line for line in hints) == 1, name
+
+
+def test_intro_and_readme_describe_the_four_sheets():
+    from qum import export
+
+    intro = next(source for kind, source in CELLS if kind == "markdown")
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    result = readme.split("## Ergebnis")[1].split("\n## ")[0]
+    for text in (intro.split("## Ergebnis")[1].split("\n## ")[0], result):
+        for name in (export.SHEET_OVERVIEW, export.SHEET_CANNIBAL, export.SHEET_GAPS, export.SHEET_README):
+            assert name in text, name
+        assert "Entscheidung" not in text and "Lücken je Cluster" not in text

@@ -1,14 +1,14 @@
 # Query-URL Matcher
 
-**Neue Seite bauen oder Bestehendes nutzen?** Ein Colab-Notebook, das Suchanfragen per Embeddings mit dem Inhalt deiner Seiten vergleicht und Hinweise zu Kannibalisierung und Content-Lücken liefert.
+**Neue Seite bauen oder Bestehendes nutzen?** Ein Colab-Notebook, das Suchanfragen per Embeddings mit dem Inhalt deiner Seiten vergleicht und Hinweise zu Kannibalisierungsgefahr und Content-Lücken liefert.
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DanielKremer91/query-url-matcher/blob/main/query_url_matcher.ipynb)
 
 ## Was es beantwortet
 
 - Gibt es für eine Query schon eine passende Seite oder Textstelle?
-- Passt eine andere Seite deutlich besser als die, die gerade rankt (Kannibalisierungsgefahr)? Liegt die rankende Seite höchstens 0,01 hinter der besten (einstellbar in Schritt 7c), gilt sie als bester Treffer.
-- Für welche Queries fehlt Content, und wie viele neue Seiten sind das wirklich?
+- Passt eine andere Seite deutlich besser als die, die gerade rankt, oder passen mehrere eigene Seiten fast gleich gut (Kannibalisierungsgefahr)? Liegt die rankende Seite höchstens 0,01 hinter der besten (einstellbar in Schritt 7c), ist sie in Ordnung.
+- Für welche Queries fehlt Content (potentielle Content-Lücken), und wie viele neue Seiten sind das wirklich?
 
 Das Notebook sortiert vor und begründet. Die Entscheidung trifft ein Mensch.
 
@@ -56,7 +56,16 @@ Eine kurze Query gegen einen langen Text zu matchen ist eine asymmetrische Aufga
 
 ## Ergebnis
 
-Eine Excel-Datei mit den Blättern Lesehilfe, Entscheidung, Kannibalisierungsgefahr, Content-Lücken, mit SERPs zusätzlich Lücken je Cluster. Auf Wunsch zusätzlich ein ZIP mit einer CSV je Blatt: mit Semikolon und Dezimalkomma für deutsches Excel oder mit Komma und Dezimalpunkt.
+Eine Excel-Datei mit vier Blättern:
+
+| Blatt | Inhalt |
+|---|---|
+| Übersicht | eine Zeile je Query: die drei am besten passenden URLs mit Chunk-, Gesamt-URL- und Kombi-Score, Vorsprung vor der zweitbesten URL, beste eigene Rankingposition und rankende URL, ob die rankende URL die beste ist, das Urteil und Kannibalisierungsgefahr ja oder nein |
+| Kannibalisierungsgefahr | Queries, bei denen mehrere eigene Seiten konkurrieren, mit Stufe (Gefahr oder Bereits sichtbar), Grund und bis zu drei URLs samt Score und Position |
+| Potentielle Content-Lücken | Queries, deren beste Seite unter der Lücken-Schwelle liegt (eigene Einstellungen in Schritt 7c), mit bester URL, Rankingposition und, mit SERPs, dem Thema; Lücken mit gleichem Thema ergeben eine neue Seite |
+| Lesehilfe | Bedeutung jedes Blatts, jeder Spalte, jedes Urteils und beider Stufen, dazu die Einstellungen des Laufs |
+
+Auf Wunsch zusätzlich ein ZIP mit einer CSV je Blatt: mit Semikolon und Dezimalkomma für deutsches Excel oder mit Komma und Dezimalpunkt.
 
 ## Grenzen
 
