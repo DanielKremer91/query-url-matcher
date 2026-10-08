@@ -2,6 +2,7 @@
 
 C_QUERY = "Query"
 C_URL = "URL"
+C_SECTION = "Abschnitt"
 C_CHUNK = "Relevanter Chunk"
 C_S_CHUNK = "Score Chunk"
 C_S_FULL = "Score Gesamt-URL"

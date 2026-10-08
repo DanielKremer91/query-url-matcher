@@ -24,7 +24,7 @@ def _run(rankings=None, chunk=CHUNK, full=FULL):
 
 def test_columns():
     assert list(_run().columns) == COLUMNS == [
-        L.C_QUERY, L.C_CHUNK_URL, L.C_BEST_CHUNK, L.C_S_BEST_CHUNK, L.C_S_FULL_CHUNK_URL,
+        L.C_QUERY, L.C_CHUNK_URL, L.C_BEST_CHUNK, L.C_SECTION, L.C_S_BEST_CHUNK, L.C_S_FULL_CHUNK_URL,
         L.C_OVERALL_URL, L.C_S_FULL_OVERALL, L.C_POSITION, L.C_RANK_URL, L.C_RANK_IS,
     ]
     assert [L.C_CHUNK_URL, L.C_OVERALL_URL, L.C_RANK_IS] == ["Seite mit bestem Chunk", "Beste Seite insgesamt", "Rankende URL ist"]

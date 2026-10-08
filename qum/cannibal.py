@@ -15,6 +15,7 @@ CASE_COLUMNS = [
 # Die Einordnung (wie dringend) wird nicht ausgegeben, sie bestimmt nur die Reihenfolge der Queries
 COLUMNS = [
     L.C_QUERY, L.C_KIND, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_GAP_TO_BEST, L.C_COMP_POS, L.C_COMP_CHUNK,
+    L.C_SECTION,
 ]
 # dringendste zuerst; je Query gilt die dringendste Einordnung ihrer Fälle
 _URGENCY = [L.PRIO_VERY_HIGH, L.PRIO_HIGH, L.PRIO_MID, L.PRIO_LOW, L.PRIO_VERY_LOW, L.PRIO_OPEN]
@@ -189,6 +190,10 @@ def find_cannibalization(
         i = q_index[query]
         return result.chunks[j][int(result.best_chunk_idx[i, j])]
 
+    def section_of(query, url):
+        j = u_index.get(normalize_url(url))
+        return "" if j is None else result.best_section(q_index[query], j)
+
     groups = []
     for query, group in cases.groupby(L.C_QUERY, sort=False):
         urgency = min(group[L.C_PRIORITY], key=_URGENCY.index)
@@ -206,7 +211,8 @@ def find_cannibalization(
         ordered = ordered.drop_duplicates("_key")  # www- und Frog-Schreibweise derselben Seite nur einmal
         group_rows = [
             {column: row.get(column) for column in COLUMNS}
-            | {L.C_NO: number, L.C_KIND: L.KIND_EXISTING, L.C_COMP_CHUNK: chunk_of(query, row[L.C_COMP_URL])}
+            | {L.C_NO: number, L.C_KIND: L.KIND_EXISTING, L.C_COMP_CHUNK: chunk_of(query, row[L.C_COMP_URL]),
+               L.C_SECTION: section_of(query, row[L.C_COMP_URL])}
             for number, row in enumerate(ordered.to_dict("records"), start=1)
         ]
         gaps = [r[L.C_GAP_TO_BEST] for r in group_rows[1:] if r[L.C_GAP_TO_BEST] is not None and not pd.isna(r[L.C_GAP_TO_BEST])]
@@ -214,12 +220,12 @@ def find_cannibalization(
     groups.sort(key=lambda g: (g[0], g[1]))  # stabil: gleich dringend und gleich eng behält die Query-Reihenfolge
     rows = [row for _, _, group_rows in groups for row in group_rows]
     rows += _prevention_rows(result, lead, threshold, rankings, good_position, margin, gap_position,
-                             {row[L.C_QUERY] for row in rows}, chunk_of)
-    columns = COLUMNS if include_chunk else [c for c in COLUMNS if c != L.C_COMP_CHUNK]
+                             {row[L.C_QUERY] for row in rows}, chunk_of, section_of)
+    columns = COLUMNS if include_chunk else [c for c in COLUMNS if c not in (L.C_COMP_CHUNK, L.C_SECTION)]
     return pd.DataFrame(rows, columns=columns)
 
 
-def _prevention_rows(result, lead, threshold, rankings, good_position, margin, gap_position, listed, chunk_of):
+def _prevention_rows(result, lead, threshold, rankings, good_position, margin, gap_position, listed, chunk_of, section_of):
     """Vorbeugung: jede Query mit mindestens einer Seite über der Schwelle, die noch nicht als bestehende Konkurrenz im
     Blatt steht. Eine neue Seite würde mit diesen Seiten konkurrieren."""
     rows = []
@@ -227,5 +233,6 @@ def _prevention_rows(result, lead, threshold, rankings, good_position, margin, g
         if query in listed:
             continue
         for number, row in enumerate(_fitting_rows(query, result, lead[i], threshold, rankings, L.KIND_PREVENT), start=1):
-            rows.append(row | {L.C_NO: number, L.C_COMP_CHUNK: chunk_of(query, row[L.C_COMP_URL])})
+            rows.append(row | {L.C_NO: number, L.C_COMP_CHUNK: chunk_of(query, row[L.C_COMP_URL]),
+                               L.C_SECTION: section_of(query, row[L.C_COMP_URL])})
     return rows

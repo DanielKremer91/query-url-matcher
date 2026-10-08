@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from . import labels as L
-from .chunk import chunk_words
+from .chunk import chunk_sections, chunk_words
 from .embeddings.base import l2_normalize
 from .embeddings.cache import CachedEmbedder
 
@@ -18,6 +18,7 @@ class MatchResult:
     full_scores: np.ndarray
     best_chunk_idx: np.ndarray
     full_method: list
+    sections: list | None = None  # je URL je Chunk die Zwischenüberschrift (nur Anzeige), None ohne Angabe
 
     def combined(self, weight: float) -> np.ndarray:
         return weight * self.chunk_scores + (1 - weight) * self.full_scores
@@ -34,6 +35,12 @@ class MatchResult:
     def best_chunk(self, i: int, j: int) -> str:
         return self.chunks[j][int(self.best_chunk_idx[i, j])]
 
+    def best_section(self, i: int, j: int) -> str:
+        """Zwischenüberschrift, unter der der beste Chunk von URL j für Query i überwiegend steht ("" ohne)."""
+        if self.sections is None:
+            return ""
+        return self.sections[j][int(self.best_chunk_idx[i, j])]
+
 
 def estimate_chunks(contents, chunk_size, chunk_overlap) -> int:
     return sum(len(chunk_words(c, chunk_size, chunk_overlap)) for c in contents)
@@ -48,6 +55,7 @@ def _embed(embedder, texts, role, label):
 
 def run_matching(queries, urls, contents, embedder, chunk_size, chunk_overlap) -> MatchResult:
     chunks = [chunk_words(c, chunk_size, chunk_overlap) for c in contents]
+    sections = [chunk_sections(c, chunk_size, chunk_overlap) for c in contents]
     flat = [chunk for per_url in chunks for chunk in per_url]
     offsets = np.cumsum([0] + [len(per_url) for per_url in chunks])
 
@@ -80,11 +88,11 @@ def run_matching(queries, urls, contents, embedder, chunk_size, chunk_overlap) -
         pages = _embed(embedder, [" ".join(contents[u].split()) for u in as_fulltext], "passage", L.P_PAGES)
         full_scores[:, as_fulltext] = q @ l2_normalize(pages).T
 
-    return MatchResult(list(queries), list(urls), chunks, chunk_scores, full_scores, best, methods)
+    return MatchResult(list(queries), list(urls), chunks, chunk_scores, full_scores, best, methods, sections)
 
 
 MATCH_COLUMNS = [
-    L.C_QUERY, L.C_BEST_URL, L.C_CHUNK, L.C_S_CHUNK, L.C_S_FULL, L.C_S_COMBI, L.C_LEAD_GAP,
+    L.C_QUERY, L.C_BEST_URL, L.C_CHUNK, L.C_SECTION, L.C_S_CHUNK, L.C_S_FULL, L.C_S_COMBI, L.C_LEAD_GAP,
     L.C_SECOND_URL, L.C_S_CHUNK_2, L.C_S_FULL_2, L.C_S_COMBI_2,
     L.C_THIRD_URL, L.C_S_CHUNK_3, L.C_S_FULL_3, L.C_S_COMBI_3,
 ]
@@ -115,6 +123,7 @@ def best_matches(result: MatchResult, lead: np.ndarray, weight: float = 0.7) -> 
             for column, matrix in zip(score_cols, scores):
                 row[column] = None if j is None else round(float(matrix[i, j]), 4)
         row[L.C_CHUNK] = result.best_chunk(i, order[0])
+        row[L.C_SECTION] = result.best_section(i, order[0])
         row[L.C_LEAD_GAP] = round(float(lead[i, order[0]] - lead[i, order[1]]), 4) if len(order) > 1 else None
         rows.append(row)
     return pd.DataFrame(rows, columns=MATCH_COLUMNS)

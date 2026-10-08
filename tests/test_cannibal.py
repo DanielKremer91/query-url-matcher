@@ -375,6 +375,7 @@ def test_sheet_columns_without_stage_and_reason():
     df = _sheet(["q"], [[0.8, 0.8, 0.1]])
     assert list(df.columns) == COLUMNS == [
         L.C_QUERY, L.C_KIND, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_GAP_TO_BEST, L.C_COMP_POS, L.C_COMP_CHUNK,
+        L.C_SECTION,
     ]
     assert [L.C_KIND, L.KIND_EXISTING, L.KIND_PREVENT] == [
         "Art", "Bestehende Seiten konkurrieren", "Vorbeugung: keine neue Seite bauen",
@@ -450,8 +451,8 @@ def test_each_url_row_shows_its_best_chunk_for_the_query():
 
 def test_chunk_column_can_be_left_out_for_the_whole_url_basis():
     df = _sheet(["q"], [[0.8, 0.8, 0.1]], include_chunk=False)
-    assert L.C_COMP_CHUNK not in df.columns
-    assert list(df.columns) == [c for c in COLUMNS if c != L.C_COMP_CHUNK]
+    assert L.C_COMP_CHUNK not in df.columns and L.C_SECTION not in df.columns
+    assert list(df.columns) == [c for c in COLUMNS if c not in (L.C_COMP_CHUNK, L.C_SECTION)]
 
 
 # --- Position je Zeile, die rankende URL immer dabei ------------------------------------------------------------
@@ -570,3 +571,11 @@ def test_rule_every_query_with_a_page_above_the_threshold_is_in_the_sheet_with_a
         listed = set(df.loc[df[L.C_QUERY] == query, L.C_COMP_URL])
         assert fitting <= listed, query
         assert bool(listed) == bool(fitting) or listed <= set(rankings["url"]), query
+
+
+
+def test_each_url_row_shows_the_section_of_its_chunk():
+    result = make_result(["q"], [U1, U2, U3], [[0.8, 0.8, 0.1]])
+    result.sections = [["Abschnitt eins"], ["Abschnitt zwei"], [""]]
+    df = find_cannibalization(result, result.lead("chunk"), 0.6)
+    assert dict(zip(df[L.C_COMP_URL], df[L.C_SECTION])) == {U1: "Abschnitt eins", U2: "Abschnitt zwei"}

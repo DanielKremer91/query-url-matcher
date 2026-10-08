@@ -57,6 +57,11 @@ _COLUMN_HELP = {
     L.C_QUERY: "Die Suchanfrage, um die es in der Zeile geht.",
     L.C_BEST_URL: "Die Seite mit dem höchsten Score für die Query, nach der gewählten Bewertungsgrundlage.",
     L.C_CHUNK: "Der Textblock der besten URL, der zur Query am besten passt.",
+    L.C_SECTION: (
+        "Die Zwischenüberschrift, unter der der relevante Textblock überwiegend steht, also der Absatz, den man ausbauen "
+        "oder umziehen würde. Gerechnet wird mit festen Wortfenstern; die Überschrift dient nur zur Orientierung. Leer, "
+        "wenn der Seitentext keine Zwischenüberschriften als eigene Zeilen enthält."
+    ),
     # Chunk auf anderer Seite
     L.C_CHUNK_URL: "Die Seite, auf der der zur Query am besten passende Textblock steht (höchster Chunk-Score).",
     L.C_BEST_CHUNK: "Dieser Textblock.",

@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 
 from qum import labels as L
-from qum.match import estimate_chunks, ranks, run_matching
+from qum.match import MATCH_COLUMNS, best_matches, estimate_chunks, ranks, run_matching
 from tests.conftest import FakeEmbedder, make_result
 
 URLS = ["https://a.de/hund", "https://a.de/katze"]
@@ -123,7 +123,7 @@ def test_best_matches_columns_in_overview_order():
     result = make_result(["q"], ["u1", "u2", "u3"], [[0.5, 0.9, 0.7]])
     df = best_matches(result, result.lead("chunk"))
     assert list(df.columns) == MATCH_COLUMNS == [
-        L.C_QUERY, L.C_BEST_URL, L.C_CHUNK, L.C_S_CHUNK, L.C_S_FULL, L.C_S_COMBI, L.C_LEAD_GAP,
+        L.C_QUERY, L.C_BEST_URL, L.C_CHUNK, L.C_SECTION, L.C_S_CHUNK, L.C_S_FULL, L.C_S_COMBI, L.C_LEAD_GAP,
         L.C_SECOND_URL, L.C_S_CHUNK_2, L.C_S_FULL_2, L.C_S_COMBI_2,
         L.C_THIRD_URL, L.C_S_CHUNK_3, L.C_S_FULL_3, L.C_S_COMBI_3,
     ]
@@ -182,3 +182,31 @@ def test_top_hits_are_gone():
     assert not hasattr(qum.match, "top_hits")
     for name in ("C_R_CHUNK", "C_R_FULL", "C_R_COMBI", "C_METHOD"):  # C_GAP_TO_BEST lebt im Kannibalisierungs-Blatt weiter
         assert not hasattr(L, name), name
+
+
+
+def test_run_matching_records_the_section_of_every_chunk():
+    contents = ["Titel A\n" + " ".join(f"a{i}" for i in range(12)) + ".\nAbschnitt B\n" + " ".join(f"b{i}" for i in range(12)) + ".",
+                "nur ein satz ohne überschrift."]
+    result = run_matching(["a0 a1"], ["https://a.de/1", "https://a.de/2"], contents, FakeEmbedder(), 8, 2)
+    assert len(result.sections[0]) == len(result.chunks[0])
+    assert result.sections[0][0] == "Titel A" and result.sections[0][-1] == "Abschnitt B"
+    assert result.sections[1] == [""]
+
+
+def test_best_matches_show_the_section_of_the_relevant_chunk():
+    from tests.conftest import make_result
+
+    result = make_result(["q"], ["https://a.de/1", "https://a.de/2"], [[0.9, 0.1]])
+    result.sections = [["Lack oder Lasur?"], [""]]
+    row = best_matches(result, result.lead("chunk")).iloc[0]
+    assert row[L.C_SECTION] == "Lack oder Lasur?"
+    assert MATCH_COLUMNS.index(L.C_SECTION) == MATCH_COLUMNS.index(L.C_CHUNK) + 1
+    assert L.C_SECTION == "Abschnitt"
+
+
+def test_results_without_sections_leave_the_column_empty():
+    from tests.conftest import make_result
+
+    result = make_result(["q"], ["https://a.de/1"], [[0.9]])
+    assert best_matches(result, result.lead("chunk")).iloc[0][L.C_SECTION] == ""

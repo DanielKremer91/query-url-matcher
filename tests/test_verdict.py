@@ -165,10 +165,11 @@ def test_negative_margin_is_rejected():
 def test_overview_columns_in_order():
     result = make_result(["q"], [U1], [[0.8]])
     df = build_decisions(result, result.lead("chunk"), 0.6)
-    assert OVERVIEW_COLUMNS == MATCH_COLUMNS[:6] + [L.C_TO_THRESHOLD] + MATCH_COLUMNS[6:] + [
+    cut = MATCH_COLUMNS.index(L.C_S_COMBI) + 1
+    assert OVERVIEW_COLUMNS == MATCH_COLUMNS[:cut] + [L.C_TO_THRESHOLD] + MATCH_COLUMNS[cut:] + [
         L.C_POSITION, L.C_RANK_URL, L.C_RANK_IS_BEST, L.C_VERDICT,
     ]
-    assert MATCH_COLUMNS[5] == L.C_S_COMBI and L.C_TO_THRESHOLD == "Abstand zur Schwelle"
+    assert L.C_TO_THRESHOLD == "Abstand zur Schwelle"
     assert list(df.columns) == OVERVIEW_COLUMNS
     assert [L.C_POSITION, L.C_RANK_URL, L.C_RANK_IS_BEST] == ["Rankingposition", "Rankende URL", "Rankende URL = beste URL?"]
 

@@ -6,7 +6,7 @@ from .normalize import normalize_query, normalize_url
 from .verdict import best_rankings, format_position
 
 COLUMNS = [
-    L.C_QUERY, L.C_CHUNK_URL, L.C_BEST_CHUNK, L.C_S_BEST_CHUNK, L.C_S_FULL_CHUNK_URL,
+    L.C_QUERY, L.C_CHUNK_URL, L.C_BEST_CHUNK, L.C_SECTION, L.C_S_BEST_CHUNK, L.C_S_FULL_CHUNK_URL,
     L.C_OVERALL_URL, L.C_S_FULL_OVERALL, L.C_POSITION, L.C_RANK_URL, L.C_RANK_IS,
 ]
 
@@ -39,6 +39,7 @@ def chunk_elsewhere(result, rankings=None) -> pd.DataFrame:
             L.C_QUERY: query,
             L.C_CHUNK_URL: result.urls[chunk_j],
             L.C_BEST_CHUNK: result.chunks[chunk_j][int(result.best_chunk_idx[i, chunk_j])],
+            L.C_SECTION: result.best_section(i, chunk_j),
             L.C_S_BEST_CHUNK: round(float(result.chunk_scores[i, chunk_j]), 4),
             L.C_S_FULL_CHUNK_URL: round(float(result.full_scores[i, chunk_j]), 4),
             L.C_OVERALL_URL: result.urls[overall_j],
