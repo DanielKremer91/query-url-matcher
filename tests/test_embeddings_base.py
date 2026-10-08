@@ -279,7 +279,7 @@ def test_cache_reports_overall_progress_for_several_slices():
     progress = []
     cached = CachedEmbedder(FakeEmbedder(), notify=lambda done, total: progress.append((done, total)))
     cached.embed(_texts(600), "passage")
-    assert progress == [(256, 600), (512, 600), (600, 600)]
+    assert progress == [(0, 600), (256, 600), (512, 600), (600, 600)]  # 0: die Anzeige erscheint sofort
 
 
 def test_cache_progress_counts_only_missing_texts():
@@ -287,7 +287,7 @@ def test_cache_progress_counts_only_missing_texts():
     cached = CachedEmbedder(FakeEmbedder(), notify=lambda done, total: progress.append((done, total)))
     cached.embed(_texts(100), "passage")
     cached.embed(_texts(400), "passage")  # 100 kommen aus dem Cache, 300 fehlen
-    assert progress == [(256, 300), (300, 300)]
+    assert progress == [(0, 300), (256, 300), (300, 300)]
 
 
 def test_cache_stays_quiet_for_a_single_slice():
@@ -303,6 +303,7 @@ def test_default_progress_line_is_updated_in_place_and_closed(capsys):
     out = capsys.readouterr().out
     assert out.count("\n") == 1 and out.endswith("\n")
     assert out.split("\r")[1:] == [
+        "⏳ 0 von 600 Texten eingebettet …",
         "⏳ 256 von 600 Texten eingebettet …",
         "⏳ 512 von 600 Texten eingebettet …",
         "✅ 600 von 600 Texten eingebettet\n",
@@ -405,6 +406,7 @@ def test_retry_notice_starts_on_its_own_line_while_progress_is_shown(capsys):
     CachedEmbedder(NoticeOnSecondCall()).embed(_texts(600), "passage")
     out = capsys.readouterr().out
     assert out == (
+        "\r⏳ 0 von 600 Texten eingebettet …"
         "\r⏳ 256 von 600 Texten eingebettet …\n"
         "⏳ Anbieter antwortet mit HTTP 429, Versuch 1 von 6, nächster in 30 s.\n"
         "\r⏳ 512 von 600 Texten eingebettet …"
@@ -446,7 +448,7 @@ def test_progress_line_with_label(capsys):
 
 def test_labelled_embed_reports_even_small_batches(capsys):
     CachedEmbedder(FakeEmbedder()).embed(["a b", "c d", "e f"], "query", label="Queries")
-    assert capsys.readouterr().out == "\r✅ Queries: 3 von 3 eingebettet\n"
+    assert capsys.readouterr().out == "\r⏳ Queries: 0 von 3 eingebettet …\r✅ Queries: 3 von 3 eingebettet\n"
 
 
 def test_labelled_embed_is_quiet_when_everything_is_cached(capsys):
@@ -455,3 +457,42 @@ def test_labelled_embed_is_quiet_when_everything_is_cached(capsys):
     capsys.readouterr()
     cached.embed(["a b"], "query", label="Queries")
     assert capsys.readouterr().out == ""
+
+
+def test_progress_line_estimates_the_remaining_time():
+    from qum.embeddings.cache import ProgressLine
+
+    times = iter([0.0, 120.0, 240.0])  # Start, nach 256 und nach 512 von 1.280 Texten
+    shown = []
+    line = ProgressLine("Chunks", clock=lambda: next(times))
+    import qum.embeddings.cache as cache
+    original = cache.CONSOLE.progress
+    cache.CONSOLE.progress = shown.append
+    try:
+        line(0, 1280)
+        line(256, 1280)
+        line(512, 1280)
+    finally:
+        cache.CONSOLE.progress = original
+    assert shown == [
+        "⏳ Chunks: 0 von 1.280 eingebettet …",
+        "⏳ Chunks: 256 von 1.280 eingebettet … noch etwa 8 Min.",
+        "⏳ Chunks: 512 von 1.280 eingebettet … noch etwa 6 Min.",
+    ]
+
+
+def test_progress_line_shows_no_estimate_for_short_remaining_times():
+    from qum.embeddings.cache import ProgressLine
+
+    times = iter([0.0, 5.0])
+    shown = []
+    line = ProgressLine("Queries", clock=lambda: next(times))
+    import qum.embeddings.cache as cache
+    original = cache.CONSOLE.progress
+    cache.CONSOLE.progress = shown.append
+    try:
+        line(0, 600)
+        line(256, 600)
+    finally:
+        cache.CONSOLE.progress = original
+    assert shown[-1] == "⏳ Queries: 256 von 600 eingebettet …"

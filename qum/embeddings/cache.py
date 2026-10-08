@@ -10,15 +10,30 @@ from .base import CONSOLE, Embedder, EmbeddingError
 
 
 class ProgressLine:
-    """Eine Fortschrittszeile, die an Ort und Stelle überschrieben wird; fertig endet sie ohne Auslassungszeichen."""
+    """Eine Fortschrittszeile, die an Ort und Stelle überschrieben wird; fertig endet sie ohne Auslassungszeichen.
+    Ab einer Minute Restzeit nennt sie eine Schätzung (auf CPU dauert das Einbetten schnell mehrere Minuten)."""
 
-    def __init__(self, label: str | None = None):
+    def __init__(self, label: str | None = None, clock=time.monotonic):
         self.label = label
+        self._clock = clock
+        self._start = None
 
     def __call__(self, done: int, total: int) -> None:
+        now = self._clock()
+        if self._start is None:
+            self._start = now
         shown = f"{done:,} von {total:,}".replace(",", ".")
         text = f"{self.label}: {shown} eingebettet" if self.label else f"{shown} Texten eingebettet"
-        CONSOLE.progress(f"✅ {text}" if done >= total else f"⏳ {text} …")
+        if done >= total:
+            CONSOLE.progress(f"✅ {text}")
+            return
+        estimate = ""
+        elapsed = now - self._start
+        if done > 0 and elapsed > 0:
+            remaining = (total - done) * elapsed / done
+            if remaining >= 60:
+                estimate = f" noch etwa {round(remaining / 60)} Min."
+        CONSOLE.progress(f"⏳ {text} …{estimate}")
 
     def close(self) -> None:
         CONSOLE.end_line()
@@ -67,6 +82,8 @@ class CachedEmbedder(Embedder):
         last_save = self._clock()
         unsaved = False
         try:
+            if show_progress:
+                notify(0, len(todo))  # sofort sichtbar, nicht erst nach der ersten Scheibe
             for start in range(0, len(todo), self.SLICE):
                 part = todo[start : start + self.SLICE]
                 vectors = self.inner.embed([missing[key] for key in part], role)
