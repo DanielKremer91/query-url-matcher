@@ -40,8 +40,8 @@ Für die Modelle mit API-Key legst du im Secrets-Panel (Schlüssel-Symbol links)
 
 Schritt 8 lädt eine Excel-Datei mit vier Blättern herunter, auf Wunsch zusätzlich ein ZIP mit einer CSV je Blatt:
 
-- **Übersicht:** eine Zeile je Query mit den drei am besten passenden URLs und ihren Scores, dem Abstand zur Schwelle (positiv = passt), der eigenen Rankingposition und dem Urteil.
-- **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen oder mehrere eigene URLs ranken, mit einer Zeile je konkurrierender URL samt Score, Abstand zur besten URL und eigener Position (die rankende URL immer dabei), die dringendsten Fälle oben.
+- **Übersicht:** eine Zeile je Query, vorne die Antwort auf die Leitfrage (**Neue Seite bauen?** und **Stattdessen nutzen**), dann die drei am besten passenden URLs mit Scores, Abstand zur Schwelle, Rankingposition und Urteil.
+- **Kannibalisierungsgefahr:** jede Query, für die keine neue Seite gebaut werden soll: oben bestehende Konkurrenz zwischen eigenen Seiten, darunter die Vorbeugung (eine Seite deckt die Query schon ab), je URL eine Zeile mit Score, Abstand zur besten URL und Position.
 - **Potentielle Content-Lücken:** genau die Queries mit dem Urteil Content-Lücke, die sichersten zuerst, mit SERPs nach Thema gebündelt.
 - **Chunk auf anderer Seite:** Queries, deren bester Textabschnitt auf einer anderen Seite steht als die Seite, die insgesamt am besten passt.
 - **Lesehilfe:** erklärt jedes Blatt, jede Spalte, jedes Urteil und nennt die Einstellungen des Laufs.
@@ -511,10 +511,19 @@ settings = {
 }
 decisions, cannibal, gaps, elsewhere = new_decisions, new_cannibal, new_gaps, new_elsewhere
 new_pages = None if serps is None else count_new_pages(gaps)
+answers = decisions[L.C_BUILD].value_counts()
+print("Neue Seite bauen?")
+for answer, count in answers.items():
+    print(f"   {count:>5} × {answer}")
 counts = decisions[L.C_VERDICT].value_counts()
+print("Urteile:")
 for verdict, count in counts.items():
     print(f"   {count:>5} × {verdict}")
-print(f"   {cannibal[L.C_QUERY].nunique():>5} Queries im Blatt Kannibalisierungsgefahr, über alle Urteile, die dringendsten oben")
+kinds = cannibal.drop_duplicates(L.C_QUERY)[L.C_KIND].value_counts()
+print(
+    f"   {cannibal[L.C_QUERY].nunique():>5} Queries im Blatt Kannibalisierungsgefahr, über alle Urteile: "
+    f"{kinds.get(L.KIND_EXISTING, 0)} × bestehende Konkurrenz (oben), {kinds.get(L.KIND_PREVENT, 0)} × Vorbeugung"
+)
 uncalibrated = " (Schwelle nicht kalibriert)" if threshold_source == "median" else ""
 pages = "" if new_pages is None else f", zusammen {new_pages} neue Seiten (eine je Thema, Lücken ohne Thema einzeln)"
 print(f"   {len(gaps):>5} potentielle Content-Lücken{uncalibrated}{pages}")
@@ -529,8 +538,8 @@ print("✅ Schritt 7c fertig. Weiter mit Schritt 8 (Export).")
 
 STEP8 = '''#@title Schritt 8: Export { display-mode: "form" }
 #@markdown Die Excel-Datei hat vier Blätter:
-#@markdown **Übersicht:** eine Zeile je Query mit den drei besten URLs, ihren Scores, der Rankingposition und dem Urteil.
-#@markdown **Kannibalisierungsgefahr:** Queries, bei denen weitere eigene Seiten passen oder mehrere eigene URLs ranken, eine Zeile je konkurrierender URL mit Score, Abstand zur besten URL und Position, die dringendsten Fälle oben.
+#@markdown **Übersicht:** eine Zeile je Query: Neue Seite bauen? und Stattdessen nutzen, dann die drei besten URLs, Scores, Rankingposition und Urteil.
+#@markdown **Kannibalisierungsgefahr:** jede Query, für die keine neue Seite gebaut werden soll: bestehende Konkurrenz oben, Vorbeugung darunter (Spalte Art), je URL eine Zeile.
 #@markdown **Potentielle Content-Lücken:** genau die Queries mit dem Urteil Content-Lücke, sortiert nach Abstand zur Schwelle (die sichersten zuerst), mit SERPs nach Thema gebündelt.
 #@markdown **Chunk auf anderer Seite:** Queries, deren bester Textabschnitt auf einer anderen Seite steht als die Seite, die insgesamt am besten passt, unabhängig von der Schwelle.
 #@markdown **Lesehilfe:** erklärt Blätter, Spalten und Urteile und nennt die Einstellungen des Laufs.
@@ -580,12 +589,13 @@ Ohne Rankings weiß das Tool nicht, ob eine Seite schon funktioniert. „In Ordn
 
 ### Blatt „Kannibalisierungsgefahr“ (unabhängig vom Urteil)
 
-Hier steht jede Query, bei der mehrere eigene Seiten fast gleich gut passen (höchstens 0.01 auseinander), eine passende Seite besser ist als die rankende oder mehrere eigene URLs bis Position 20 ranken, auch wenn das Urteil „In Ordnung“ lautet. Liegen weitere Seiten deutlich hinter der besten, steht die Query nur drin, wenn eine dieser schwächeren Seiten rankt. Je konkurrierender URL eine Zeile, bei Chunk und Kombi mit ihrem passenden Textabschnitt. Die Reihenfolge zeigt, wie dringend der Fall ist, die dringendsten oben:
+Hier steht jede Query, für die keine neue Seite gebaut werden soll. Die Spalte **Art** unterscheidet: **Bestehende Seiten konkurrieren** (mehrere eigene Seiten passen fast gleich gut, höchstens 0.01 auseinander, eine passende Seite ist besser als die rankende, oder mehrere eigene URLs ranken bis Position 20) und **Vorbeugung: keine neue Seite bauen** (eine bestehende Seite deckt die Query ab, eine neue würde mit ihr konkurrieren). Je URL eine Zeile, bei Chunk und Kombi mit ihrem passenden Textabschnitt. Die Reihenfolge zeigt, wie dringend der Fall ist, die dringendsten oben:
 
 1. Seiten konkurrieren, und die Query rankt knapp hinter den Top 10 (bis Position 20): fast oben, die Konkurrenz bremst vermutlich.
 2. Seiten konkurrieren, und die Query rankt schlechter oder gar nicht.
 3. Die Query rankt in den Top 10, aber mit einer anderen als der besten Seite, oder eine schwächere Seite rankt.
 4. Die Query rankt in den Top 10 mit der besten Seite: beobachten, Google kann wechseln.
+5. Vorbeugung: Eine bestehende Seite deckt die Query ab. Keine neue Seite bauen, die bestehende nutzen und ausbauen.
 
 Bei Gleichstand steht die engste Konkurrenz oben (kleinster Abstand zur besten URL).
 

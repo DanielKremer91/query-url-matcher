@@ -8,10 +8,18 @@ from .match import MATCH_COLUMNS, best_matches
 from .normalize import normalize_query, normalize_url
 
 _AFTER_COMBI = MATCH_COLUMNS.index(L.C_S_COMBI) + 1
+# die Antwort auf die Leitfrage steht direkt hinter der Query
 OVERVIEW_COLUMNS = (
-    MATCH_COLUMNS[:_AFTER_COMBI] + [L.C_TO_THRESHOLD] + MATCH_COLUMNS[_AFTER_COMBI:]
-    + [L.C_POSITION, L.C_RANK_URL, L.C_RANK_IS_BEST, L.C_VERDICT]
+    MATCH_COLUMNS[:1] + [L.C_BUILD, L.C_USE_INSTEAD] + MATCH_COLUMNS[1:_AFTER_COMBI] + [L.C_TO_THRESHOLD]
+    + MATCH_COLUMNS[_AFTER_COMBI:] + [L.C_POSITION, L.C_RANK_URL, L.C_RANK_IS_BEST, L.C_VERDICT]
 )
+_BUILD = {
+    L.V_GAP: L.BUILD_YES,
+    L.V_MATCH: L.BUILD_NO_MATCH,
+    L.V_OK: L.BUILD_NO_RANKS,
+    L.V_CANNIBAL: L.BUILD_NO_CONFLICT,
+    L.V_WATCH: L.BUILD_NO_WEAK,
+}
 
 
 def format_position(position) -> str:
@@ -112,6 +120,17 @@ def _compare(a: Assessment, best_j, rankings_loaded) -> str:
     return L.NO
 
 
+def use_instead(a, best_j, urls) -> list:
+    """Die bestehenden Seiten, die statt einer neuen Seite genutzt werden sollten (leer bei einer Content-Lücke)."""
+    if a.verdict == L.V_GAP:
+        return []
+    if a.verdict == L.V_CANNIBAL:
+        return [urls[j] for j in a.close]
+    if a.verdict in (L.V_OK, L.V_WATCH) and a.hit is not None:
+        return [urls[a.ranking_j] if a.ranking_j is not None else a.hit.url]
+    return [urls[best_j]]
+
+
 def build_decisions(
     result, lead, threshold, rankings=None, good_position=10, weight=0.7, margin=0.01, gap_position=0
 ) -> pd.DataFrame:
@@ -124,4 +143,6 @@ def build_decisions(
     out[L.C_RANK_URL] = [a.hit.url if a.hit is not None else "" for a in assessments]
     out[L.C_RANK_IS_BEST] = [_compare(a, best_j[i], rankings is not None) for i, a in enumerate(assessments)]
     out[L.C_VERDICT] = [a.verdict for a in assessments]
+    out.insert(1, L.C_BUILD, [_BUILD[a.verdict] for a in assessments])
+    out.insert(2, L.C_USE_INSTEAD, [" | ".join(use_instead(a, best_j[i], result.urls)) for i, a in enumerate(assessments)])
     return out

@@ -197,9 +197,11 @@ def test_every_cannibalisation_verdict_and_every_competing_page_at_good_ranking_
     ]
     # gutes Ranking: das Urteil folgt der rankenden Seite, die Gefahr steht trotzdem im Blatt
     sheet = find_cannibalization(result, lead, 0.8, rankings)
-    assert set(sheet[L.C_QUERY]) == {
-        "ok-nah", "deutlich", "nah-schwach", "nah-ohne-ranking", "knapp-unter", "nicht-im-export",
-    }
+    kinds = dict(zip(sheet[L.C_QUERY], sheet[L.C_KIND]))
+    existing = {"ok-nah", "deutlich", "nah-schwach", "nah-ohne-ranking", "knapp-unter", "nicht-im-export"}
+    assert {q for q, k in kinds.items() if k == L.KIND_EXISTING} == existing
+    # "Neue Seite bauen? Nein" ohne Konkurrenz: Vorbeugung; die Lücke fehlt
+    assert {q for q, k in kinds.items() if k == L.KIND_PREVENT} == {"ok-allein", "nutzen"}
     flagged = set(decisions.loc[decisions[L.C_VERDICT] == L.V_CANNIBAL, L.C_QUERY])
     assert flagged <= set(cannibal.loc[cannibal[L.C_STAGE] == L.STAGE_DANGER, L.C_QUERY])
     assert dict(zip(cannibal[L.C_QUERY], cannibal[L.C_REASON])) == {
@@ -371,7 +373,10 @@ def _sheet(queries, scores, rankings=None, threshold=0.6, urls=(U1, U2, U3), **k
 def test_sheet_columns_without_stage_and_reason():
     df = _sheet(["q"], [[0.8, 0.8, 0.1]])
     assert list(df.columns) == COLUMNS == [
-        L.C_QUERY, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_GAP_TO_BEST, L.C_COMP_POS, L.C_COMP_CHUNK,
+        L.C_QUERY, L.C_KIND, L.C_NO, L.C_COMP_URL, L.C_COMP_SCORE, L.C_GAP_TO_BEST, L.C_COMP_POS, L.C_COMP_CHUNK,
+    ]
+    assert [L.C_KIND, L.KIND_EXISTING, L.KIND_PREVENT] == [
+        "Art", "Bestehende Seiten konkurrieren", "Vorbeugung: keine neue Seite bauen",
     ]
     # kein Ranking der Query in jeder Zeile: jede Zeile zeigt nur die Position ihrer eigenen URL
     assert L.C_POSITION not in COLUMNS and L.C_RANK_URL not in COLUMNS
@@ -406,8 +411,9 @@ def test_sheet_urls_without_score_come_last_by_position():
     assert df[L.C_COMP_URL].tolist() == [U1, ALT]
 
 
-def test_sheet_is_empty_without_competition():
-    assert _sheet(["q"], [[0.9, 0.1, 0.1]]).empty
+def test_a_single_fitting_page_is_only_prevention():
+    df = _sheet(["q"], [[0.9, 0.1, 0.1]])
+    assert df[[L.C_KIND, L.C_COMP_URL]].values.tolist() == [[L.KIND_PREVENT, U1]]
 
 
 # --- Reihenfolge: die dringendsten Fälle zuerst, darin die engste Konkurrenz zuerst -------------------------------
@@ -420,7 +426,8 @@ def test_sheet_sorts_queries_by_urgency():
     rankings = pd.concat([rankings, _rankings([("mittel-dringend", U2, U2, 30.0)])])
     df = _sheet(["niedrig-dringend", "mittel-dringend", "dringend", "sehr-dringend"],
                 [[0.9, 0.7, 0.1], [0.9, 0.7, 0.1], [0.8, 0.8, 0.1], [0.8, 0.8, 0.1]], rankings)
-    assert list(dict.fromkeys(df[L.C_QUERY])) == ["sehr-dringend", "dringend", "mittel-dringend"]
+    assert list(dict.fromkeys(df[L.C_QUERY])) == ["sehr-dringend", "dringend", "mittel-dringend", "niedrig-dringend"]
+    assert dict(zip(df[L.C_QUERY], df[L.C_KIND]))["niedrig-dringend"] == L.KIND_PREVENT  # Vorbeugung ganz unten
 
 
 def test_within_the_same_urgency_the_closest_competition_comes_first():
@@ -476,11 +483,11 @@ def test_a_ranking_url_outside_the_export_is_listed_last_without_score():
 # --- Weitere Seiten deutlich hinter der besten: nur, wenn eine schwächere Seite rankt -----------------------------
 
 
-def test_pages_clearly_behind_the_best_are_not_listed_when_the_best_ranks_or_nothing_ranks():
+def test_pages_clearly_behind_the_best_are_no_competition_only_prevention():
     # infrarotkabine vs sauna: die beste Seite rankt auf 9, die anderen liegen 0.04 und mehr dahinter
-    assert _sheet(["q"], [[0.9, 0.86, 0.85]], _rankings([("q", U1, U1, 9.0)])).empty
-    assert _sheet(["q"], [[0.9, 0.86, 0.85]], _rankings([("andere", U1, U1, 1.0)])).empty  # rankt gar nicht
-    assert _sheet(["q"], [[0.9, 0.86, 0.85]]).empty  # ohne Rankings
+    for rankings in (_rankings([("q", U1, U1, 9.0)]), _rankings([("andere", U1, U1, 1.0)]), None):
+        df = _sheet(["q"], [[0.9, 0.86, 0.85]], rankings)
+        assert df[[L.C_KIND, L.C_COMP_URL]].values.tolist() == [[L.KIND_PREVENT, U1]]
 
 
 def test_pages_clearly_behind_the_best_stay_when_a_weaker_page_ranks():
@@ -492,3 +499,46 @@ def test_the_sheet_has_no_einordnung_column():
     from qum import export
 
     assert L.C_PRIORITY not in COLUMNS and L.C_PRIORITY not in export._COLUMN_HELP
+
+
+# --- Vorbeugung: jede Query mit "Neue Seite bauen? Nein" steht im Blatt ---------------------------------------
+
+
+def _kinds(df):
+    return dict(zip(df[L.C_QUERY], df[L.C_KIND]))
+
+
+def test_one_clearly_fitting_page_is_a_prevention_case():
+    # zitronen käsekuchen: eine Seite passt klar, eine neue Seite würde mit ihr konkurrieren
+    df = _sheet(["q"], [[0.9, 0.7, 0.1]])
+    assert df[L.C_KIND].tolist() == [L.KIND_PREVENT]
+    assert df[L.C_COMP_URL].tolist() == [U1] and df[L.C_COMP_SCORE].tolist() == [0.9]
+    assert df[L.C_GAP_TO_BEST].tolist() == [0.0] and df[L.C_COMP_CHUNK].tolist() == [f"Text {U1}"]
+
+
+def test_gaps_are_not_in_the_sheet():
+    assert _sheet(["q"], [[0.5, 0.4, 0.3]]).empty
+
+
+def test_existing_competition_comes_first_then_prevention():
+    df = _sheet(["vorbeugung", "konkurrenz", "luecke"], [[0.9, 0.7, 0.1], [0.8, 0.8, 0.1], [0.5, 0.4, 0.3]])
+    assert list(dict.fromkeys(df[L.C_QUERY])) == ["konkurrenz", "vorbeugung"]
+    assert _kinds(df) == {"konkurrenz": L.KIND_EXISTING, "vorbeugung": L.KIND_PREVENT}
+
+
+def test_prevention_uses_the_ranking_page_with_its_position():
+    # In Ordnung ohne Konkurrenz: Vorbeugung mit der rankenden Seite und ihrer Position
+    df = _sheet(["gut"], [[0.1, 0.9, 0.5]], _rankings([("gut", U2, U2, 3.0)]))
+    assert df[[L.C_KIND, L.C_COMP_URL, L.C_COMP_POS]].values.tolist() == [[L.KIND_PREVENT, U2, "3"]]
+
+
+def test_a_weak_ranking_page_with_a_better_page_is_existing_competition():
+    # Rankt trotz schwachem Match, eine andere Seite passt: schon heute Konkurrenz, keine bloße Vorbeugung
+    df = _sheet(["q"], [[0.3, 0.9, 0.1]], _rankings([("q", U1, U1, 4.0)]))
+    assert set(df[L.C_KIND]) == {L.KIND_EXISTING}
+    assert dict(zip(df[L.C_COMP_URL], df[L.C_COMP_POS])) == {U2: "", U1: "4"}
+
+
+def test_a_ranking_url_outside_the_export_is_existing_competition():
+    df = _sheet(["q"], [[0.9, 0.1, 0.1]], _rankings([("q", ALT, ALT, 2.0)]))
+    assert set(df[L.C_KIND]) == {L.KIND_EXISTING} and df[L.C_COMP_URL].tolist() == [U1, ALT]

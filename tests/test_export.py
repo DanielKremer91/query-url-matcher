@@ -197,7 +197,8 @@ def test_write_excel_strips_control_characters_without_mutating_input(tmp_path):
     overview[L.C_CHUNK] = ["ok", "tab\x0bvertical", "unit\x1fsep"]
     export.write_excel(tmp_path / "out.xlsx", sheets)
     sheet = load_workbook(tmp_path / "out.xlsx")[export.SHEET_OVERVIEW]
-    values = [sheet.cell(row=r, column=3).value for r in (2, 3, 4)]
+    chunk_col = OVERVIEW_COLUMNS.index(L.C_CHUNK) + 1
+    values = [sheet.cell(row=r, column=chunk_col).value for r in (2, 3, 4)]
     assert values == ["ok", "tab vertical", "unit sep"]
     assert overview[L.C_CHUNK].tolist() == ["ok", "tab\x0bvertical", "unit\x1fsep"]
 
@@ -209,7 +210,7 @@ def test_write_excel_keeps_formula_like_text_as_text(tmp_path):
     overview[L.C_CHUNK] = ["= 5 Euro", "-20 % Rabatt", "normal"]
     export.write_excel(tmp_path / "out.xlsx", sheets)
     sheet = load_workbook(tmp_path / "out.xlsx")[export.SHEET_OVERVIEW]
-    cells = [sheet.cell(row=r, column=c) for c in (1, 3) for r in (2, 3, 4)]
+    cells = [sheet.cell(row=r, column=c) for c in (1, OVERVIEW_COLUMNS.index(L.C_CHUNK) + 1) for r in (2, 3, 4)]
     assert [cell.value for cell in cells] == ["=cmd|x", "+49 hotline", "@home", "= 5 Euro", "-20 % Rabatt", "normal"]
     assert all(cell.data_type == "s" for cell in cells)
 
@@ -248,7 +249,7 @@ def test_write_csv_zip_defaults_to_semicolon(tmp_path):
     export.write_csv_zip(path, _sheets())
     with zipfile.ZipFile(path) as archive:
         header = archive.read("uebersicht.csv").decode("utf-8-sig").splitlines()[0]
-    assert header.startswith(f"{L.C_QUERY};{L.C_BEST_URL};")
+    assert header.startswith(f"{L.C_QUERY};{L.C_BUILD};{L.C_USE_INSTEAD};{L.C_BEST_URL};")
 
 
 @pytest.mark.parametrize("sep, number", [(";", "0,9"), (",", "0.9")])

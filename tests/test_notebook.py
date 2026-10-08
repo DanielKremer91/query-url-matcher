@@ -1121,13 +1121,14 @@ def test_smoke_step_7c_counts_the_queries_of_the_cannibalisation_sheet(nb, capsy
     assert L.C_PRIORITY not in decisions.columns
     assert set(decisions.loc[decisions[L.C_VERDICT] == L.V_CANNIBAL, L.C_QUERY]) <= set(cannibal[L.C_QUERY])
     out = capsys.readouterr().out
-    assert f"{cannibal[L.C_QUERY].nunique():>5} Queries im Blatt Kannibalisierungsgefahr, über alle Urteile, die dringendsten oben" in out
+    assert f"{cannibal[L.C_QUERY].nunique():>5} Queries im Blatt Kannibalisierungsgefahr, über alle Urteile: " in out
+    assert "Neue Seite bauen?" in out and "× Vorbeugung" in out
 
 
 def test_verdict_guide_explains_the_cannibalisation_sheet_and_its_order():
     guide = next(source for kind, source in CELLS if kind == "markdown" and "So entstehen die Urteile" in source)
     assert "Blatt „Kannibalisierungsgefahr“ (unabhängig vom Urteil)" in guide
-    assert "Einordnung" not in guide and "Reihenfolge" in guide
+    assert "Einordnung" not in guide and "Reihenfolge" in guide and "Vorbeugung: keine neue Seite bauen" in guide
     assert "**ja**" not in guide and "**möglich**" not in guide and "Chunk auf anderer Seite" in guide
 
 
