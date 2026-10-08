@@ -111,14 +111,6 @@ RANK_IS_CHUNK = "die Seite mit bestem Chunk"
 RANK_IS_OVERALL = "die beste Seite insgesamt"
 RANK_IS_OTHER = "eine andere Seite"
 
-# Leitfrage der Übersicht: Neue Seite bauen?
-C_BUILD = "Neue Seite bauen?"
-C_USE_INSTEAD = "Stattdessen nutzen"
-BUILD_YES = "Ja, Content-Lücke"
-BUILD_NO_MATCH = "Nein, Seite vorhanden"
-BUILD_NO_RANKS = "Nein, rankt bereits"
-BUILD_NO_CONFLICT = "Nein, erst Konkurrenz klären"
-BUILD_NO_WEAK = "Nein, rankende Seite ausbauen"
 # Blatt Kannibalisierungsgefahr: bestehende Konkurrenz oder Vorbeugung (eine neue Seite würde konkurrieren)
 C_KIND = "Art"
 KIND_EXISTING = "Bestehende Seiten konkurrieren"

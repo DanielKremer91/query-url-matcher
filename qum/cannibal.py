@@ -3,7 +3,7 @@ import pandas as pd
 
 from . import labels as L
 from .normalize import normalize_query, normalize_url
-from .verdict import RISK_CLEAR, RISK_NOT_IN_EXPORT, RISK_PLAIN, assess, format_position, risk_kind, use_instead
+from .verdict import RISK_CLEAR, RISK_NOT_IN_EXPORT, RISK_PLAIN, assess, format_position, risk_kind
 
 # Einzelne Fälle (intern, mit Stufe und Grund): eine Zeile je Query, Stufe und konkurrierender URL
 CASE_COLUMNS = [
@@ -144,6 +144,31 @@ def _with_ranking_url(group, result, scores, u_index) -> pd.DataFrame:
     return pd.concat([group, pd.DataFrame([row])], ignore_index=True)
 
 
+def _fitting_rows(query, result, scores, threshold, rankings, kind, skip=()) -> list:
+    """Je Seite über der Schwelle eine Zeile (beste zuerst), ohne die URLs in skip (normalisiert)."""
+    positions = {r.url_norm: format_position(r.position) for r in _own_rankings(rankings).get(normalize_query(query), [])}
+    rows = []
+    for j in np.argsort(-scores, kind="stable"):
+        if scores[j] < threshold:
+            break
+        key = normalize_url(result.urls[j])
+        if key in skip:
+            continue
+        rows.append({
+            L.C_QUERY: query, L.C_KIND: kind, L.C_COMP_URL: result.urls[j], L.C_COMP_SCORE: round(float(scores[j]), 4),
+            L.C_GAP_TO_BEST: round(float(scores.max()) - float(scores[j]), 4) + 0.0, L.C_COMP_POS: positions.get(key, ""),
+        })
+    return rows
+
+
+def _with_fitting_pages(group, result, scores, threshold, rankings) -> pd.DataFrame:
+    """Grundregel: jede Seite über der Schwelle steht im Blatt, auch neben einer bestehenden Konkurrenz."""
+    present = set(group[L.C_COMP_URL].map(normalize_url))
+    query = group[L.C_QUERY].iloc[0]
+    extra = _fitting_rows(query, result, scores, threshold, rankings, L.KIND_EXISTING, skip=present)
+    return group if not extra else pd.concat([group, pd.DataFrame(extra)], ignore_index=True)
+
+
 def find_cannibalization(
     result, lead, threshold, rankings=None, good_position=10, margin=0.01, visible_position=20, gap_position=0,
     include_chunk=True,
@@ -172,6 +197,7 @@ def find_cannibalization(
         if set(group[L.C_STAGE]) == {L.STAGE_POSSIBLE} and urgency in (L.PRIO_VERY_LOW, L.PRIO_OPEN):
             continue
         group = _with_ranking_url(group, result, lead[q_index[query]], u_index)
+        group = _with_fitting_pages(group, result, lead[q_index[query]], threshold, rankings)
         ordered = group.assign(
             _score=group[L.C_COMP_SCORE].astype(float).fillna(-np.inf),
             _position=pd.to_numeric(group[L.C_COMP_POS].replace("", np.nan), errors="coerce").fillna(np.inf),
@@ -194,24 +220,12 @@ def find_cannibalization(
 
 
 def _prevention_rows(result, lead, threshold, rankings, good_position, margin, gap_position, listed, chunk_of):
-    """Vorbeugung: jede Query mit "Neue Seite bauen? Nein", die noch nicht als bestehende Konkurrenz im Blatt steht.
-    Eine neue Seite würde mit der Seite konkurrieren, die stattdessen genutzt werden soll."""
-    assessments = assess(result, lead, threshold, rankings, good_position, margin, gap_position)
-    best_j = lead.argmax(axis=1)
-    by_query = _own_rankings(rankings)
+    """Vorbeugung: jede Query mit mindestens einer Seite über der Schwelle, die noch nicht als bestehende Konkurrenz im
+    Blatt steht. Eine neue Seite würde mit diesen Seiten konkurrieren."""
     rows = []
-    for i, (query, a) in enumerate(zip(result.queries, assessments)):
-        if query in listed or a.verdict == L.V_GAP:
+    for i, query in enumerate(result.queries):
+        if query in listed:
             continue
-        positions = {r.url_norm: format_position(r.position) for r in by_query.get(normalize_query(query), [])}
-        u_index = {normalize_url(u): j for j, u in enumerate(result.urls)}
-        for number, url in enumerate(use_instead(a, int(best_j[i]), result.urls), start=1):
-            j = u_index.get(normalize_url(url))
-            score = None if j is None else round(float(lead[i, j]), 4)
-            rows.append({
-                L.C_QUERY: query, L.C_KIND: L.KIND_PREVENT, L.C_NO: number, L.C_COMP_URL: url, L.C_COMP_SCORE: score,
-                L.C_GAP_TO_BEST: None if j is None else round(float(lead[i].max()) - float(lead[i, j]), 4) + 0.0,
-                L.C_COMP_POS: positions.get(normalize_url(url), ""), L.C_COMP_CHUNK: chunk_of(query, url),
-            })
+        for number, row in enumerate(_fitting_rows(query, result, lead[i], threshold, rankings, L.KIND_PREVENT), start=1):
+            rows.append(row | {L.C_NO: number, L.C_COMP_CHUNK: chunk_of(query, row[L.C_COMP_URL])})
     return rows
-

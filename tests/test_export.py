@@ -249,7 +249,7 @@ def test_write_csv_zip_defaults_to_semicolon(tmp_path):
     export.write_csv_zip(path, _sheets())
     with zipfile.ZipFile(path) as archive:
         header = archive.read("uebersicht.csv").decode("utf-8-sig").splitlines()[0]
-    assert header.startswith(f"{L.C_QUERY};{L.C_BUILD};{L.C_USE_INSTEAD};{L.C_BEST_URL};")
+    assert header.startswith(f"{L.C_QUERY};{L.C_BEST_URL};")
 
 
 @pytest.mark.parametrize("sep, number", [(";", "0,9"), (",", "0.9")])

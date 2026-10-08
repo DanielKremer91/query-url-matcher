@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -487,7 +488,7 @@ def test_pages_clearly_behind_the_best_are_no_competition_only_prevention():
     # infrarotkabine vs sauna: die beste Seite rankt auf 9, die anderen liegen 0.04 und mehr dahinter
     for rankings in (_rankings([("q", U1, U1, 9.0)]), _rankings([("andere", U1, U1, 1.0)]), None):
         df = _sheet(["q"], [[0.9, 0.86, 0.85]], rankings)
-        assert df[[L.C_KIND, L.C_COMP_URL]].values.tolist() == [[L.KIND_PREVENT, U1]]
+        assert set(df[L.C_KIND]) == {L.KIND_PREVENT} and df[L.C_COMP_URL].tolist() == [U1, U2, U3]
 
 
 def test_pages_clearly_behind_the_best_stay_when_a_weaker_page_ranks():
@@ -510,10 +511,23 @@ def _kinds(df):
 
 def test_one_clearly_fitting_page_is_a_prevention_case():
     # zitronen käsekuchen: eine Seite passt klar, eine neue Seite würde mit ihr konkurrieren
-    df = _sheet(["q"], [[0.9, 0.7, 0.1]])
+    df = _sheet(["q"], [[0.9, 0.1, 0.1]])
     assert df[L.C_KIND].tolist() == [L.KIND_PREVENT]
     assert df[L.C_COMP_URL].tolist() == [U1] and df[L.C_COMP_SCORE].tolist() == [0.9]
     assert df[L.C_GAP_TO_BEST].tolist() == [0.0] and df[L.C_COMP_CHUNK].tolist() == [f"Text {U1}"]
+
+
+def test_every_page_above_the_threshold_is_listed():
+    # Grundregel: jede Seite über der Schwelle steht im Blatt, auch wenn sie deutlich hinter der besten liegt
+    df = _sheet(["q"], [[0.9, 0.7, 0.65]])
+    assert df[L.C_COMP_URL].tolist() == [U1, U2, U3]
+    assert df[L.C_GAP_TO_BEST].tolist() == [0.0, 0.2, 0.25]
+    assert set(df[L.C_KIND]) == {L.KIND_PREVENT}
+
+
+def test_existing_competition_also_lists_pages_further_behind():
+    df = _sheet(["q"], [[0.8, 0.8, 0.65]])
+    assert df[L.C_COMP_URL].tolist() == [U1, U2, U3] and set(df[L.C_KIND]) == {L.KIND_EXISTING}
 
 
 def test_gaps_are_not_in_the_sheet():
@@ -542,3 +556,17 @@ def test_a_weak_ranking_page_with_a_better_page_is_existing_competition():
 def test_a_ranking_url_outside_the_export_is_existing_competition():
     df = _sheet(["q"], [[0.9, 0.1, 0.1]], _rankings([("q", ALT, ALT, 2.0)]))
     assert set(df[L.C_KIND]) == {L.KIND_EXISTING} and df[L.C_COMP_URL].tolist() == [U1, ALT]
+
+
+def test_rule_every_query_with_a_page_above_the_threshold_is_in_the_sheet_with_all_those_pages():
+    rng = np.random.default_rng(7)
+    urls = (U1, U2, U3, U4, U5)
+    queries = [f"q{i}" for i in range(40)]
+    scores = rng.uniform(0.5, 0.95, size=(40, 5)).round(4)
+    rankings = _rankings([(f"q{i}", urls[i % 5], urls[i % 5], float(1 + i % 25)) for i in range(0, 40, 2)])
+    df = _sheet(queries, scores.tolist(), rankings, threshold=0.8, urls=urls)
+    for i, query in enumerate(queries):
+        fitting = {urls[j] for j in range(5) if scores[i, j] >= 0.8}
+        listed = set(df.loc[df[L.C_QUERY] == query, L.C_COMP_URL])
+        assert fitting <= listed, query
+        assert bool(listed) == bool(fitting) or listed <= set(rankings["url"]), query

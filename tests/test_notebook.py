@@ -1122,7 +1122,7 @@ def test_smoke_step_7c_counts_the_queries_of_the_cannibalisation_sheet(nb, capsy
     assert set(decisions.loc[decisions[L.C_VERDICT] == L.V_CANNIBAL, L.C_QUERY]) <= set(cannibal[L.C_QUERY])
     out = capsys.readouterr().out
     assert f"{cannibal[L.C_QUERY].nunique():>5} Queries im Blatt Kannibalisierungsgefahr, über alle Urteile: " in out
-    assert "Neue Seite bauen?" in out and "× Vorbeugung" in out
+    assert "Neue Seite bauen?" not in out and "× Vorbeugung" in out
 
 
 def test_verdict_guide_explains_the_cannibalisation_sheet_and_its_order():

@@ -32,7 +32,7 @@ _SHEET_HELP = {
         "und das Urteil."
     ),
     SHEET_CANNIBAL: (
-        "Jede Query, für die keine neue Seite gebaut werden soll: bestehende Konkurrenz (mehrere eigene Seiten passen eng oder ranken) oben, darunter die Vorbeugung (eine Seite deckt die Query ab). Mit einer "
+        "Jede Query, bei der mindestens eine eigene Seite die Schwelle erreicht, mit allen Seiten über der Schwelle: bestehende Konkurrenz (mehrere eigene Seiten passen eng oder ranken) oben, darunter die Vorbeugung (eine neue Seite würde mit diesen Seiten konkurrieren). Mit einer "
         "Zeile je konkurrierender URL (die Query steht in jeder Zeile). Sortiert nach Dringlichkeit, die dringendsten "
         "Fälle zuerst: eng konkurrierende Seiten, deren Query knapp hinter den Top-Rankings rankt (bis "
         "sichtbar_bis_position), dann ohne gutes Ranking, dann mit Top-Ranking einer anderen als der besten Seite, dann "
@@ -72,14 +72,6 @@ _COLUMN_HELP = {
     L.C_S_FULL: "Cosinus-Ähnlichkeit zwischen Query und dem gesamten Main Content der besten URL.",
     L.C_S_COMBI: "Gewichtete Mischung aus Chunk-Score und Gesamt-URL-Score der besten URL.",
     L.C_THRESHOLD: "Die Schwelle aus Schritt 7b, mit der dieser Lauf gerechnet hat. Bester Score minus Schwelle ergibt den Abstand.",
-    L.C_BUILD: (
-        f"Die Antwort auf die Leitfrage „Neue Seite bauen oder Bestehendes nutzen?“. '{L.BUILD_YES}': keine eigene Seite "
-        f"passt, eine neue Seite ist sinnvoll. '{L.BUILD_NO_MATCH}': eine bestehende Seite passt klar, eine neue würde "
-        f"mit ihr konkurrieren. '{L.BUILD_NO_RANKS}': die Query rankt schon gut mit einer passenden Seite. "
-        f"'{L.BUILD_NO_CONFLICT}': mehrere eigene Seiten passen fast gleich gut, zuerst diese Konkurrenz auflösen. "
-        f"'{L.BUILD_NO_WEAK}': eine eigene Seite rankt, passt aber schwach, sie ausbauen statt neu bauen."
-    ),
-    L.C_USE_INSTEAD: "Die bestehende Seite (oder die konkurrierenden Seiten), die statt einer neuen Seite genutzt werden sollte. Leer bei einer Content-Lücke.",
     L.C_TO_THRESHOLD: (
         "Score der besten URL minus Schwelle aus Schritt 7b. Positiv: die Seite passt, negativ: wie weit sie davon "
         "entfernt ist. Lesbarer als der Score selbst, weil die Scores je nach Modell in ganz anderen Bereichen liegen "

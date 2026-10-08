@@ -165,7 +165,7 @@ def test_negative_margin_is_rejected():
 def test_overview_columns_in_order():
     result = make_result(["q"], [U1], [[0.8]])
     df = build_decisions(result, result.lead("chunk"), 0.6)
-    assert OVERVIEW_COLUMNS == MATCH_COLUMNS[:1] + [L.C_BUILD, L.C_USE_INSTEAD] + MATCH_COLUMNS[1:6] + [L.C_TO_THRESHOLD] + MATCH_COLUMNS[6:] + [
+    assert OVERVIEW_COLUMNS == MATCH_COLUMNS[:6] + [L.C_TO_THRESHOLD] + MATCH_COLUMNS[6:] + [
         L.C_POSITION, L.C_RANK_URL, L.C_RANK_IS_BEST, L.C_VERDICT,
     ]
     assert MATCH_COLUMNS[5] == L.C_S_COMBI and L.C_TO_THRESHOLD == "Abstand zur Schwelle"
@@ -262,25 +262,5 @@ def test_ranking_url_with_www_and_without_slash_is_the_same_page():
     assert row[L.C_VERDICT] == L.V_OK
 
 
-# --- Leitfrage: Neue Seite bauen? -------------------------------------------------------------------------------
-
-
-def test_build_answer_values():
-    assert [L.BUILD_YES, L.BUILD_NO_MATCH, L.BUILD_NO_RANKS, L.BUILD_NO_CONFLICT, L.BUILD_NO_WEAK] == [
-        "Ja, Content-Lücke", "Nein, Seite vorhanden", "Nein, rankt bereits", "Nein, erst Konkurrenz klären",
-        "Nein, rankende Seite ausbauen",
-    ]
-    assert [L.C_BUILD, L.C_USE_INSTEAD] == ["Neue Seite bauen?", "Stattdessen nutzen"]
-
-
-def test_build_answer_follows_the_verdict():
-    cases = [
-        (([0.9, 0.7, 0.1], None), L.V_MATCH, L.BUILD_NO_MATCH, U1),  # zitronen käsekuchen: eine Seite passt klar
-        (([0.5, 0.4, 0.3], None), L.V_GAP, L.BUILD_YES, ""),
-        (([0.1, 0.9, 0.7], [(U2, 3)]), L.V_OK, L.BUILD_NO_RANKS, U2),
-        (([0.1, 0.85, 0.845], None), L.V_CANNIBAL, L.BUILD_NO_CONFLICT, f"{U2} | {U3}"),
-        (([0.3, 0.9, 0.1], [(U1, 3)]), L.V_WATCH, L.BUILD_NO_WEAK, U1),
-    ]
-    for (scores, ranking), verdict, answer, use in cases:
-        row = _row(scores, ranking=ranking)
-        assert (row[L.C_VERDICT], row[L.C_BUILD], row[L.C_USE_INSTEAD]) == (verdict, answer, use), scores
+def test_overview_has_no_build_columns():
+    assert not hasattr(L, "C_BUILD") and not hasattr(L, "C_USE_INSTEAD")
