@@ -129,7 +129,7 @@ with colab.guard():
 if not new_queries or not new_content.urls:
     colab.stop("Es wurden keine Queries oder keine Seiten mit Content gefunden.")
 
-query_found = query_spalte or ingest.find_column(query_table, ingest.QUERY_ALIASES)
+query_found = query_spalte or ingest.detected_column(query_table, ingest.QUERY_ALIASES, "Query")
 print(
     f"Erkannte Spalten: Query = {query_found or '(keine Kopfzeile)'}, "
     f"URL = {new_content.url_column}, Content = {new_content.content_column}"
@@ -238,9 +238,9 @@ with colab.guard():
     )
 print(
     "Erkannte Spalten: "
-    f"Keyword = {keyword_spalte or ingest.find_column(ranking_table, ingest.KEYWORD_ALIASES)}, "
-    f"URL = {url_spalte_ranking or ingest.find_column(ranking_table, ingest.URL_ALIASES)}, "
-    f"Position = {position_spalte or ingest.find_column(ranking_table, ingest.POSITION_ALIASES)}"
+    f"Keyword = {keyword_spalte or ingest.detected_column(ranking_table, ingest.KEYWORD_ALIASES, 'Keyword')}, "
+    f"URL = {url_spalte_ranking or ingest.detected_column(ranking_table, ingest.URL_ALIASES, 'URL')}, "
+    f"Position = {position_spalte or ingest.detected_column(ranking_table, ingest.POSITION_ALIASES, 'Position')}"
 )
 known_queries = {ingest.normalize_query(q) for q in queries}
 known_urls = {normalize_url(u) for u in content.urls}
@@ -289,9 +289,9 @@ with colab.guard():
 serp_type_found = serp_type_spalte or ingest.find_column(serp_table, ingest.TYPE_ALIASES)
 print(
     "Erkannte Spalten: "
-    f"Keyword = {serp_keyword_spalte or ingest.find_column(serp_table, ingest.KEYWORD_ALIASES)}, "
-    f"URL = {serp_url_spalte or ingest.find_column(serp_table, ingest.URL_ALIASES)}, "
-    f"Position = {serp_position_spalte or ingest.find_column(serp_table, ingest.POSITION_ALIASES)}, "
+    f"Keyword = {serp_keyword_spalte or ingest.detected_column(serp_table, ingest.KEYWORD_ALIASES, 'Keyword')}, "
+    f"URL = {serp_url_spalte or ingest.detected_column(serp_table, ingest.URL_ALIASES, 'URL')}, "
+    f"Position = {serp_position_spalte or ingest.detected_column(serp_table, ingest.POSITION_ALIASES, 'Position')}, "
     f"Type = {serp_type_found or '(keine Spalte, alle Zeilen gelten als organisch)'}"
 )
 known_queries = {ingest.normalize_query(q) for q in queries}

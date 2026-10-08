@@ -151,12 +151,33 @@ def find_column(df: pd.DataFrame, aliases: list) -> str | None:
     return None
 
 
+# Teilwörter für Spalten mit Zusatz im Namen ("Keyword mit Rezept", "Rankingposition"), wenn kein Name exakt passt
+_PARTS = {
+    "Query": ("keyword", "query", "suchanfrage", "suchbegriff", "prompt"),
+    "Keyword": ("keyword", "query", "suchanfrage", "suchbegriff", "prompt"),
+    "URL": ("url",),
+    "Position": ("position",),
+}
+_FIELDS = {"Query": "query_spalte", "Keyword": "keyword_spalte", "Position": "position_spalte"}
+
+
+def _partial_column(df, what):
+    """Die eine Spalte, deren Name ein passendes Teilwort enthält; None ohne Kandidatin; Fehler bei mehreren."""
+    parts = _PARTS.get(what, ())
+    matches = [c for c in df.columns if any(part in str(c).lower() for part in parts)]
+    if len(matches) > 1:
+        field = f" (Feld {_FIELDS[what]})" if what in _FIELDS else ""
+        names = ", ".join(f"'{c}'" for c in matches)
+        raise IngestError(f"Mehrere mögliche {what}-Spalten: {names}. Trage die gewünschte im Formular ein{field}.")
+    return matches[0] if matches else None
+
+
 def _require(df, given, aliases, what):
     if given:
         if given not in df.columns:
             raise IngestError(f"Spalte '{given}' gibt es nicht. Gefundene Spalten: {list(df.columns)}")
         return given
-    found = find_column(df, aliases)
+    found = find_column(df, aliases) or _partial_column(df, what)
     if found is None:
         message = f"{what}-Spalte nicht erkannt. Gefundene Spalten: {list(df.columns)}. Trage den Spaltennamen im Formular ein."
         # eine Spalte, deren Name ein Trennzeichen enthält: die Zeilen wurden nicht zerlegt (unbekannte Spaltennamen)
@@ -303,3 +324,11 @@ def unmatched_hint(rankings: pd.DataFrame, content_urls, examples=3) -> str | No
         "bekommen keinen Score und stehen im Blatt Kannibalisierungsgefahr ohne Score. Prüfe sie, bevor du die "
         "Ergebnisse weitergibst."
     )
+
+
+def detected_column(df: pd.DataFrame, aliases: list, what: str) -> str | None:
+    """Die Spalte, die das Tool ohne Formularangabe nimmt (für die Anzeige im Notebook), oder None."""
+    try:
+        return find_column(df, aliases) or _partial_column(df, what)
+    except IngestError:
+        return None

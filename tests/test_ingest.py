@@ -473,3 +473,48 @@ def test_unmatched_hint_names_count_examples_and_causes():
     assert hint.startswith("⚠️ 5 Ranking-Zeilen deiner Domain (5 URLs) stehen nicht im Frog-Export")
     assert "https://toom.de/x0, https://toom.de/x1, https://toom.de/x2 …" in hint and "Breadcrumb" in hint
     assert ingest.unmatched_hint(ingest.load_rankings(table.iloc[:1]), ["https://toom.de/x0"]) is None
+
+
+# --- Spalten mit Zusatz im Namen: genau eine Kandidatin wird genommen, mehrere werden genannt ----------------------
+
+
+def test_rankings_find_columns_with_extra_words_in_the_name():
+    # EDEKA-Datei: "Keyword mit Rezept" und "Rankingposition"
+    df = pd.DataFrame({
+        "URL": ["https://www.edeka.de/rezeptwelt/rezepte/baileys-kuchen/", "https://www.edeka.de/x/"],
+        "Slug": ["baileys-kuchen", "x"],
+        "Keyword mit Rezept": ["baileys kuchen rezept", "x rezept"],
+        "SV mit Rezept": [100, 10],
+        "Rankingposition": [1.0, None],
+    })
+    rankings = ingest.load_rankings(df)
+    assert rankings["query_norm"].tolist() == ["baileys kuchen rezept"]
+    assert rankings["position"].tolist() == [1.0]
+
+
+def test_queries_find_a_single_keyword_column_with_extra_words():
+    df = pd.DataFrame({"URL": ["u1", "u2"], "Keyword mit Rezept": ["a rezept", "b rezept"], "SV": [1, 2]})
+    assert ingest.load_queries(df) == ["a rezept", "b rezept"]
+
+
+def test_several_candidate_columns_are_named_in_the_error():
+    df = pd.DataFrame({"URL": ["u"], "Keyword ohne Rezept": ["a"], "Keyword mit Rezept": ["a rezept"]})
+    with pytest.raises(ingest.IngestError) as error:
+        ingest.load_queries(df)
+    message = str(error.value)
+    assert "Mehrere mögliche Query-Spalten: 'Keyword ohne Rezept', 'Keyword mit Rezept'" in message
+    assert "query_spalte" in message
+
+
+def test_exact_aliases_still_win_over_partial_matches():
+    df = pd.DataFrame({"Keyword": ["a"], "Keyword Schwierigkeit": [10], "URL": ["u"], "Position": [3], "Vorherige Position": [5]})
+    rankings = ingest.load_rankings(df)
+    assert rankings["position"].tolist() == [3.0]
+
+
+def test_detected_column_reports_partial_matches_and_stays_silent_on_ambiguity():
+    df = pd.DataFrame({"Keyword mit Rezept": ["a"], "Rankingposition": [1]})
+    assert ingest.detected_column(df, ingest.KEYWORD_ALIASES, "Keyword") == "Keyword mit Rezept"
+    assert ingest.detected_column(df, ingest.POSITION_ALIASES, "Position") == "Rankingposition"
+    both = pd.DataFrame({"Keyword a": ["x"], "Keyword b": ["y"]})
+    assert ingest.detected_column(both, ingest.KEYWORD_ALIASES, "Keyword") is None

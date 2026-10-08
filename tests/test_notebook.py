@@ -1299,3 +1299,14 @@ def test_smoke_step_5_stays_quiet_when_all_ranking_urls_are_crawled(nb, capsys):
     capsys.readouterr()
     nb.run(5, "rankings.csv")
     assert "stehen nicht im Frog-Export" not in capsys.readouterr().out
+
+
+def test_smoke_step_5_names_columns_found_by_partial_match(nb, capsys):
+    _load(nb)
+    ranking = ("URL;Keyword mit Rezept;Rankingposition\n"
+               "https://www.tierbedarf.example/hundefutter/getreidefreies-hundefutter;getreidefreies trockenfutter hund;3\n")
+    nb.uploads.append(("rankings.csv", ranking.encode()))
+    capsys.readouterr()
+    nb.run(5)
+    out = capsys.readouterr().out
+    assert "Erkannte Spalten: Keyword = Keyword mit Rezept, URL = URL, Position = Rankingposition" in out
